@@ -1,0 +1,55 @@
+export const formatCurrency = (value: number, currency: string = '$'): string => {
+  if (value === undefined || value === null || isNaN(value)) {
+    return `${currency}0.00`;
+  }
+
+  // Determine decimal places dynamically
+  let decimals = 2;
+  const absVal = Math.abs(value);
+  if (absVal === 0) {
+    decimals = 2;
+  } else if (absVal < 0.0001) {
+    decimals = 8;
+  } else if (absVal < 0.01) {
+    decimals = 6;
+  } else if (absVal < 1) {
+    decimals = 4;
+  } else {
+    decimals = 2;
+  }
+
+  const formatted = value.toLocaleString('en-US', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+
+  return `${currency}${formatted}`;
+};
+
+export const formatPercentage = (value: number): string => {
+  if (value === undefined || value === null || isNaN(value)) {
+    return '0.00%';
+  }
+  const prefix = value > 0 ? '+' : '';
+  return `${prefix}${value.toFixed(2)}%`;
+};
+
+export const formatNumber = (value: number, maxDecimals: number = 4): string => {
+  if (value === undefined || value === null || isNaN(value)) {
+    return '0';
+  }
+  return value.toLocaleString('en-US', {
+    maximumFractionDigits: maxDecimals,
+  });
+};
+
+export const cleanSymbol = (symbol: string): { base: string; quote: string } => {
+  const upper = symbol.toUpperCase();
+  if (upper.endsWith('USDT')) {
+    return { base: upper.replace('USDT', ''), quote: 'USDT' };
+  }
+  if (upper.endsWith('BUSD')) {
+    return { base: upper.replace('BUSD', ''), quote: 'BUSD' };
+  }
+  return { base: upper, quote: 'USDT' };
+};
