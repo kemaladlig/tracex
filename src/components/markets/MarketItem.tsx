@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   ArrowDownRight,
   ArrowUpRight,
@@ -45,22 +45,6 @@ export const MarketItem: React.FC<MarketItemProps> = ({ symbol, onQuickAdd }) =>
   const { base, quote } = cleanSymbol(symbol);
   const isPositive = (ticker?.changePercent24h ?? 0) >= 0;
 
-  // Generate lightweight 24h trend sparkline curve
-  const sparklinePath = useMemo(() => {
-    if (!ticker) return '';
-    const pct = ticker.changePercent24h ?? 0;
-    const h = 22;
-    const isUp = pct >= 0;
-
-    const startY = isUp ? h * 0.75 : h * 0.25;
-    const midY = isUp ? h * 0.45 : h * 0.55;
-    const endY = isUp ? h * 0.15 : h * 0.85;
-
-    return `M 2,${startY.toFixed(1)} Q 16,${(isUp ? h * 0.8 : h * 0.2).toFixed(1)} 28,${midY.toFixed(
-      1
-    )} T 52,${endY.toFixed(1)}`;
-  }, [ticker?.changePercent24h]);
-
   const handleItemClick = () => {
     setSelectedCoinForChart(symbol);
   };
@@ -78,7 +62,7 @@ export const MarketItem: React.FC<MarketItemProps> = ({ symbol, onQuickAdd }) =>
   return (
     <div
       onClick={handleItemClick}
-      className="group relative flex items-center justify-between p-3.5 mb-2.5 bg-white border-2 border-stone-900 rounded-lg shadow-hard hover:bg-stone-50 btn-hard cursor-pointer transition-colors"
+      className="group relative flex items-center justify-between p-3 mb-2.5 bg-white border-2 border-stone-900 rounded-lg shadow-hard hover:bg-stone-50 btn-hard cursor-pointer transition-colors"
     >
       {/* Left: Symbol stamp & Volume */}
       <div className="flex items-center gap-3">
@@ -102,23 +86,8 @@ export const MarketItem: React.FC<MarketItemProps> = ({ symbol, onQuickAdd }) =>
         </div>
       </div>
 
-      {/* Middle: Mini 24s Sparkline Trend */}
-      <div className="hidden xs:block sm:block w-13 h-6 shrink-0 opacity-85 group-hover:opacity-100 transition-opacity">
-        {ticker && sparklinePath && (
-          <svg viewBox="0 0 54 22" className="w-full h-full overflow-visible">
-            <path
-              d={sparklinePath}
-              fill="none"
-              stroke={isPositive ? '#16a34a' : '#dc2626'}
-              strokeWidth="2.2"
-              strokeLinecap="round"
-            />
-          </svg>
-        )}
-      </div>
-
-      {/* Right: Price & 24h Change badge & Actions */}
-      <div className="flex items-center gap-2">
+      {/* Right: Price, Micro-Sparkline Accent & Actions */}
+      <div className="flex items-center gap-2.5">
         <div className="text-right">
           <div
             className={`font-mono font-black text-base text-stone-900 tracking-tight transition-all duration-300 px-1 rounded ${flashClass}`}
@@ -129,7 +98,24 @@ export const MarketItem: React.FC<MarketItemProps> = ({ symbol, onQuickAdd }) =>
               <span className="text-xs text-stone-400 font-mono">Yükleniyor...</span>
             )}
           </div>
-          <div className="flex justify-end mt-0.5">
+          <div className="flex items-center justify-end gap-1.5 mt-0.5">
+            {/* Compact Micro-Sparkline Accent: subtle visual cue taking minimal space */}
+            {ticker && (
+              <svg viewBox="0 0 28 12" className="w-7 h-3 opacity-70 shrink-0">
+                <path
+                  d={
+                    isPositive
+                      ? 'M 1,10 Q 8,11 14,5 T 27,2'
+                      : 'M 1,2 Q 8,1 14,7 T 27,10'
+                  }
+                  fill="none"
+                  stroke={isPositive ? '#16a34a' : '#dc2626'}
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            )}
+
             {ticker ? (
               <span
                 className={`inline-flex items-center gap-0.5 text-xs font-mono font-black px-1.5 py-0.5 rounded border border-stone-900 ${
