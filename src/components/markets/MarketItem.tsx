@@ -3,8 +3,7 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   ChevronRight,
-  ChevronUp,
-  ChevronDown,
+  GripVertical,
   PlusCircle,
   Trash2,
 } from 'lucide-react';
@@ -13,22 +12,32 @@ import { cleanSymbol, formatCurrency, formatPercentage } from '../../utils/forma
 
 interface MarketItemProps {
   symbol: string;
+  index: number;
   onQuickAdd?: (symbol: string) => void;
   canReorder?: boolean;
-  canMoveUp?: boolean;
-  canMoveDown?: boolean;
-  onMoveUp?: () => void;
-  onMoveDown?: () => void;
+  isDragging?: boolean;
+  isDragOver?: boolean;
+  onDragStart?: (e: React.DragEvent) => void;
+  onDragOver?: (e: React.DragEvent) => void;
+  onDragLeave?: (e: React.DragEvent) => void;
+  onDrop?: (e: React.DragEvent) => void;
+  onDragEnd?: (e: React.DragEvent) => void;
+  onTouchStartHandle?: (e: React.TouchEvent, index: number) => void;
 }
 
 export const MarketItem: React.FC<MarketItemProps> = ({
   symbol,
+  index,
   onQuickAdd,
   canReorder = false,
-  canMoveUp = false,
-  canMoveDown = false,
-  onMoveUp,
-  onMoveDown,
+  isDragging = false,
+  isDragOver = false,
+  onDragStart,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  onDragEnd,
+  onTouchStartHandle,
 }) => {
   const ticker = useCryptoStore((state) => state.tickers[symbol]);
   const setSelectedCoinForChart = useCryptoStore((state) => state.setSelectedCoinForChart);
@@ -74,24 +83,39 @@ export const MarketItem: React.FC<MarketItemProps> = ({
     if (onQuickAdd) onQuickAdd(symbol);
   };
 
-  const handleMoveUpClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (onMoveUp) onMoveUp();
-  };
-
-  const handleMoveDownClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (onMoveDown) onMoveDown();
-  };
-
   return (
     <div
       onClick={handleItemClick}
-      className="group relative flex items-center justify-between p-3 mb-2.5 bg-white border-2 border-stone-900 rounded-lg shadow-hard hover:bg-stone-50 active:scale-[0.99] btn-hard cursor-pointer transition-all duration-100"
+      draggable={canReorder}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
+      data-drag-index={index}
+      className={`group relative flex items-center justify-between p-3 mb-2.5 bg-white border-2 border-stone-900 rounded-lg shadow-hard hover:bg-stone-50 active:scale-[0.99] btn-hard cursor-pointer transition-all duration-150 select-none ${
+        isDragging
+          ? 'opacity-40 scale-[0.98] border-dashed border-amber-500 bg-amber-50/60'
+          : isDragOver
+          ? 'border-t-4 border-t-amber-500 bg-amber-50/40 -translate-y-0.5 shadow-hard-lg'
+          : ''
+      }`}
     >
-      {/* Left: Symbol stamp & Volume */}
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-md bg-stone-100 border-2 border-stone-900 flex items-center justify-center font-mono font-black text-sm text-stone-900 shadow-hard-sm group-hover:scale-105 transition-transform">
+      {/* Left: Grip Handle (if custom order) + Symbol stamp & Volume */}
+      <div className="flex items-center gap-2.5">
+        {canReorder && (
+          <div
+            onTouchStart={(e) => {
+              e.stopPropagation();
+              onTouchStartHandle?.(e, index);
+            }}
+            className="touch-none cursor-grab active:cursor-grabbing p-1 -ml-1 text-stone-400 hover:text-stone-900 hover:bg-stone-100 rounded transition-colors shrink-0"
+            title="Sıralamak için tutup sürükleyin"
+          >
+            <GripVertical className="w-4 h-4 stroke-[2.5]" />
+          </div>
+        )}
+        <div className="w-10 h-10 rounded-md bg-stone-100 border-2 border-stone-900 flex items-center justify-center font-mono font-black text-sm text-stone-900 shadow-hard-sm group-hover:scale-105 transition-transform shrink-0">
           {base.substring(0, 3)}
         </div>
         <div>
@@ -112,7 +136,7 @@ export const MarketItem: React.FC<MarketItemProps> = ({
       </div>
 
       {/* Right: Price, Micro-Sparkline Accent & Actions */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 shrink-0">
         <div className="text-right">
           <div
             className={`font-mono font-black text-base text-stone-900 tracking-tight transition-all duration-300 px-1 rounded ${flashClass}`}
@@ -161,28 +185,6 @@ export const MarketItem: React.FC<MarketItemProps> = ({
             )}
           </div>
         </div>
-
-        {/* Reorder Chevrons (Up & Down buttons) in custom order mode */}
-        {canReorder && (
-          <div className="flex flex-col items-center justify-center -my-1 mx-0.5 bg-stone-100 rounded border border-stone-300 px-0.5 py-0.5">
-            <button
-              onClick={handleMoveUpClick}
-              disabled={!canMoveUp}
-              title="Yukarı Taşı"
-              className="p-0.5 text-stone-600 hover:text-stone-950 hover:bg-stone-200 rounded disabled:opacity-20 disabled:hover:bg-transparent cursor-pointer disabled:cursor-default"
-            >
-              <ChevronUp className="w-3 h-3 stroke-[3]" />
-            </button>
-            <button
-              onClick={handleMoveDownClick}
-              disabled={!canMoveDown}
-              title="Aşağı Taşı"
-              className="p-0.5 text-stone-600 hover:text-stone-950 hover:bg-stone-200 rounded disabled:opacity-20 disabled:hover:bg-transparent cursor-pointer disabled:cursor-default"
-            >
-              <ChevronDown className="w-3 h-3 stroke-[3]" />
-            </button>
-          </div>
-        )}
 
         {/* Quick Add to Portfolio */}
         {onQuickAdd && (

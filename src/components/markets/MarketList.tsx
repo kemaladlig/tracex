@@ -20,7 +20,7 @@ const CATEGORY_TAGS: Record<CategoryOption, string[]> = {
 export const MarketList: React.FC = () => {
   const watchlist = useCryptoStore((state) => state.watchlist);
   const tickers = useCryptoStore((state) => state.tickers);
-  const moveWatchlistItem = useCryptoStore((state) => state.moveWatchlistItem);
+  const reorderWatchlist = useCryptoStore((state) => state.reorderWatchlist);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -28,6 +28,10 @@ export const MarketList: React.FC = () => {
 
   const [category, setCategory] = useState<CategoryOption>('all');
   const [sortBy, setSortBy] = useState<SortOption>('default');
+
+  // Drag and drop state
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [overIndex, setOverIndex] = useState<number | null>(null);
 
   const filteredAndSortedWatchlist = useMemo(() => {
     // 1. Search Query filter
@@ -65,6 +69,76 @@ export const MarketList: React.FC = () => {
   }, [watchlist, searchQuery, category, sortBy, tickers]);
 
   const isCustomOrder = sortBy === 'default' && category === 'all' && !searchQuery.trim();
+
+  // Desktop Drag & Drop Handlers
+  const handleDragStart = (idx: number, e: React.DragEvent) => {
+    e.dataTransfer.setData('text/plain', String(idx));
+    e.dataTransfer.effectAllowed = 'move';
+    setDraggedIndex(idx);
+  };
+
+  const handleDragOver = (idx: number, e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (overIndex !== idx) {
+      setOverIndex(idx);
+    }
+  };
+
+  const handleDragLeave = () => {
+    // Left target
+  };
+
+  const handleDrop = (targetIdx: number, e: React.DragEvent) => {
+    e.preventDefault();
+    const sourceIdxStr = e.dataTransfer.getData('text/plain');
+    const sourceIdx = parseInt(sourceIdxStr, 10);
+    if (!isNaN(sourceIdx) && sourceIdx !== targetIdx) {
+      reorderWatchlist(sourceIdx, targetIdx);
+    }
+    setDraggedIndex(null);
+    setOverIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setOverIndex(null);
+  };
+
+  // Mobile Touch Drag & Drop Handler
+  const handleTouchStartHandle = (_e: React.TouchEvent, startIndex: number) => {
+    setDraggedIndex(startIndex);
+    let currentTargetIdx = startIndex;
+
+    const handleTouchMove = (moveEvt: TouchEvent) => {
+      if (moveEvt.cancelable) {
+        moveEvt.preventDefault();
+      }
+      const touch = moveEvt.touches[0];
+      const el = document.elementFromPoint(touch.clientX, touch.clientY);
+      const itemEl = el?.closest('[data-drag-index]') as HTMLElement | null;
+      if (itemEl && itemEl.dataset.dragIndex !== undefined) {
+        const hoverIdx = parseInt(itemEl.dataset.dragIndex, 10);
+        if (!isNaN(hoverIdx) && hoverIdx !== currentTargetIdx) {
+          currentTargetIdx = hoverIdx;
+          setOverIndex(hoverIdx);
+        }
+      }
+    };
+
+    const handleTouchEnd = () => {
+      if (currentTargetIdx !== startIndex) {
+        reorderWatchlist(startIndex, currentTargetIdx);
+      }
+      setDraggedIndex(null);
+      setOverIndex(null);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
+    };
+
+    window.addEventListener('touchmove', handleTouchMove, { passive: false });
+    window.addEventListener('touchend', handleTouchEnd);
+  };
 
   return (
     <div className="flex flex-col pb-28 px-4 max-w-lg mx-auto w-full">
@@ -122,7 +196,7 @@ export const MarketList: React.FC = () => {
           <ArrowUpDown className="w-3 h-3 text-stone-500 mr-0.5 shrink-0" />
           {(
             [
-              { id: 'default', label: isCustomOrder ? 'Varsayılan (▲▼ Sırala)' : 'Varsayılan' },
+              { id: 'default', label: isCustomOrder ? 'Varsayılan (Tutup Sırala)' : 'Varsayılan' },
               { id: 'gainers', label: 'En Çok Artan' },
               { id: 'losers', label: 'En Çok Düşen' },
               { id: 'volume', label: 'Hacim' },
@@ -155,19 +229,24 @@ export const MarketList: React.FC = () => {
         </div>
       </div>
 
-      {/* Market Items List */}
+      {/* Market Items List with Drag & Drop Reordering */}
       {filteredAndSortedWatchlist.length > 0 ? (
         <div className="flex flex-col">
           {filteredAndSortedWatchlist.map((symbol, idx) => (
             <MarketItem
               key={symbol}
               symbol={symbol}
+              index={idx}
               onQuickAdd={(sym) => setQuickAddSymbol(sym)}
               canReorder={isCustomOrder}
-              canMoveUp={idx > 0}
-              canMoveDown={idx < filteredAndSortedWatchlist.length - 1}
-              onMoveUp={() => moveWatchlistItem(symbol, 'up')}
-              onMoveDown={() => moveWatchlistItem(symbol, 'down')}
+              isDragging={draggedIndex === idx}
+              isDragOver={overIndex === idx}
+              onDragStart={(e) => handleDragStart(idx, e)}
+              onDragOver={(e) => handleDragOver(idx, e)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(idx, e)}
+              onDragEnd={handleDragEnd}
+              onTouchStartHandle={handleTouchStartHandle}
             />
           ))}
         </div>
@@ -182,7 +261,7 @@ export const MarketList: React.FC = () => {
             onClick={() => setIsAddModalOpen(true)}
             className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-300 border-2 border-stone-900 text-stone-900 text-xs font-bold rounded-md shadow-hard-sm btn-hard cursor-pointer"
           >
-            <Plus className="w-3.5 h-3.5 stroke-[3]" /> Listeye Coin Ekle
+            <Plus className="w-4 h-4 stroke-[3]" /> Listeye Coin Ekle
           </button>
         </div>
       )}
