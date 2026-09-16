@@ -3,6 +3,7 @@ import { ArrowUpDown, Coins, Plus } from 'lucide-react';
 import type { PortfolioAsset } from '../../types/crypto';
 import { useCryptoStore } from '../../store/useCryptoStore';
 import { PortfolioSummary } from './PortfolioSummary';
+import { PortfolioGroupSwitcher } from './PortfolioGroupSwitcher';
 import { PortfolioItem } from './PortfolioItem';
 import { AddAssetModal } from './AddAssetModal';
 import { SellAssetModal } from './SellAssetModal';
@@ -52,8 +53,13 @@ export const PortfolioList: React.FC = () => {
 
   return (
     <div className="flex flex-col pb-28 px-4 max-w-lg mx-auto w-full font-mono">
-      {/* Portfolio Top PnL Summary */}
+      {/* Multi-Portfolio Group Tabs & Backup Toolbar */}
       <div className="mt-3">
+        <PortfolioGroupSwitcher />
+      </div>
+
+      {/* Portfolio Top PnL Summary */}
+      <div>
         <PortfolioSummary onAddClick={handleOpenAdd} />
       </div>
 

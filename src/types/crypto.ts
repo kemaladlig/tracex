@@ -24,6 +24,22 @@ export interface PortfolioAsset {
   timestamp: number;
 }
 
+export interface PortfolioGroup {
+  id: string;
+  name: string;
+  assets: PortfolioAsset[];
+  realizedPnL: number;
+  createdAt: number;
+}
+
+export interface PortfolioBackupData {
+  version: '2.5';
+  exportedAt: number;
+  groups: PortfolioGroup[];
+  activeGroupId: string;
+  watchlist: string[];
+}
+
 export interface SellTransaction {
   id: string;
   symbol: string;
