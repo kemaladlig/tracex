@@ -28,6 +28,7 @@ interface CryptoState {
   sellPortfolioAsset: (id: string, sellAmount: number, sellPrice: number) => { pnl: number; success: boolean };
   removePortfolioAsset: (id: string) => void;
   updateTicker: (data: Partial<TickerData> & { symbol: string; price: number }) => void;
+  updateTickersBatch: (dataList: (Partial<TickerData> & { symbol: string; price: number })[]) => void;
   setActiveTab: (tab: TabType) => void;
   setSelectedCoinForChart: (symbol: string | null) => void;
   setConnectionStatus: (status: ConnectionStatus) => void;
@@ -197,6 +198,53 @@ export const useCryptoStore = create<CryptoState>()(
               ...state.tickers,
               [incoming.symbol]: updated,
             },
+            tryRate,
+            eurRate,
+          };
+        });
+      },
+
+      updateTickersBatch: (incomingList) => {
+        if (!incomingList || incomingList.length === 0) return;
+        set((state) => {
+          const nextTickers = { ...state.tickers };
+          let tryRate = state.tryRate;
+          let eurRate = state.eurRate;
+
+          for (let i = 0; i < incomingList.length; i++) {
+            const incoming = incomingList[i];
+            if (!incoming.symbol || incoming.price === undefined) continue;
+
+            const prev = nextTickers[incoming.symbol];
+            let direction: 'up' | 'down' | null = null;
+            if (prev && prev.price !== incoming.price) {
+              direction = incoming.price > prev.price ? 'up' : 'down';
+            } else if (prev) {
+              direction = prev.direction;
+            }
+
+            nextTickers[incoming.symbol] = {
+              symbol: incoming.symbol,
+              price: incoming.price,
+              changePercent24h: incoming.changePercent24h ?? prev?.changePercent24h ?? 0,
+              changeAmount24h: incoming.changeAmount24h ?? prev?.changeAmount24h ?? 0,
+              high24h: incoming.high24h ?? prev?.high24h ?? incoming.price,
+              low24h: incoming.low24h ?? prev?.low24h ?? incoming.price,
+              volume: incoming.volume ?? prev?.volume ?? 0,
+              quoteVolume: incoming.quoteVolume ?? prev?.quoteVolume ?? 0,
+              direction,
+              lastUpdated: Date.now(),
+            };
+
+            if (incoming.symbol === 'USDTTRY') {
+              tryRate = incoming.price;
+            } else if (incoming.symbol === 'EURUSDT') {
+              eurRate = incoming.price;
+            }
+          }
+
+          return {
+            tickers: nextTickers,
             tryRate,
             eurRate,
           };

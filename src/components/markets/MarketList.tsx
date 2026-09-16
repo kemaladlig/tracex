@@ -93,10 +93,10 @@ export const MarketList: React.FC = () => {
         {(
           [
             { id: 'all', label: 'TÜMÜ' },
-            { id: 'l1', label: '⚡ LAYER 1' },
-            { id: 'meme', label: '🐸 MEME' },
-            { id: 'ai', label: '🤖 AI' },
-            { id: 'defi', label: '🏦 DEFI' },
+            { id: 'l1', label: 'LAYER 1' },
+            { id: 'meme', label: 'MEME' },
+            { id: 'ai', label: 'YAPAY ZEKA' },
+            { id: 'defi', label: 'DEFI' },
           ] as { id: CategoryOption; label: string }[]
         ).map((item) => (
           <button
@@ -120,9 +120,9 @@ export const MarketList: React.FC = () => {
           {(
             [
               { id: 'default', label: 'Varsayılan' },
-              { id: 'gainers', label: '🔥 En Çok Artan' },
-              { id: 'losers', label: '🔻 En Çok Düşen' },
-              { id: 'volume', label: '📊 Hacim' },
+              { id: 'gainers', label: 'En Çok Artan' },
+              { id: 'losers', label: 'En Çok Düşen' },
+              { id: 'volume', label: 'Hacim' },
               { id: 'name', label: 'A-Z' },
             ] as { id: SortOption; label: string }[]
           ).map((item) => (

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { useCryptoStore } from './store/useCryptoStore';
 import { useBinanceWebSocket } from './hooks/useBinanceWebSocket';
 import { Header } from './components/common/Header';
@@ -6,10 +6,14 @@ import { BottomNav } from './components/common/BottomNav';
 import { MarketList } from './components/markets/MarketList';
 import { PortfolioList } from './components/portfolio/PortfolioList';
 import { AnalyticsView } from './components/analytics/AnalyticsView';
-import { DetailChartModal } from './components/chart/DetailChartModal';
+
+// Code-split heavyweight lightweight-charts bundle (~250kb) to accelerate First Contentful Paint
+const DetailChartModal = lazy(() =>
+  import('./components/chart/DetailChartModal').then((m) => ({ default: m.DetailChartModal }))
+);
 
 export const App: React.FC = () => {
-  // Activate continuous single combined WebSocket stream for all symbols
+  // Activate continuous single combined WebSocket stream with 120ms batching & visibility pause
   useBinanceWebSocket();
 
   const activeTab = useCryptoStore((state) => state.activeTab);
@@ -27,8 +31,18 @@ export const App: React.FC = () => {
         {activeTab === 'portfolio' && <PortfolioList />}
       </main>
 
-      {/* Fullscreen / Modal Interactive Chart */}
-      {selectedCoinForChart && <DetailChartModal />}
+      {/* Lazy-loaded Fullscreen Interactive Chart Modal */}
+      {selectedCoinForChart && (
+        <Suspense
+          fallback={
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#f4f0e6]/80 backdrop-blur-xs font-mono">
+              <div className="w-8 h-8 border-2 border-stone-900 border-t-amber-400 rounded-full animate-spin" />
+            </div>
+          }
+        >
+          <DetailChartModal />
+        </Suspense>
+      )}
 
       {/* Mobile-First Bottom Navigation Bar */}
       <BottomNav />

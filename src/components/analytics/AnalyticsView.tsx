@@ -121,8 +121,9 @@ export const AnalyticsView: React.FC = () => {
         </div>
 
         <div className="mb-2.5">
-          <div className="text-xs font-bold text-amber-300 uppercase mb-1">
-            ⚡ {macroPhase.verdict}
+          <div className="text-xs font-bold text-amber-300 uppercase mb-1 flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-amber-400 inline-block shrink-0" />
+            <span>{macroPhase.verdict}</span>
           </div>
           <p className="text-xs text-stone-300 leading-relaxed font-sans">
             {macroPhase.strategy}
@@ -172,7 +173,7 @@ export const AnalyticsView: React.FC = () => {
             <span className="text-[9px] font-bold text-stone-500 uppercase block">DÜN</span>
             <div className="text-base font-black text-stone-800 mt-0.5">{fearAndGreed.yesterday}</div>
             <span className="text-[8px] font-bold text-stone-600 block">
-              {fearAndGreed.current > fearAndGreed.yesterday ? '▲ Yükseldi' : '▼ Düştü'}
+              {fearAndGreed.current > fearAndGreed.yesterday ? '+ Yükseldi' : '- Düştü'}
             </span>
           </div>
 
@@ -387,7 +388,7 @@ export const AnalyticsView: React.FC = () => {
           </div>
           <div className="flex justify-between text-[9px] font-bold text-stone-500 mt-1">
             <span>0.8 (Tarihi Ayı Dibi)</span>
-            <span className="text-stone-900 font-black">▲ ŞU AN ({mvrvRatio.value})</span>
+            <span className="text-stone-900 font-black">[ŞU AN: {mvrvRatio.value}]</span>
             <span>3.7+ (Boğa Tepesi/Satış)</span>
           </div>
         </div>

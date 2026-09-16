@@ -2,6 +2,7 @@ import React from 'react';
 import { Newspaper, Compass, Wallet } from 'lucide-react';
 import { useCryptoStore } from '../../store/useCryptoStore';
 import type { TabType } from '../../types/crypto';
+import { triggerHaptic } from '../../utils/haptics';
 
 export const BottomNav: React.FC = () => {
   const activeTab = useCryptoStore((state) => state.activeTab);
@@ -23,7 +24,10 @@ export const BottomNav: React.FC = () => {
           return (
             <button
               key={item.id}
-              onClick={() => setActiveTab(item.id)}
+              onClick={() => {
+                triggerHaptic('light');
+                setActiveTab(item.id);
+              }}
               className={`flex items-center justify-center gap-1.5 flex-1 py-2 mx-1 rounded-md border-2 text-xs font-black transition-all cursor-pointer ${
                 isActive
                   ? 'bg-amber-300 text-stone-900 border-stone-900 shadow-hard-sm'

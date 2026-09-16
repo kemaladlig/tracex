@@ -134,7 +134,7 @@ export const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({ onAddClick }
           <div className="grid grid-cols-2 gap-2 mb-3 pt-2 border-t border-stone-200">
             <div className="p-2 bg-emerald-50 border border-stone-900 rounded shadow-hard-sm">
               <span className="text-[9px] font-bold text-emerald-900 uppercase flex items-center gap-1">
-                🏆 En Çok Kazandıran
+                <ArrowUpRight className="w-3 h-3 text-emerald-700 stroke-[3]" /> LİDER VARLIK
               </span>
               <div className="flex items-baseline justify-between mt-0.5">
                 <span className="text-xs font-black text-stone-900">{best.symbol}</span>
@@ -151,7 +151,7 @@ export const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({ onAddClick }
 
             <div className="p-2 bg-rose-50 border border-stone-900 rounded shadow-hard-sm">
               <span className="text-[9px] font-bold text-rose-900 uppercase flex items-center gap-1">
-                🔻 En Çok Gerileyen
+                <ArrowDownRight className="w-3 h-3 text-rose-700 stroke-[3]" /> EN ÇOK GERİLEYEN
               </span>
               <div className="flex items-baseline justify-between mt-0.5">
                 <span className="text-xs font-black text-stone-900">{worst.symbol}</span>

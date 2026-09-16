@@ -72,22 +72,22 @@ const deriveMarketIntelligence = (
   let macroStrategy = '';
 
   if (fng <= 25) {
-    macroTitle = '⚠️ AŞIRI KORKU & TESLİMİYET EVRESİ';
+    macroTitle = 'AŞIRI KORKU // TESLİMİYET EVRESİ';
     macroVerdict = 'DİP AKÜMÜLASYON FIRSATI';
     macroStrategy =
       `Korku endeksi dip seviyede (${fng}/100). Yatırımcılar panik halindeyken tarihsel olarak akıllı sermaye bu bölgelerde kademeli DCA alımları yapar.`;
   } else if (fng >= 75 && (fundingRate > 0.02 || lsRatio > 2.1)) {
-    macroTitle = '🔥 AŞIRI ISINMA & LİKİDASYON RİSKİ';
+    macroTitle = 'AŞIRI ISINMA // LİKİDASYON RİSKİ';
     macroVerdict = 'DİKKAT // KÂR ALMA BÖLGESİ';
     macroStrategy =
       `Piyasada aşırı coşku (${fng}/100) ve Long pozisyon yığılması var. Borsaların kaldıraçlı hesapları temizlemek için sert aşağı iğneler (Long Squeeze) atma riski çok yüksek.`;
   } else if (fng >= 55) {
-    macroTitle = '🟢 KONTROLLÜ BOĞA & AKÜMÜLASYON';
+    macroTitle = 'KONTROLLÜ BOĞA // AKÜMÜLASYON';
     macroVerdict = 'YÜKSELİŞ TRENDİ KORUNUYOR';
     macroStrategy =
       `Piyasa duyarlılığı pozitif (${fng}/100), türev fonlama oranları (%${fundingRate}) henüz patlama seviyesinde değil. Trend yukarı yönlü sağlıklı bir ivmeyle devam ediyor.`;
   } else {
-    macroTitle = '⚖️ NÖTR KONSOLİDASYON DÖNEMİ';
+    macroTitle = 'KONSOLİDASYON // NÖTR DÖNEM';
     macroVerdict = 'YÖN ARAYIŞI & TEST';
     macroStrategy =
       `Piyasa kararsız bir yatay bantta seyrediyor. Ne boğalar ne de ayılar tam kontrolü ele geçirebilmiş değil. Kırılım yönü netleşene kadar yüksek kaldıraçtan uzak durulmalıdır.`;
@@ -97,10 +97,10 @@ const deriveMarketIntelligence = (
   let lsSignal = 'Dengeli Boğa Pozisyonlanması';
   let lsDesc = `Hesapların %${longPct}'i Long, %${shortPct}'i Short pozisyonda.`;
   if (lsRatio > 2.2) {
-    lsSignal = '⚠️ Tehlikeli Long Yığılması';
+    lsSignal = 'Tehlikeli Long Yığılması';
     lsDesc = `Long oranı %${longPct} ile aşırı kalabalık. Ani aşağı iğnelerle (Flash Crash) long tasfiyesi yaratma riski taşır.`;
   } else if (lsRatio < 1.0) {
-    lsSignal = '⚡ Ayı Baskısı & Short Squeeze İhtimali';
+    lsSignal = 'Ayı Baskısı // Short Squeeze İhtimali';
     lsDesc = `Short pozisyonlar (%${shortPct}) üstünlük kurmuş durumda. Beklenmedik bir yukarı hareket sert bir Short Squeeze tetikleyebilir.`;
   } else {
     lsDesc += ' Türev piyasada sağlıklı bir yön dengesi var, ani tasfiye riski düşük.';
@@ -153,11 +153,11 @@ const deriveMarketIntelligence = (
   // 7. Dynamic Taker Volume signal
   let takerSignal = 'Dengeli İşlem Hacmi';
   if (takerRatio > 1.15) {
-    takerSignal = `🟢 Alıcılar Agresif (Oran: ${takerRatio})`;
+    takerSignal = `Alıcı Baskısı (Oran: ${takerRatio})`;
   } else if (takerRatio < 0.9) {
-    takerSignal = `🔴 Satıcılar Agresif (Oran: ${takerRatio})`;
+    takerSignal = `Satıcı Baskısı (Oran: ${takerRatio})`;
   } else {
-    takerSignal = `⚖️ Alıcı / Satıcı Dengede (${takerRatio})`;
+    takerSignal = `Alıcı / Satıcı Dengede (${takerRatio})`;
   }
 
   // 8. Dynamic Technical RSI interpretation

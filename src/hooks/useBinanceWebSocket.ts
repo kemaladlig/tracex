@@ -1,14 +1,19 @@
 import { useEffect, useRef } from 'react';
 import { useCryptoStore } from '../store/useCryptoStore';
+import type { TickerData } from '../types/crypto';
 
 export const useBinanceWebSocket = () => {
   const watchlist = useCryptoStore((state) => state.watchlist);
   const portfolio = useCryptoStore((state) => state.portfolio);
-  const updateTicker = useCryptoStore((state) => state.updateTicker);
+  const updateTickersBatch = useCryptoStore((state) => state.updateTickersBatch);
   const setConnectionStatus = useCryptoStore((state) => state.setConnectionStatus);
 
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<number | null>(null);
+  const tickerBufferRef = useRef<Map<string, Partial<TickerData> & { symbol: string; price: number }>>(
+    new Map()
+  );
+  const flushIntervalRef = useRef<number | null>(null);
 
   // Combine unique symbols from watchlist and portfolio
   const allSymbols = Array.from(
@@ -18,7 +23,6 @@ export const useBinanceWebSocket = () => {
     ])
   ).filter(Boolean);
 
-  // Stable key to check if symbols changed
   const symbolsKey = allSymbols.sort().join(',');
 
   useEffect(() => {
@@ -28,6 +32,15 @@ export const useBinanceWebSocket = () => {
     }
 
     let isDestroyed = false;
+
+    // Flush buffered ticker messages every 120ms (8.3 fps instead of 50 fps) to optimize CPU/battery
+    flushIntervalRef.current = window.setInterval(() => {
+      if (tickerBufferRef.current.size > 0) {
+        const batch = Array.from(tickerBufferRef.current.values());
+        tickerBufferRef.current.clear();
+        updateTickersBatch(batch);
+      }
+    }, 120);
 
     const connect = () => {
       if (isDestroyed) return;
@@ -67,9 +80,11 @@ export const useBinanceWebSocket = () => {
             const low24h = parseFloat(data.l);
             const volume = parseFloat(data.v);
             const quoteVolume = parseFloat(data.q);
+            const sym = data.s.toUpperCase();
 
-            updateTicker({
-              symbol: data.s.toUpperCase(),
+            // Buffer the update in map
+            tickerBufferRef.current.set(sym, {
+              symbol: sym,
               price,
               changePercent24h,
               changeAmount24h,
@@ -93,9 +108,8 @@ export const useBinanceWebSocket = () => {
       ws.onclose = () => {
         if (!isDestroyed) {
           setConnectionStatus('disconnected');
-          // Try reconnect after 3 seconds
           if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
-          reconnectTimeoutRef.current = setTimeout(() => {
+          reconnectTimeoutRef.current = window.setTimeout(() => {
             connect();
           }, 3000);
         }
@@ -104,17 +118,38 @@ export const useBinanceWebSocket = () => {
 
     connect();
 
+    // Page Visibility API: Pause/resume WebSocket to save battery when screen is locked or tab is hidden
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        if (socketRef.current) {
+          socketRef.current.close();
+          socketRef.current = null;
+        }
+      } else {
+        if (!socketRef.current) {
+          connect();
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     // Proper cleanup on unmount or when symbol list changes
     return () => {
       isDestroyed = true;
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (flushIntervalRef.current) {
+        clearInterval(flushIntervalRef.current);
+        flushIntervalRef.current = null;
+      }
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
       }
       if (socketRef.current) {
         socketRef.current.close();
         socketRef.current = null;
       }
-      setConnectionStatus('disconnected');
     };
-  }, [symbolsKey]); // Re-connect only when symbol set changes
+  }, [symbolsKey, allSymbols.length, setConnectionStatus, updateTickersBatch]);
 };
