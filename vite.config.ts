@@ -8,4 +8,13 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  server: {
+    proxy: {
+      '/api/mvrv': {
+        target: 'https://bitcoin-data.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/mvrv/, '/api/v1/mvrv'),
+      },
+    },
+  },
 })

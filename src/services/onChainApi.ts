@@ -4,6 +4,10 @@ let cachedAnalytics: MarketAnalyticsData | null = null;
 let cacheTimestamp = 0;
 const CACHE_DURATION_MS = 60 * 1000; // 1 minute cache
 
+let cachedMvrv: number = 1.48;
+let lastMvrvFetchTime = 0;
+const MVRV_CACHE_MS = 30 * 60 * 1000; // 30 mins macro cache to respect rate limits
+
 /**
  * Algorithmic Decision Engine
  * Computes dynamic insights and actionable strategies based on live on-chain and derivative inputs.
@@ -14,12 +18,10 @@ const deriveMarketIntelligence = (
   longPct: number,
   shortPct: number,
   fundingRate: number,
+  mvrvVal: number,
   btcSatVb: number,
   ethGwei: number
 ) => {
-  // MVRV estimate based on current market state
-  const mvrvVal = 2.15;
-
   // 1. Calculate dynamic risk score (1 to 10)
   let riskScore = 4;
   if (fng >= 80) riskScore += 3;
@@ -240,7 +242,32 @@ export const fetchComprehensiveAnalytics = async (): Promise<MarketAnalyticsData
     console.warn('Binance Funding Rate API fallback:', err);
   }
 
-  // 4. Fetch Mempool.space Bitcoin fees
+  // 4. Fetch Bitcoin MVRV (Market Value to Realized Value)
+  let mvrvVal = cachedMvrv;
+  if (now - lastMvrvFetchTime > MVRV_CACHE_MS) {
+    try {
+      const mvrvUrl =
+        typeof window !== 'undefined' && window.location.hostname === 'localhost'
+          ? '/api/mvrv'
+          : 'https://bitcoin-data.com/api/v1/mvrv';
+      const mvrvRes = await fetch(mvrvUrl);
+      if (mvrvRes.ok) {
+        const mvrvData = await mvrvRes.json();
+        if (Array.isArray(mvrvData) && mvrvData.length > 0) {
+          const latestPoint = mvrvData[mvrvData.length - 1];
+          if (latestPoint && typeof latestPoint.mvrv === 'number') {
+            mvrvVal = parseFloat(latestPoint.mvrv.toFixed(2));
+            cachedMvrv = mvrvVal;
+            lastMvrvFetchTime = now;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('MVRV fetch fallback:', err);
+    }
+  }
+
+  // 5. Fetch Mempool.space Bitcoin fees
   let btcSatVb = 16;
   try {
     const memRes = await fetch('https://mempool.space/api/v1/fees/recommended');
@@ -261,6 +288,7 @@ export const fetchComprehensiveAnalytics = async (): Promise<MarketAnalyticsData
     longPct,
     shortPct,
     fundingRatePercent,
+    mvrvVal,
     btcSatVb,
     ethGwei
   );

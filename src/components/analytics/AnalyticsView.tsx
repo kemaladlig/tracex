@@ -265,7 +265,9 @@ export const AnalyticsView: React.FC = () => {
           <div className="relative w-full h-4 rounded border-2 border-stone-900 bg-gradient-to-r from-emerald-200 via-amber-200 to-rose-300 shadow-hard-sm overflow-hidden flex items-center">
             {/* Current Position Needle */}
             <div
-              style={{ left: `${((mvrvRatio.value - 0.5) / (4.0 - 0.5)) * 100}%` }}
+              style={{
+                left: `${Math.max(2, Math.min(98, ((mvrvRatio.value - 0.5) / (4.0 - 0.5)) * 100))}%`,
+              }}
               className="absolute top-0 bottom-0 w-1.5 bg-stone-950 shadow-md"
               title={`Şu anki MVRV: ${mvrvRatio.value}`}
             />
