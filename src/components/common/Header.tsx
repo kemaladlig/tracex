@@ -3,7 +3,6 @@ import {
   Eye,
   EyeOff,
   Radio,
-  DollarSign,
   Download,
   Smartphone,
   X,
@@ -33,9 +32,9 @@ export const Header: React.FC = () => {
   };
 
   const getCurrencySymbol = (c: Currency) => {
-    if (c === 'TRY') return '₺ TRY';
-    if (c === 'EUR') return '€ EUR';
-    return '$ USD';
+    if (c === 'TRY') return '₺';
+    if (c === 'EUR') return '€';
+    return '$';
   };
 
   const handleInstallClick = () => {
@@ -79,14 +78,13 @@ export const Header: React.FC = () => {
               </button>
             )}
 
-            {/* Currency Toggle Stamp */}
+            {/* Currency Toggle Stamp - Symbol only ($ / ₺ / €) */}
             <button
               onClick={cycleCurrency}
-              title="Para Birimini Değiştir ($ / ₺ / €)"
-              className="flex items-center gap-1 px-2 py-1 rounded-md border-2 border-stone-900 text-xs font-bold bg-amber-200 hover:bg-amber-300 text-stone-900 shadow-hard-sm btn-hard cursor-pointer"
+              title={`Para Birimini Değiştir (${currency})`}
+              className="flex items-center justify-center w-8 h-8 rounded-md border-2 border-stone-900 text-sm font-black bg-amber-200 hover:bg-amber-300 text-stone-900 shadow-hard-sm btn-hard cursor-pointer leading-none"
             >
-              <DollarSign className="w-3 h-3 stroke-[3]" />
-              <span className="text-[10px]">{getCurrencySymbol(currency)}</span>
+              <span>{getCurrencySymbol(currency)}</span>
             </button>
 
             {/* Privacy Toggle Stamp - Only displayed on Portfolio tab without text */}
