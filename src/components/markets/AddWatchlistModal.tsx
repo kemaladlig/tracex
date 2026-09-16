@@ -59,7 +59,7 @@ export const AddWatchlistModal: React.FC<AddWatchlistModalProps> = ({ isOpen, on
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-stone-900/60 backdrop-blur-xs animate-backdrop">
-      <div className="w-full max-w-lg bg-[#faf7f0] border-2 border-stone-900 rounded-t-xl sm:rounded-xl flex flex-col max-h-[85vh] shadow-hard-lg pb-safe animate-sheetUp">
+      <div className="w-full max-w-lg bg-[#faf7f0] border-2 border-stone-900 rounded-t-xl sm:rounded-xl flex flex-col max-h-[85dvh] shadow-hard-lg pb-safe animate-sheetUp">
         {/* Modal Header */}
         <div className="flex items-center justify-between p-4 border-b-2 border-stone-900 bg-[#ede8dd] shrink-0">
           <div>

@@ -53,9 +53,9 @@ export const SellAssetModal: React.FC<SellAssetModalProps> = ({ asset, isOpen, o
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-stone-900/60 backdrop-blur-xs animate-backdrop">
-      <div className="w-full max-w-md bg-[#faf7f0] border-2 border-stone-900 rounded-t-xl sm:rounded-xl p-5 shadow-hard-lg pb-safe animate-sheetUp">
-        {/* Modal Header */}
-        <div className="flex items-center justify-between pb-3 border-b-2 border-stone-900">
+      <div className="w-full max-w-md bg-[#faf7f0] border-2 border-stone-900 rounded-t-xl sm:rounded-xl shadow-hard-lg font-mono animate-sheetUp max-h-[90dvh] flex flex-col">
+        {/* Modal Header (Fixed at top) */}
+        <div className="flex items-center justify-between p-4 pb-3 border-b-2 border-stone-900 shrink-0 bg-[#faf7f0]">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-md bg-rose-200 border-2 border-stone-900 text-stone-900 flex items-center justify-center shadow-hard-sm">
               <MinusCircle className="w-5 h-5 stroke-[2.5]" />
@@ -65,7 +65,7 @@ export const SellAssetModal: React.FC<SellAssetModalProps> = ({ asset, isOpen, o
                 POZİSYON SATIŞI // {base}
               </h2>
               <span className="text-[10px] font-mono text-stone-600 font-bold">
-                Mevcut Pozisyon: {asset.amount} {base}
+                Mevcut: {asset.amount} {base}
               </span>
             </div>
           </div>
@@ -77,84 +77,87 @@ export const SellAssetModal: React.FC<SellAssetModalProps> = ({ asset, isOpen, o
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-4 space-y-3.5 font-mono">
-          {/* Live Price and Cost Overview Box */}
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="p-2.5 bg-white border-2 border-stone-900 rounded-md shadow-hard-sm">
-              <span className="text-[10px] text-stone-500 font-bold uppercase block">Ort. Alış Fiyatı</span>
-              <span className="font-mono font-bold text-stone-900">{formatCurrency(asset.buyPrice)}</span>
-            </div>
-            <div className="p-2.5 bg-amber-100 border-2 border-stone-900 rounded-md shadow-hard-sm">
-              <span className="text-[10px] text-stone-600 font-bold uppercase block">Canlı Satış Fiyatı</span>
-              <span className="font-mono font-bold text-stone-900">{formatCurrency(livePrice)}</span>
-            </div>
-          </div>
-
-          {/* Amount Input */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-bold text-stone-700 uppercase">
-                Satılacak Miktar ({base})
-              </label>
-              <span className="text-[11px] text-stone-500">
-                Eldeki: {asset.amount}
-              </span>
-            </div>
-
-            <div className="relative">
-              <input
-                type="number"
-                step="any"
-                placeholder="0.00"
-                value={sellAmount}
-                onChange={(e) => {
-                  setSellAmount(e.target.value);
-                  setError('');
-                }}
-                className="w-full px-3 py-2.5 bg-white border-2 border-stone-900 rounded-md text-stone-900 text-sm font-bold shadow-hard-sm focus:outline-none"
-              />
-            </div>
-
-            {/* Percentage Chips */}
-            <div className="grid grid-cols-4 gap-1.5 mt-2">
-              {[25, 50, 75, 100].map((pct) => (
-                <button
-                  type="button"
-                  key={pct}
-                  onClick={() => handlePercentageSelect(pct)}
-                  className="py-1 bg-stone-100 hover:bg-stone-200 border-2 border-stone-900 rounded text-xs font-bold text-stone-900 shadow-hard-sm btn-hard cursor-pointer"
-                >
-                  %{pct}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Realized PnL Calculation Box */}
-          {numSellAmount > 0 && (
-            <div className="p-3 bg-white border-2 border-stone-900 rounded-md shadow-hard-sm">
-              <div className="flex items-center justify-between text-xs mb-1">
-                <span className="text-stone-600 font-bold">Toplam Tahsilat:</span>
-                <span className="font-bold text-stone-900">{formatCurrency(totalSellValue)}</span>
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 font-mono">
+          {/* Scrollable Form Body */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3.5 no-scrollbar">
+            {/* Live Price and Cost Overview Box */}
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="p-2.5 bg-white border-2 border-stone-900 rounded-md shadow-hard-sm">
+                <span className="text-[10px] text-stone-500 font-bold uppercase block">Ort. Alış Fiyatı</span>
+                <span className="font-mono font-bold text-stone-900">{formatCurrency(asset.buyPrice)}</span>
               </div>
-              <div className="flex items-center justify-between text-xs pt-1 border-t border-stone-200">
-                <span className="text-stone-600 font-bold">Gerçekleşecek Kâr/Zarar:</span>
-                <span
-                  className={`inline-flex items-center gap-0.5 font-bold ${
-                    isProfit ? 'text-emerald-700' : 'text-rose-700'
-                  }`}
-                >
-                  {isProfit ? <ArrowUpRight className="w-3.5 h-3.5 stroke-[3]" /> : <ArrowDownRight className="w-3.5 h-3.5 stroke-[3]" />}
-                  {formatCurrency(pnlAmount)} ({formatPercentage(pnlPercent)})
+              <div className="p-2.5 bg-amber-100 border-2 border-stone-900 rounded-md shadow-hard-sm">
+                <span className="text-[10px] text-stone-600 font-bold uppercase block">Canlı Satış Fiyatı</span>
+                <span className="font-mono font-bold text-stone-900">{formatCurrency(livePrice)}</span>
+              </div>
+            </div>
+
+            {/* Amount Input */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-bold text-stone-700 uppercase">
+                  Satılacak Miktar ({base})
+                </label>
+                <span className="text-[11px] text-stone-500">
+                  Eldeki: {asset.amount}
                 </span>
               </div>
+
+              <div className="relative">
+                <input
+                  type="number"
+                  step="any"
+                  placeholder="0.00"
+                  value={sellAmount}
+                  onChange={(e) => {
+                    setSellAmount(e.target.value);
+                    setError('');
+                  }}
+                  className="w-full px-3 py-2.5 bg-white border-2 border-stone-900 rounded-md text-stone-900 text-sm font-bold shadow-hard-sm focus:outline-none"
+                />
+              </div>
+
+              {/* Percentage Chips */}
+              <div className="grid grid-cols-4 gap-1.5 mt-2">
+                {[25, 50, 75, 100].map((pct) => (
+                  <button
+                    type="button"
+                    key={pct}
+                    onClick={() => handlePercentageSelect(pct)}
+                    className="py-1 bg-stone-100 hover:bg-stone-200 border-2 border-stone-900 rounded text-xs font-bold text-stone-900 shadow-hard-sm btn-hard cursor-pointer"
+                  >
+                    %{pct}
+                  </button>
+                ))}
+              </div>
             </div>
-          )}
 
-          {error && <p className="text-xs text-rose-700 font-bold">{error}</p>}
+            {/* Realized PnL Calculation Box */}
+            {numSellAmount > 0 && (
+              <div className="p-3 bg-white border-2 border-stone-900 rounded-md shadow-hard-sm">
+                <div className="flex items-center justify-between text-xs mb-1">
+                  <span className="text-stone-600 font-bold">Toplam Tahsilat:</span>
+                  <span className="font-bold text-stone-900">{formatCurrency(totalSellValue)}</span>
+                </div>
+                <div className="flex items-center justify-between text-xs pt-1 border-t border-stone-200">
+                  <span className="text-stone-600 font-bold">Gerçekleşecek K/Z:</span>
+                  <span
+                    className={`inline-flex items-center gap-0.5 font-bold ${
+                      isProfit ? 'text-emerald-700' : 'text-rose-700'
+                    }`}
+                  >
+                    {isProfit ? <ArrowUpRight className="w-3.5 h-3.5 stroke-[3]" /> : <ArrowDownRight className="w-3.5 h-3.5 stroke-[3]" />}
+                    {formatCurrency(pnlAmount)} ({formatPercentage(pnlPercent)})
+                  </span>
+                </div>
+              </div>
+            )}
 
-          {/* Action Buttons */}
-          <div className="flex items-center gap-2 pt-2">
+            {error && <p className="text-xs text-rose-700 font-bold">{error}</p>}
+          </div>
+
+          {/* Sticky Bottom Action Bar (Always visible above virtual keyboard) */}
+          <div className="p-4 pt-2.5 pb-safe border-t-2 border-stone-900 bg-[#faf7f0] shrink-0 z-10 flex items-center gap-2">
             <button
               type="button"
               onClick={onClose}

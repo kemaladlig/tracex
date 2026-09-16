@@ -110,16 +110,16 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-stone-900/60 backdrop-blur-xs animate-backdrop">
-      <div className="w-full max-w-md bg-[#faf7f0] border-2 border-stone-900 rounded-t-xl sm:rounded-xl p-5 shadow-hard-lg pb-safe font-mono animate-sheetUp">
-        {/* Modal Header */}
-        <div className="flex items-center justify-between pb-3 border-b-2 border-stone-900">
+      <div className="w-full max-w-md bg-[#faf7f0] border-2 border-stone-900 rounded-t-xl sm:rounded-xl shadow-hard-lg font-mono animate-sheetUp max-h-[90dvh] flex flex-col">
+        {/* Modal Header (Fixed at top) */}
+        <div className="flex items-center justify-between p-4 pb-3 border-b-2 border-stone-900 shrink-0 bg-[#faf7f0]">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-md bg-amber-300 border-2 border-stone-900 text-stone-900 flex items-center justify-center shadow-hard-sm">
               <Plus className="w-5 h-5 stroke-[3]" />
             </div>
             <div>
               <h2 className="text-base font-black text-stone-900 tracking-tight">
-                İŞLEM / VARLIK GİRİŞİ
+                VARLIK GİRİŞİ
               </h2>
               <span className="text-[10px] text-stone-500 font-bold">
                 Aynı coin varsa ortalama maliyet (DCA) hesaplanır
@@ -134,95 +134,98 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-4 space-y-3.5">
-          {/* Symbol Input with Autocomplete */}
-          <div className="relative">
-            <label className="block text-xs font-bold text-stone-700 uppercase mb-1">
-              Coin Sembolü (Binance)
-            </label>
-            <div className="relative flex items-center">
-              <Search className="absolute left-3 w-4 h-4 text-stone-500" />
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          {/* Scrollable Form Body */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3.5 no-scrollbar">
+            {/* Symbol Input with Autocomplete */}
+            <div className="relative">
+              <label className="block text-xs font-bold text-stone-700 uppercase mb-1">
+                Coin Sembolü (Binance)
+              </label>
+              <div className="relative flex items-center">
+                <Search className="absolute left-3 w-4 h-4 text-stone-500" />
+                <input
+                  type="text"
+                  placeholder="Örn: BTC, ETH, SOL, PEPE..."
+                  value={symbol}
+                  onFocus={() => setIsDropdownOpen(true)}
+                  onChange={(e) => {
+                    setSymbol(e.target.value);
+                    setIsDropdownOpen(true);
+                  }}
+                  className="w-full pl-9 pr-3 py-2.5 bg-white border-2 border-stone-900 rounded-md text-stone-900 text-sm font-bold shadow-hard-sm focus:outline-none uppercase"
+                />
+              </div>
+
+              {/* Dropdown Suggestions */}
+              {isDropdownOpen && filteredCoins.length > 0 && (
+                <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border-2 border-stone-900 rounded-md shadow-hard max-h-40 overflow-y-auto z-50 divide-y border-stone-900/20 no-scrollbar">
+                  {filteredCoins.map((coin) => (
+                    <button
+                      key={coin.symbol}
+                      type="button"
+                      onClick={() => handleSelectCoin(coin)}
+                      className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-amber-100 transition cursor-pointer"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-stone-900 text-xs">{coin.baseAsset}</span>
+                        <span className="text-[10px] text-stone-500">/USDT</span>
+                      </div>
+                      <span className="text-xs text-stone-900 font-bold">
+                        {formatCurrency(coin.price)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Amount Input */}
+            <div>
+              <label className="block text-xs font-bold text-stone-700 uppercase mb-1">
+                Alınan Miktar (Adet)
+              </label>
               <input
-                type="text"
-                placeholder="Örn: BTC, ETH, SOL, PEPE..."
-                value={symbol}
-                onFocus={() => setIsDropdownOpen(true)}
-                onChange={(e) => {
-                  setSymbol(e.target.value);
-                  setIsDropdownOpen(true);
-                }}
-                className="w-full pl-9 pr-3 py-2.5 bg-white border-2 border-stone-900 rounded-md text-stone-900 text-sm font-bold shadow-hard-sm focus:outline-none uppercase"
+                type="number"
+                step="any"
+                placeholder="Örn: 0.25 veya 500"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="w-full px-3 py-2.5 bg-white border-2 border-stone-900 rounded-md text-stone-900 text-sm font-bold shadow-hard-sm focus:outline-none"
               />
             </div>
 
-            {/* Dropdown Suggestions */}
-            {isDropdownOpen && filteredCoins.length > 0 && (
-              <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border-2 border-stone-900 rounded-md shadow-hard max-h-44 overflow-y-auto z-50 divide-y border-stone-900/20 no-scrollbar">
-                {filteredCoins.map((coin) => (
+            {/* Buy Price Input */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-bold text-stone-700 uppercase">
+                  Birim Alış Fiyatı ($)
+                </label>
+                {(liveTicker || allCoins.some((c) => c.symbol === currentFormattedSymbol)) && (
                   <button
-                    key={coin.symbol}
                     type="button"
-                    onClick={() => handleSelectCoin(coin)}
-                    className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-amber-100 transition cursor-pointer"
+                    onClick={handleUseCurrentPrice}
+                    className="text-[10px] text-stone-900 bg-amber-200 border border-stone-900 px-1.5 py-0.5 rounded flex items-center gap-1 font-bold cursor-pointer"
                   >
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-bold text-stone-900 text-xs">{coin.baseAsset}</span>
-                      <span className="text-[10px] text-stone-500">/USDT</span>
-                    </div>
-                    <span className="text-xs text-stone-900 font-bold">
-                      {formatCurrency(coin.price)}
-                    </span>
+                    <Sparkles className="w-3 h-3" /> Canlı Fiyatı Kullan
                   </button>
-                ))}
+                )}
               </div>
-            )}
-          </div>
-
-          {/* Amount Input */}
-          <div>
-            <label className="block text-xs font-bold text-stone-700 uppercase mb-1">
-              Alınan Miktar (Adet)
-            </label>
-            <input
-              type="number"
-              step="any"
-              placeholder="Örn: 0.25 veya 500"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              className="w-full px-3 py-2.5 bg-white border-2 border-stone-900 rounded-md text-stone-900 text-sm font-bold shadow-hard-sm focus:outline-none"
-            />
-          </div>
-
-          {/* Buy Price Input */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="block text-xs font-bold text-stone-700 uppercase">
-                Birim Alış Fiyatı ($)
-              </label>
-              {(liveTicker || allCoins.some((c) => c.symbol === currentFormattedSymbol)) && (
-                <button
-                  type="button"
-                  onClick={handleUseCurrentPrice}
-                  className="text-[10px] text-stone-900 bg-amber-200 border border-stone-900 px-1.5 py-0.5 rounded flex items-center gap-1 font-bold cursor-pointer"
-                >
-                  <Sparkles className="w-3 h-3" /> Canlı Fiyatı Kullan
-                </button>
-              )}
+              <input
+                type="number"
+                step="any"
+                placeholder="Örn: 92000 veya 185.50"
+                value={buyPrice}
+                onChange={(e) => setBuyPrice(e.target.value)}
+                className="w-full px-3 py-2.5 bg-white border-2 border-stone-900 rounded-md text-stone-900 text-sm font-bold shadow-hard-sm focus:outline-none"
+              />
             </div>
-            <input
-              type="number"
-              step="any"
-              placeholder="Örn: 92000 veya 185.50"
-              value={buyPrice}
-              onChange={(e) => setBuyPrice(e.target.value)}
-              className="w-full px-3 py-2.5 bg-white border-2 border-stone-900 rounded-md text-stone-900 text-sm font-bold shadow-hard-sm focus:outline-none"
-            />
+
+            {error && <p className="text-xs text-rose-700 font-bold">{error}</p>}
           </div>
 
-          {error && <p className="text-xs text-rose-700 font-bold">{error}</p>}
-
-          {/* Action Buttons */}
-          <div className="flex items-center gap-2 pt-2">
+          {/* Sticky Bottom Action Bar (Always visible above virtual keyboard) */}
+          <div className="p-4 pt-2.5 pb-safe border-t-2 border-stone-900 bg-[#faf7f0] shrink-0 z-10 flex items-center gap-2">
             <button
               type="button"
               onClick={onClose}
