@@ -503,43 +503,63 @@ export const useCryptoStore = create<CryptoState>()(
       onRehydrateStorage: () => (state) => {
         if (!state) return;
 
-        // Auto-migration from flat portfolio to portfolioGroups
-        if (!state.portfolioGroups || state.portfolioGroups.length === 0) {
-          const assets = state.portfolio && state.portfolio.length > 0
-            ? state.portfolio
-            : DEFAULT_INITIAL_ASSETS;
+        try {
+          // Auto-migration from flat portfolio to portfolioGroups
+          if (!Array.isArray(state.portfolioGroups) || state.portfolioGroups.length === 0) {
+            const assets = Array.isArray(state.portfolio) && state.portfolio.length > 0
+              ? state.portfolio
+              : DEFAULT_INITIAL_ASSETS;
 
-          state.portfolioGroups = [
-            {
-              id: 'group-main',
-              name: 'Portföy 1',
-              assets,
-              realizedPnL: state.realizedPnL || 0,
-              createdAt: Date.now(),
-            },
-            {
-              id: 'group-spot',
-              name: 'Portföy 2',
-              assets: [],
-              realizedPnL: 0,
-              createdAt: Date.now(),
-            },
-          ];
+            state.portfolioGroups = [
+              {
+                id: 'group-main',
+                name: 'Portföy 1',
+                assets,
+                realizedPnL: state.realizedPnL || 0,
+                createdAt: Date.now(),
+              },
+              {
+                id: 'group-spot',
+                name: 'Portföy 2',
+                assets: [],
+                realizedPnL: 0,
+                createdAt: Date.now(),
+              },
+            ];
+            state.activeGroupId = 'group-main';
+          } else {
+            // Normalize legacy non-generic default names if unchanged
+            state.portfolioGroups = state.portfolioGroups.map((g) => {
+              if (!g) return g;
+              const safeAssets = Array.isArray(g.assets) ? g.assets : [];
+              let name = g.name;
+              if (name === 'Ana Kasa') name = 'Portföy 1';
+              if (name === 'Spot / Al-Sat') name = 'Portföy 2';
+              return {
+                ...g,
+                name,
+                assets: safeAssets,
+                realizedPnL: typeof g.realizedPnL === 'number' ? g.realizedPnL : 0,
+              };
+            });
+          }
+
+          // Validate active group and synchronize active state
+          const active =
+            (Array.isArray(state.portfolioGroups) &&
+              state.portfolioGroups.find((g) => g && g.id === state.activeGroupId)) ||
+            (Array.isArray(state.portfolioGroups) && state.portfolioGroups[0]) ||
+            DEFAULT_GROUPS[0];
+
+          state.activeGroupId = active.id;
+          state.portfolio = Array.isArray(active.assets) ? [...active.assets] : [];
+          state.realizedPnL = active.realizedPnL || 0;
+        } catch (err) {
+          console.warn('TraceX store rehydration fallback applied:', err);
+          state.portfolioGroups = DEFAULT_GROUPS;
           state.activeGroupId = 'group-main';
-        } else {
-          // Normalize legacy non-generic default names if unchanged
-          state.portfolioGroups = state.portfolioGroups.map((g) => {
-            if (g.name === 'Ana Kasa') return { ...g, name: 'Portföy 1' };
-            if (g.name === 'Spot / Al-Sat') return { ...g, name: 'Portföy 2' };
-            return g;
-          });
+          state.portfolio = DEFAULT_INITIAL_ASSETS;
         }
-
-        // Validate active group and synchronize active state
-        const active = state.portfolioGroups.find((g) => g.id === state.activeGroupId) || state.portfolioGroups[0];
-        state.activeGroupId = active.id;
-        state.portfolio = [...active.assets];
-        state.realizedPnL = active.realizedPnL || 0;
       },
     }
   )
