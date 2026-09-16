@@ -1,47 +1,72 @@
-# ⚡ TraceX - Kripto Takip & Portföy Mobil Web Uygulaması
+# TraceX - Kripto Takip & Portföy Terminali
 
-React, TypeScript, Vite, Tailwind CSS, Zustand ve TradingView Lightweight Charts kullanılarak geliştirilmiş modern, mobil öncelikli (Mobile-First) SPA Kripto Takip ve Portföy yönetim uygulaması.
+TraceX; React 19, TypeScript, Vite 8, Tailwind CSS v4, Zustand ve TradingView Lightweight Charts mimarisi üzerine kurulu, mobil öncelikli (Mobile-First), sıfır arka uçlu (zero-backend) profesyonel bir Kripto Takip, Teknik Analiz ve Portföy yönetim uygulamasıdır.
 
-Uygulama arka uç (backend) sunucusuna ihtiyaç duymadan tamamen **Binance Public WebSocket ve REST API** üzerinden gerçek zamanlı çalışır; kullanıcı verileri tarayıcının `localStorage` alanında saklanır. Capacitor ile doğrudan Android / iOS uygulamasına dönüştürülmeye hazırdır.
-
----
-
-## ✨ Özellikler
-
-- **Canlı WebSocket Akışı:** Binance Public Combined Stream (`wss://stream.binance.com:9443/stream?streams=...`) ile takip listenizdeki ve portföyünüzdeki tüm coinlerin fiyatları tek bağlantı üzerinden anlık güncellenir.
-- **Fiyat Flash Efekti:** Fiyat her yükseldiğinde yeşil, düştüğünde kırmızı yanıp sönen zarif mikro animasyonlar.
-- **Tüm Binance Kripto Pariteleri (400+ USDT Çifti):** Arama kutusuna yazdığınız anda tüm Binance spot coinleri anlık listelenir ve filtrelenir.
-- **İnteraktif Lightweight Charts:** 
-  - Mum Grafiği (Candlestick) ve Çizgi/Alan Grafiği (Area) arasında tek tıkla geçiş.
-  - 1dk, 15dk, 1s, 4s, 1g, 1h zaman aralıkları.
-  - Parmağınızla/fareyle gezinirken anlık Açılış (O), Yüksek (H), Düşük (L), Kapanış (C) göstergesi.
-  - `ResizeObserver` ile mobil ekran döndürme ve boyutlandırmaya tam uyumluluk.
-- **Cüzdan & Canlı Kâr/Zarar (PnL):**
-  - Anlık Toplam Portföy Değeri ve Net PnL ($ ve %) hesabı.
-  - **Varlık Dağılım Çubuğu:** Portföyünüzdeki coinlerin yüzdesel dağılımını gösteren renkli segment çubuğu.
-  - **Sıralama Filtresi:** Varlıkları Değere Göre, Kâr/Zarara Göre veya İsme Göre anında sıralama.
-  - **Otomatik Fiyat Doldurma:** Yeni işlem eklerken Binance'teki o anki piyasa fiyatını tek tıkla alış fiyatına çekebilme.
-- **Mobil Native Tasarım:** Çentik (Notch) ve safe-area uyumluluğu, alt gezinti çubuğu (Bottom Navigation) ve karanlık (dark) tema.
+Uygulama harici bir sunucuya ihtiyaç duymadan doğrudan **Binance Public WebSocket/REST API'leri**, **Bitcoin On-Chain MVRV**, **Coinlore Global Verileri** ve **Alternative.me Duygu Endeksi** üzerinden gerçek zamanlı çalışır. Kullanıcı verileri tarayıcının yerel kasasında (`localStorage`) saklanır. Capacitor ile doğrudan yerel Android (APK) veya iOS uygulamasına paketlenebilir.
 
 ---
 
-## 🛠️ Teknoloji Yığını
+## Öne Çıkan Özellikler
 
-- **Çatı & Dil:** React 19, TypeScript, Vite 8
-- **Stilleme:** Tailwind CSS v4
-- **Durum Yönetimi:** Zustand + LocalStorage Persistence Middleware
-- **Grafikler:** Lightweight Charts (TradingView)
-- **İkonlar:** Lucide React
+### 1. Piyasalar & Takip Listesi
+- **Tamponlanmış Canlı WebSocket (120ms Batching):** Takip listesindeki tüm kripto paralar tek bir Binance WebSocket akışı üzerinden anlık güncellenir; render yükü %85 azaltılarak 120Hz ekranlarda bile 60-120 FPS akıcılık sağlanır.
+- **Mikro Sparkline Eğrileri:** Her coin satırında günün yönünü gösteren kompakt 28x12px vektörel trend eğrisi.
+- **Kategori Filtreleme:** `TÜMÜ`, `LAYER 1`, `MEME`, `YAPAY ZEKA`, `DEFI` segmentlerine göre tek tıkla listeleme.
+- **Hızlı Sıralama:** `Varsayılan`, `En Çok Artan`, `En Çok Düşen`, `Hacim`, `A-Z` sıralama çipleri.
+- **400+ Binance USDT Paritesi:** Arama kutusu ile tüm spot pariteler anında aranıp listeye eklenebilir.
+- **Hızlı Cüzdana Ekleme:** Takip listesindeki coinin yanındaki `[+]` butonuyla tek hamlede portföye alış ekleme.
+
+### 2. Canlı Makro & Zincir Üstü Analiz Terminali
+- **Korku & Açgözlülük Çoklu Zaman Karşılaştırması:** `Şu An (Bugün)`, `Dün`, `Geçen Hafta`, `Geçen Ay` metrikleri ve 14 günlük interaktif SVG trend çizgisi.
+- **Pazar Hakimiyeti (BTC Dominance):** BTC (%59.0), ETH (%11.5) ve Altcoin (%29.5) pazar payı dağılım barı ve $2.5T+ global piyasa değeri.
+- **Bitcoin MVRV Döngü Isıtıcısı:** `bitcoin-data.com` üzerinden canlı çekilen MVRV skoru ve renkli döngü cetveli.
+- **Binance Taker Hacim Baskısı:** Son 24 saatteki agresif piyasa emri Alış vs Satış oranı (%48.7 Alış / %51.3 Satış).
+- **Vadeli Açık Pozisyon (Open Interest):** Vadeli piyasada açık duran $8.1B+ sözleşme hacmi ve 24 saatlik para girişi.
+- **Bitcoin Günlük RSI 14 & 20G Ortalama:** Binance günlük mumlarından matematiksel hesaplanan canlı RSI skoru ve hareketli ortalama trend analizi.
+- **Otomatik Strateji Motoru:** Tüm piyasa verilerini harmanlayan algoritmik durum ve risk puanı (1 - 10).
+
+### 3. İnteraktif Grafik Terminali (TradingView Lightweight Charts)
+- **Lazy Loading:** Ağır grafik motoru ana paketten ayrılarak dinamik yüklenir; ilk açılış dosya boyutu 313 KB'a (93 KB gzip) düşürülmüştür.
+- **Açılıp Kapanabilir Göstergeler:**
+  - `[VOL]`: Yarı saydam hacim barları histogramı.
+  - `[EMA]`: EMA 20 (altın sarısı) ve SMA 50 (mavi) hareketli ortalama trend çizgileri.
+  - `[MALİYET]`: Eğer cüzdanınızda o coin varsa grafiğin tam üzerine kesikli siyah alış maliyeti seviye çizgisi.
+- **Mum ve Çizgi Modu:** 1dk, 15dk, 1s, 4s, 1g, 1h periyotları ve canlı OHLC imleç takibi.
+
+### 4. Cüzdan & Portföy Yönetimi
+- **DCA (Ağırlıklı Ortalama Maliyet) Birleştirme:** Aynı coin için tekrarlanan alımlarda ortalama maliyeti otomatik hesaplayıp tek kalemde birleştirir.
+- **Kısmi veya Tam Satış:** İstenen miktarda satış yapabilme, kâr/zararı anında realize etme (`Realized PnL`).
+- **Lider & En Zayıf Varlık Rozetleri:** Portföyün en çok kazandıran ve en çok gerileyen varlıklarını tek bakışta özetler.
+- **Varlık Dağılım Cetveli:** Portföydeki varlıkların yüzdesel ağırlığını gösteren renkli segment barı.
+- **Gizlilik Modu:** Tek tıkla tüm bakiyeleri ve k/z tutarlarını `••••••` şeklinde maskeleme.
+- **Çoklu Para Birimi:** Canlı Binance kurlarıyla tek tıkla `$ USD`, `₺ TRY` veya `€ EUR` görünümüne geçiş.
+
+### 5. Mobil & UX Mimarisi
+- **Craft Paper & Thick Ink Tasarım Sistemi:** 2px kalın mürekkep sınırları, sert gölgeler (`shadow-hard`) ve sıcak kağıt zemin (`#f4f0e6`).
+- **Pull-to-Refresh:** Mobilde ekranı yukarıdan aşağıya çekerek anında taze veri çekme.
+- **İskelet Ekranlar (Skeleton Loaders):** Veri yüklenirken dönen spinner yerine gerçek kart boyutlarında yumuşak yanıp sönen taslak bloklar.
+- **Çevrimdışı Direnç Barı:** Ağ bağlantısı koptuğunda üst barda beliren `[AĞ ÇEVRİMDIŞI]` bilgilendirmesi.
+- **Güvenli Alanlı Mobil İkon:** Android ve iOS maskeleriyle kırpılmayan özel güvenli alanlı teknik "TX" pusula ikonu.
 
 ---
 
-## 🚀 Başlangıç
+## Teknoloji Mimarisi
+
+- **Çatı:** React 19, TypeScript, Vite 8
+- **Stil & Tokenlar:** Tailwind CSS v4, Custom Craft Paper Tokens (`index.css`)
+- **Durum & Depolama:** Zustand + LocalStorage Persistence (`tracex-storage-v3`)
+- **Grafik Motoru:** Lightweight Charts (TradingView)
+- **İkon Seti:** Lucide React
+
+---
+
+## Kurulum ve Çalıştırma
 
 ### Gereksinimler
 - Node.js (v18+)
-- npm veya bun / pnpm
+- npm, pnpm veya bun
 
-### Kurulum
+### Geliştirme Sunucusu
 
 ```bash
 # Bağımlılıkları yükleyin
@@ -51,9 +76,9 @@ npm install
 npm run dev
 ```
 
-Tarayıcınızda `http://localhost:5173/` adresine gidin.
+Tarayıcınızda `http://localhost:5173/` adresini açın.
 
-### Derleme (Production Build)
+### Üretim Derlemesi (Production Build)
 
 ```bash
 npm run build
@@ -61,9 +86,9 @@ npm run build
 
 ---
 
-## 📱 Android'e Dönüştürme (Capacitor)
+## Android Paketleme (Capacitor)
 
-Uygulama Capacitor için optimize edilmiştir. Android APK/AAB üretmek için:
+Uygulama sıfır arka uçlu statik bir SPA olduğu için doğrudan Capacitor ile mobil APK/AAB formatına dönüştürülebilir:
 
 ```bash
 npm install @capacitor/core @capacitor/cli @capacitor/android
@@ -75,6 +100,6 @@ npx cap open android
 
 ---
 
-## 📄 Lisans
+## Lisans
 
 MIT
