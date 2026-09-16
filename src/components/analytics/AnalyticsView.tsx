@@ -10,7 +10,6 @@ import {
   Target,
   TrendingDown,
   TrendingUp,
-  Zap,
 } from 'lucide-react';
 import { fetchComprehensiveAnalytics } from '../../services/onChainApi';
 import { useCryptoStore } from '../../store/useCryptoStore';
@@ -41,11 +40,11 @@ export const AnalyticsView: React.FC = () => {
         <div className="flex items-center justify-between mb-3 border-b-2 border-stone-900 pb-2">
           <div>
             <h2 className="text-sm font-black uppercase tracking-wider text-stone-950 flex items-center gap-1.5">
-              <Zap className="w-4 h-4 text-amber-600 fill-amber-400" />
-              RADAR // PİYASA & ZİNCİR İSTİHBARATI
+              <BarChart3 className="w-4 h-4 text-amber-600" />
+              PİYASA & ZİNCİR ANALİZİ
             </h2>
             <p className="text-[10px] text-stone-500 font-bold">
-              100% CANLI VERİLERLE OTOMATİK MAKRO STRATEJİ MOTORU
+              DÖNGÜ GÖSTERGELERİ, VADELİ EMİR AKIŞI VE DUYGU ANALİZİ
             </p>
           </div>
           <div className="p-1.5 bg-stone-100 border border-stone-900 rounded shadow-hard-sm opacity-60">
@@ -53,28 +52,24 @@ export const AnalyticsView: React.FC = () => {
           </div>
         </div>
 
-        {/* Tactical Intelligence Radar Scanner Card */}
-        <div className="my-8 p-6 bg-white border-2 border-stone-900 rounded-lg shadow-hard-lg flex flex-col items-center justify-center text-center animate-popIn">
+        {/* Clean Official Loading Screen */}
+        <div className="my-8 p-6 bg-white border-2 border-stone-900 rounded-lg shadow-hard flex flex-col items-center justify-center text-center animate-popIn">
           {/* Status Header */}
-          <div className="flex items-center gap-2 px-2.5 py-1 bg-amber-100 border border-stone-900 rounded shadow-hard-xs mb-4">
+          <div className="flex items-center gap-2 px-2.5 py-1 bg-stone-100 border border-stone-900 rounded shadow-hard-xs mb-4">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-livePulse" />
-            <span className="text-[10px] font-black tracking-wider text-stone-900 uppercase">
-              MAKRO İSTİHBARAT RADARI BAŞLATILIYOR
+            <span className="text-[10px] font-black tracking-wider text-stone-800 uppercase">
+              PİYASA VERİLERİ YÜKLENİYOR
             </span>
           </div>
 
-          {/* Radar Scanner Scope with Sweep Beam */}
-          <div className="relative w-32 h-32 rounded-full border-2 border-stone-900 bg-stone-950 flex items-center justify-center overflow-hidden shadow-hard my-2">
-            {/* Concentric rings */}
-            <div className="absolute w-24 h-24 rounded-full border border-emerald-500/25" />
-            <div className="absolute w-16 h-16 rounded-full border border-emerald-500/35" />
-            <div className="absolute w-8 h-8 rounded-full border border-emerald-500/40" />
+          {/* Minimalist Scope Indicator */}
+          <div className="relative w-24 h-24 rounded-full border-2 border-stone-900 bg-stone-950 flex items-center justify-center overflow-hidden shadow-hard my-2">
+            <div className="absolute w-16 h-16 rounded-full border border-emerald-500/25" />
+            <div className="absolute w-8 h-8 rounded-full border border-emerald-500/35" />
+            <div className="absolute w-full h-[1px] bg-emerald-500/20" />
+            <div className="absolute h-full w-[1px] bg-emerald-500/20" />
 
-            {/* Crosshair grid */}
-            <div className="absolute w-full h-[1px] bg-emerald-500/25" />
-            <div className="absolute h-full w-[1px] bg-emerald-500/25" />
-
-            {/* Rotating Radar Sweep Beam */}
+            {/* Sweep Beam */}
             <div
               className="absolute inset-0 rounded-full animate-spin"
               style={{
@@ -82,34 +77,30 @@ export const AnalyticsView: React.FC = () => {
                 animationDuration: '2s',
               }}
             />
-
-            {/* Blipping Target Signal */}
-            <div className="absolute top-7 right-8 w-2.5 h-2.5 rounded-full bg-amber-400 border border-stone-900 animate-ping" />
-            <div className="absolute top-7 right-8 w-2 h-2 rounded-full bg-amber-400" />
           </div>
 
-          {/* Telemetry Progress Info */}
+          {/* Clean Professional Copy */}
           <div className="mt-4 space-y-1">
             <h3 className="text-xs font-black text-stone-900 tracking-tight uppercase">
-              Piyasa ve Zincir Verileri Çözümleniyor
+              Göstergeler Hesaplanıyor
             </h3>
             <p className="text-[11px] text-stone-600 max-w-xs leading-relaxed font-sans font-medium">
-              Binance Vadeli emir akışı, MVRV oranı ve Alternative.me duygu endeksi tek ekranda birleştiriliyor...
+              Binance vadeli emir akışı, MVRV döngü oranı ve duygu endeksi verileri derleniyor...
             </p>
           </div>
 
           {/* Segmented Loading Bar */}
-          <div className="w-52 h-2.5 rounded border-2 border-stone-900 overflow-hidden bg-stone-200 mt-4 shadow-hard-xs">
+          <div className="w-48 h-2 rounded border-2 border-stone-900 overflow-hidden bg-stone-200 mt-4 shadow-hard-xs">
             <div className="h-full bg-amber-300 border-r-2 border-stone-900 w-3/4 animate-pulse" />
           </div>
 
-          {/* Telemetry Footer Tags */}
+          {/* Telemetry Tags */}
           <div className="flex items-center gap-2 mt-4 text-[9px] font-bold text-stone-500">
-            <span>[FNG: ÇÖZÜLÜYOR]</span>
+            <span>[ON-CHAIN]</span>
             <span>//</span>
-            <span>[MVRV: BAĞLANDI]</span>
+            <span>[VADELİ PİYASA]</span>
             <span>//</span>
-            <span>[VADELİ: CANLI]</span>
+            <span>[DUYGU ENDEKSİ]</span>
           </div>
         </div>
       </div>
@@ -151,11 +142,11 @@ export const AnalyticsView: React.FC = () => {
       <div className="flex items-center justify-between mb-3 border-b-2 border-stone-900 pb-2">
         <div>
           <h2 className="text-sm font-black uppercase tracking-wider text-stone-950 flex items-center gap-1.5">
-            <Zap className="w-4 h-4 text-amber-600 fill-amber-400" />
-            RADAR // PİYASA & ZİNCİR İSTİHBARATI
+            <BarChart3 className="w-4 h-4 text-amber-600" />
+            PİYASA & ZİNCİR ANALİZİ
           </h2>
           <p className="text-[10px] text-stone-500 font-bold">
-            100% CANLI VERİLERLE OTOMATİK MAKRO STRATEJİ MOTORU
+            DÖNGÜ GÖSTERGELERİ, VADELİ EMİR AKIŞI VE DUYGU ANALİZİ
           </p>
         </div>
         <button
