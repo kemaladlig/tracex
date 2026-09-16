@@ -395,7 +395,7 @@ export const DetailChartModal: React.FC = () => {
   const isPositive = (ticker?.changePercent24h ?? 0) >= 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[#f4f0e6] animate-in fade-in duration-150 font-mono">
+    <div className="fixed inset-0 z-50 flex flex-col bg-[#f4f0e6] animate-sheetUp font-mono">
       {/* Top Bar / Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b-2 border-stone-900 bg-[#ede8dd] pt-safe">
         <div className="flex items-center gap-2.5">

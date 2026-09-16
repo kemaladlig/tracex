@@ -3,6 +3,8 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   ChevronRight,
+  ChevronUp,
+  ChevronDown,
   PlusCircle,
   Trash2,
 } from 'lucide-react';
@@ -12,9 +14,22 @@ import { cleanSymbol, formatCurrency, formatPercentage } from '../../utils/forma
 interface MarketItemProps {
   symbol: string;
   onQuickAdd?: (symbol: string) => void;
+  canReorder?: boolean;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
 }
 
-export const MarketItem: React.FC<MarketItemProps> = ({ symbol, onQuickAdd }) => {
+export const MarketItem: React.FC<MarketItemProps> = ({
+  symbol,
+  onQuickAdd,
+  canReorder = false,
+  canMoveUp = false,
+  canMoveDown = false,
+  onMoveUp,
+  onMoveDown,
+}) => {
   const ticker = useCryptoStore((state) => state.tickers[symbol]);
   const setSelectedCoinForChart = useCryptoStore((state) => state.setSelectedCoinForChart);
   const removeFromWatchlist = useCryptoStore((state) => state.removeFromWatchlist);
@@ -31,11 +46,11 @@ export const MarketItem: React.FC<MarketItemProps> = ({ symbol, onQuickAdd }) =>
     if (ticker?.price && prevPriceRef.current !== undefined) {
       if (ticker.price > prevPriceRef.current) {
         setFlashClass('flash-up font-black');
-        const timer = setTimeout(() => setFlashClass(''), 1000);
+        const timer = setTimeout(() => setFlashClass(''), 700);
         return () => clearTimeout(timer);
       } else if (ticker.price < prevPriceRef.current) {
         setFlashClass('flash-down font-black');
-        const timer = setTimeout(() => setFlashClass(''), 1000);
+        const timer = setTimeout(() => setFlashClass(''), 700);
         return () => clearTimeout(timer);
       }
     }
@@ -59,14 +74,24 @@ export const MarketItem: React.FC<MarketItemProps> = ({ symbol, onQuickAdd }) =>
     if (onQuickAdd) onQuickAdd(symbol);
   };
 
+  const handleMoveUpClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onMoveUp) onMoveUp();
+  };
+
+  const handleMoveDownClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onMoveDown) onMoveDown();
+  };
+
   return (
     <div
       onClick={handleItemClick}
-      className="group relative flex items-center justify-between p-3 mb-2.5 bg-white border-2 border-stone-900 rounded-lg shadow-hard hover:bg-stone-50 btn-hard cursor-pointer transition-colors"
+      className="group relative flex items-center justify-between p-3 mb-2.5 bg-white border-2 border-stone-900 rounded-lg shadow-hard hover:bg-stone-50 active:scale-[0.99] btn-hard cursor-pointer transition-all duration-100"
     >
       {/* Left: Symbol stamp & Volume */}
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-md bg-stone-100 border-2 border-stone-900 flex items-center justify-center font-mono font-black text-sm text-stone-900 shadow-hard-sm">
+        <div className="w-10 h-10 rounded-md bg-stone-100 border-2 border-stone-900 flex items-center justify-center font-mono font-black text-sm text-stone-900 shadow-hard-sm group-hover:scale-105 transition-transform">
           {base.substring(0, 3)}
         </div>
         <div>
@@ -87,7 +112,7 @@ export const MarketItem: React.FC<MarketItemProps> = ({ symbol, onQuickAdd }) =>
       </div>
 
       {/* Right: Price, Micro-Sparkline Accent & Actions */}
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-2">
         <div className="text-right">
           <div
             className={`font-mono font-black text-base text-stone-900 tracking-tight transition-all duration-300 px-1 rounded ${flashClass}`}
@@ -99,7 +124,7 @@ export const MarketItem: React.FC<MarketItemProps> = ({ symbol, onQuickAdd }) =>
             )}
           </div>
           <div className="flex items-center justify-end gap-1.5 mt-0.5">
-            {/* Compact Micro-Sparkline Accent: subtle visual cue taking minimal space */}
+            {/* Compact Micro-Sparkline Accent */}
             {ticker && (
               <svg viewBox="0 0 28 12" className="w-7 h-3 opacity-70 shrink-0">
                 <path
@@ -136,6 +161,28 @@ export const MarketItem: React.FC<MarketItemProps> = ({ symbol, onQuickAdd }) =>
             )}
           </div>
         </div>
+
+        {/* Reorder Chevrons (Up & Down buttons) in custom order mode */}
+        {canReorder && (
+          <div className="flex flex-col items-center justify-center -my-1 mx-0.5 bg-stone-100 rounded border border-stone-300 px-0.5 py-0.5">
+            <button
+              onClick={handleMoveUpClick}
+              disabled={!canMoveUp}
+              title="Yukarı Taşı"
+              className="p-0.5 text-stone-600 hover:text-stone-950 hover:bg-stone-200 rounded disabled:opacity-20 disabled:hover:bg-transparent cursor-pointer disabled:cursor-default"
+            >
+              <ChevronUp className="w-3 h-3 stroke-[3]" />
+            </button>
+            <button
+              onClick={handleMoveDownClick}
+              disabled={!canMoveDown}
+              title="Aşağı Taşı"
+              className="p-0.5 text-stone-600 hover:text-stone-950 hover:bg-stone-200 rounded disabled:opacity-20 disabled:hover:bg-transparent cursor-pointer disabled:cursor-default"
+            >
+              <ChevronDown className="w-3 h-3 stroke-[3]" />
+            </button>
+          </div>
+        )}
 
         {/* Quick Add to Portfolio */}
         {onQuickAdd && (

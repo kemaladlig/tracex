@@ -45,6 +45,7 @@ interface CryptoState {
   setAnalyticsData: (data: MarketAnalyticsData) => void;
   addToWatchlist: (symbol: string) => void;
   removeFromWatchlist: (symbol: string) => void;
+  moveWatchlistItem: (symbol: string, direction: 'up' | 'down') => void;
   addPortfolioAsset: (asset: Omit<PortfolioAsset, 'id' | 'timestamp'>) => void;
   sellPortfolioAsset: (id: string, sellAmount: number, sellPrice: number) => { pnl: number; success: boolean };
   removePortfolioAsset: (id: string) => void;
@@ -126,6 +127,21 @@ export const useCryptoStore = create<CryptoState>()(
       removeFromWatchlist: (symbol: string) => {
         const current = get().watchlist;
         set({ watchlist: current.filter((s) => s !== symbol) });
+      },
+
+      moveWatchlistItem: (symbol: string, direction: 'up' | 'down') => {
+        const current = get().watchlist;
+        const index = current.indexOf(symbol);
+        if (index === -1) return;
+
+        const targetIndex = direction === 'up' ? index - 1 : index + 1;
+        if (targetIndex < 0 || targetIndex >= current.length) return;
+
+        const nextList = [...current];
+        const [removed] = nextList.splice(index, 1);
+        nextList.splice(targetIndex, 0, removed);
+
+        set({ watchlist: nextList });
       },
 
       // --- Multi-Portfolio Group Management ---

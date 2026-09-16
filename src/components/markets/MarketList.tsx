@@ -20,6 +20,7 @@ const CATEGORY_TAGS: Record<CategoryOption, string[]> = {
 export const MarketList: React.FC = () => {
   const watchlist = useCryptoStore((state) => state.watchlist);
   const tickers = useCryptoStore((state) => state.tickers);
+  const moveWatchlistItem = useCryptoStore((state) => state.moveWatchlistItem);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -62,6 +63,8 @@ export const MarketList: React.FC = () => {
 
     return result;
   }, [watchlist, searchQuery, category, sortBy, tickers]);
+
+  const isCustomOrder = sortBy === 'default' && category === 'all' && !searchQuery.trim();
 
   return (
     <div className="flex flex-col pb-28 px-4 max-w-lg mx-auto w-full">
@@ -119,7 +122,7 @@ export const MarketList: React.FC = () => {
           <ArrowUpDown className="w-3 h-3 text-stone-500 mr-0.5 shrink-0" />
           {(
             [
-              { id: 'default', label: 'Varsayılan' },
+              { id: 'default', label: isCustomOrder ? 'Varsayılan (▲▼ Sırala)' : 'Varsayılan' },
               { id: 'gainers', label: 'En Çok Artan' },
               { id: 'losers', label: 'En Çok Düşen' },
               { id: 'volume', label: 'Hacim' },
@@ -155,11 +158,16 @@ export const MarketList: React.FC = () => {
       {/* Market Items List */}
       {filteredAndSortedWatchlist.length > 0 ? (
         <div className="flex flex-col">
-          {filteredAndSortedWatchlist.map((symbol) => (
+          {filteredAndSortedWatchlist.map((symbol, idx) => (
             <MarketItem
               key={symbol}
               symbol={symbol}
               onQuickAdd={(sym) => setQuickAddSymbol(sym)}
+              canReorder={isCustomOrder}
+              canMoveUp={idx > 0}
+              canMoveDown={idx < filteredAndSortedWatchlist.length - 1}
+              onMoveUp={() => moveWatchlistItem(symbol, 'up')}
+              onMoveDown={() => moveWatchlistItem(symbol, 'down')}
             />
           ))}
         </div>

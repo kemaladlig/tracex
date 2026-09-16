@@ -46,9 +46,11 @@ export const App: React.FC = () => {
       {/* Main Content View with Pull-to-Refresh */}
       <PullToRefresh onRefresh={handlePullRefresh}>
         <main className="flex-1 w-full max-w-lg mx-auto flex flex-col min-h-[calc(100vh-130px)]">
-          {activeTab === 'markets' && <MarketList />}
-          {activeTab === 'analytics' && <AnalyticsView />}
-          {activeTab === 'portfolio' && <PortfolioList />}
+          <div key={activeTab} className="animate-tabEnter w-full flex flex-col flex-1">
+            {activeTab === 'markets' && <MarketList />}
+            {activeTab === 'analytics' && <AnalyticsView />}
+            {activeTab === 'portfolio' && <PortfolioList />}
+          </div>
         </main>
       </PullToRefresh>
 

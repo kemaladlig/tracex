@@ -109,8 +109,8 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-stone-900/60 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="w-full max-w-md bg-[#faf7f0] border-2 border-stone-900 rounded-t-xl sm:rounded-xl p-5 shadow-hard-lg pb-safe font-mono">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-stone-900/60 backdrop-blur-xs animate-backdrop">
+      <div className="w-full max-w-md bg-[#faf7f0] border-2 border-stone-900 rounded-t-xl sm:rounded-xl p-5 shadow-hard-lg pb-safe font-mono animate-sheetUp">
         {/* Modal Header */}
         <div className="flex items-center justify-between pb-3 border-b-2 border-stone-900">
           <div className="flex items-center gap-2">

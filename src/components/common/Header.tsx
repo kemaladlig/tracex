@@ -72,10 +72,9 @@ export const Header: React.FC = () => {
               <button
                 onClick={handleInstallClick}
                 title="TraceX'i Ana Ekrana Ekle / İndir"
-                className="flex items-center gap-1 px-2 py-1 rounded-md border-2 border-stone-900 text-xs font-bold bg-amber-300 hover:bg-amber-400 text-stone-900 shadow-hard-sm btn-hard cursor-pointer"
+                className="flex items-center justify-center p-1.5 rounded-md border-2 border-stone-900 bg-amber-300 hover:bg-amber-400 text-stone-900 shadow-hard-sm btn-hard cursor-pointer"
               >
-                <Download className="w-3 h-3 stroke-[3]" />
-                <span className="text-[10px]">İNDİR</span>
+                <Download className="w-3.5 h-3.5 stroke-[3]" />
               </button>
             )}
 
@@ -122,7 +121,7 @@ export const Header: React.FC = () => {
                   : 'bg-rose-200 text-rose-950'
               }`}
             >
-              <Radio className={`w-3 h-3 ${connectionStatus === 'connected' ? 'animate-pulse' : ''}`} />
+              <Radio className={`w-3 h-3 ${connectionStatus === 'connected' ? 'animate-livePulse' : ''}`} />
               <span>
                 {connectionStatus === 'connected' ? 'CANLI' : 'KOPUK'}
               </span>
@@ -133,8 +132,8 @@ export const Header: React.FC = () => {
 
       {/* PWA Home Screen Install Modal Guide */}
       {showInstallGuide && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs font-mono animate-fadeIn">
-          <div className="bg-[#faf7f0] border-2 border-stone-900 rounded-lg p-4 max-w-sm w-full shadow-hard-lg">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs font-mono animate-backdrop">
+          <div className="bg-[#faf7f0] border-2 border-stone-900 rounded-lg p-4 max-w-sm w-full shadow-hard-lg animate-sheetUp">
             {/* Modal Top Bar */}
             <div className="flex items-center justify-between pb-2 border-b-2 border-stone-900 mb-3">
               <div className="flex items-center gap-1.5 text-xs font-black text-stone-900 uppercase">
