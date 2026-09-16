@@ -5,10 +5,11 @@ import {
   ChevronRight,
   GripVertical,
   PlusCircle,
-  Trash2,
+  Star,
 } from 'lucide-react';
 import { useCryptoStore } from '../../store/useCryptoStore';
 import { cleanSymbol, formatCurrency, formatPercentage } from '../../utils/formatters';
+import { triggerHaptic } from '../../utils/haptics';
 
 interface MarketItemProps {
   symbol: string;
@@ -41,7 +42,9 @@ export const MarketItem: React.FC<MarketItemProps> = ({
 }) => {
   const ticker = useCryptoStore((state) => state.tickers[symbol]);
   const setSelectedCoinForChart = useCryptoStore((state) => state.setSelectedCoinForChart);
-  const removeFromWatchlist = useCryptoStore((state) => state.removeFromWatchlist);
+  const watchlist = useCryptoStore((state) => state.watchlist);
+  const toggleWatchlist = useCryptoStore((state) => state.toggleWatchlist);
+  const isFavorite = watchlist.includes(symbol);
   const currency = useCryptoStore((state) => state.currency);
   const tryRate = useCryptoStore((state) => state.tryRate);
   const eurRate = useCryptoStore((state) => state.eurRate);
@@ -73,9 +76,10 @@ export const MarketItem: React.FC<MarketItemProps> = ({
     setSelectedCoinForChart(symbol);
   };
 
-  const handleRemove = (e: React.MouseEvent) => {
+  const handleToggleFavorite = (e: React.MouseEvent) => {
     e.stopPropagation();
-    removeFromWatchlist(symbol);
+    triggerHaptic('light');
+    toggleWatchlist(symbol);
   };
 
   const handleQuickAdd = (e: React.MouseEvent) => {
@@ -198,13 +202,23 @@ export const MarketItem: React.FC<MarketItemProps> = ({
           </button>
         )}
 
-        {/* Remove button */}
+        {/* Favorite (Star) Button */}
         <button
-          onClick={handleRemove}
-          title="Takip Listesinden Çıkar"
-          className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-100 rounded border border-transparent hover:border-stone-900 transition-colors"
+          onClick={handleToggleFavorite}
+          title={isFavorite ? 'Favorilerden Çıkar' : 'Favorilere Ekle'}
+          className={`p-1.5 rounded transition-all cursor-pointer ${
+            isFavorite
+              ? 'text-amber-500 hover:text-amber-600 hover:bg-amber-100/70'
+              : 'text-stone-300 hover:text-amber-500 hover:bg-stone-100'
+          }`}
         >
-          <Trash2 className="w-4 h-4" />
+          <Star
+            className={`w-4 h-4 transition-transform active:scale-125 ${
+              isFavorite
+                ? 'fill-amber-400 stroke-stone-900 stroke-[2]'
+                : 'stroke-stone-400 stroke-[2] hover:stroke-amber-500'
+            }`}
+          />
         </button>
 
         <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-stone-900 transition-colors" />

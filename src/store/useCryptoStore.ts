@@ -30,8 +30,11 @@ interface CryptoState {
   selectedCoinForChart: string | null;
   connectionStatus: ConnectionStatus;
 
+  activeMarketSymbols: string[];
+  setActiveMarketSymbols: (symbols: string[]) => void;
+
   // Group Management Actions
-  createPortfolioGroup: (name: string) => string;
+  createPortfolioGroup: (name?: string) => string;
   switchPortfolioGroup: (groupId: string) => void;
   renamePortfolioGroup: (groupId: string, newName: string) => void;
   deletePortfolioGroup: (groupId: string) => boolean;
@@ -45,6 +48,7 @@ interface CryptoState {
   setAnalyticsData: (data: MarketAnalyticsData) => void;
   addToWatchlist: (symbol: string) => void;
   removeFromWatchlist: (symbol: string) => void;
+  toggleWatchlist: (symbol: string) => void;
   moveWatchlistItem: (symbol: string, direction: 'up' | 'down') => void;
   reorderWatchlist: (sourceIndex: number, targetIndex: number) => void;
   addPortfolioAsset: (asset: Omit<PortfolioAsset, 'id' | 'timestamp'>) => void;
@@ -111,6 +115,8 @@ export const useCryptoStore = create<CryptoState>()(
       activeTab: 'markets',
       selectedCoinForChart: null,
       connectionStatus: 'connecting',
+      activeMarketSymbols: [],
+      setActiveMarketSymbols: (activeMarketSymbols) => set({ activeMarketSymbols }),
 
       setCurrency: (currency) => set({ currency }),
       setAnalyticsData: (analyticsData) => set({ analyticsData }),
@@ -128,6 +134,17 @@ export const useCryptoStore = create<CryptoState>()(
       removeFromWatchlist: (symbol: string) => {
         const current = get().watchlist;
         set({ watchlist: current.filter((s) => s !== symbol) });
+      },
+
+      toggleWatchlist: (rawSymbol: string) => {
+        const symbol = rawSymbol.trim().toUpperCase();
+        if (!symbol) return;
+        const current = get().watchlist;
+        if (current.includes(symbol)) {
+          set({ watchlist: current.filter((s) => s !== symbol) });
+        } else {
+          set({ watchlist: [...current, symbol] });
+        }
       },
 
       moveWatchlistItem: (symbol: string, direction: 'up' | 'down') => {
@@ -162,9 +179,9 @@ export const useCryptoStore = create<CryptoState>()(
       },
 
       // --- Multi-Portfolio Group Management ---
-      createPortfolioGroup: (name: string) => {
+      createPortfolioGroup: (name?: string) => {
         const state = get();
-        const trimmed = name.trim();
+        const trimmed = name?.trim();
         const groupName = trimmed || `Portföy ${state.portfolioGroups.length + 1}`;
         const newGroupId = `group-${Date.now()}`;
         const newGroup: PortfolioGroup = {
@@ -528,16 +545,13 @@ export const useCryptoStore = create<CryptoState>()(
             ];
             state.activeGroupId = 'group-main';
           } else {
-            // Normalize legacy non-generic default names if unchanged
-            state.portfolioGroups = state.portfolioGroups.map((g) => {
+            // Keep group names intact, ensuring safe assets array and valid realizedPnL
+            state.portfolioGroups = state.portfolioGroups.map((g, idx) => {
               if (!g) return g;
               const safeAssets = Array.isArray(g.assets) ? g.assets : [];
-              let name = g.name;
-              if (name === 'Ana Kasa') name = 'Portföy 1';
-              if (name === 'Spot / Al-Sat') name = 'Portföy 2';
               return {
                 ...g,
-                name,
+                name: g.name || `Portföy ${idx + 1}`,
                 assets: safeAssets,
                 realizedPnL: typeof g.realizedPnL === 'number' ? g.realizedPnL : 0,
               };

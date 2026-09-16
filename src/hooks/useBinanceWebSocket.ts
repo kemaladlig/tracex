@@ -5,6 +5,7 @@ import type { TickerData } from '../types/crypto';
 export const useBinanceWebSocket = () => {
   const watchlist = useCryptoStore((state) => state.watchlist);
   const portfolio = useCryptoStore((state) => state.portfolio);
+  const activeMarketSymbols = useCryptoStore((state) => state.activeMarketSymbols);
   const updateTickersBatch = useCryptoStore((state) => state.updateTickersBatch);
   const setConnectionStatus = useCryptoStore((state) => state.setConnectionStatus);
 
@@ -15,11 +16,12 @@ export const useBinanceWebSocket = () => {
   );
   const flushIntervalRef = useRef<number | null>(null);
 
-  // Combine unique symbols from watchlist and portfolio
+  // Combine unique symbols from watchlist, portfolio, and currently active category in markets
   const allSymbols = Array.from(
     new Set([
       ...watchlist.map((s) => s.toUpperCase()),
       ...portfolio.map((p) => p.symbol.toUpperCase()),
+      ...activeMarketSymbols.map((m) => m.toUpperCase()),
     ])
   ).filter(Boolean);
 

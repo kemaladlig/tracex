@@ -106,3 +106,51 @@ export const fetchAllUsdtPairs = async (): Promise<CoinSearchResult[]> => {
     ];
   }
 };
+
+export type MarketCategory = 'favorites' | 'all' | 'l1' | 'l2' | 'meme' | 'ai' | 'defi';
+
+export const CATEGORY_TAGS: Record<Exclude<MarketCategory, 'favorites' | 'all'>, string[]> = {
+  l1: [
+    'BTC', 'ETH', 'SOL', 'BNB', 'ADA', 'AVAX', 'SUI', 'TON', 'DOT', 'NEAR',
+    'TRX', 'APT', 'SEI', 'ATOM', 'FTM', 'ALGO', 'KAS', 'INJ', 'HBAR', 'ICP',
+    'TIA', 'ROSE', 'CELO', 'EOS', 'NEO', 'XTZ', 'KAVA', 'FLOW', 'EGLD', 'ZIL',
+  ],
+  l2: [
+    'ARB', 'OP', 'POL', 'MATIC', 'STRK', 'MNT', 'BLAST', 'ZK', 'IMX', 'MANTA',
+    'METIS', 'SCROLL', 'ZRO', 'DYM', 'TAIKO', 'LRC', 'BOBA',
+  ],
+  meme: [
+    'DOGE', 'SHIB', 'PEPE', 'WIF', 'BONK', 'FLOKI', 'BOME', 'POPCAT', 'NEIRO',
+    'BRETT', 'MEW', 'TURBO', '1000SATS', 'ORDI', 'MEME', 'PEOPLE', 'NOT', 'PENGU',
+    'SLERF', 'MYRO', 'BABYDOGE', 'CAT', 'LADYS',
+  ],
+  ai: [
+    'FET', 'RENDER', 'TAO', 'NEAR', 'GRT', 'WLD', 'ARKM', 'AI', 'IO', 'GLM',
+    'THETA', 'AGIX', 'OCEAN', 'PHB', 'NMR', 'RLC', 'LPT', 'ACT', 'VIRTUAL',
+  ],
+  defi: [
+    'UNI', 'AAVE', 'MKR', 'LINK', 'CRV', 'PENDLE', 'LDO', 'SNX', 'RUNE', 'DYDX',
+    'JUP', 'CAKE', 'COMP', '1INCH', 'SUSHI', 'ENA', 'RAY', 'COW', 'MORPHO',
+    'KAVA', 'BAL', 'YFI', 'CVX', 'RPL', 'GMX', 'AERODROME',
+  ],
+};
+
+/**
+ * Get top coins for a specific category (default limit 25), sorted by 24h quote volume
+ */
+export const getCategoryCoins = async (
+  category: MarketCategory,
+  limit: number = 25
+): Promise<CoinSearchResult[]> => {
+  const allCoins = await fetchAllUsdtPairs();
+
+  if (category === 'all' || category === 'favorites') {
+    return allCoins.slice(0, limit);
+  }
+
+  const categorySymbols = CATEGORY_TAGS[category] || [];
+  const filtered = allCoins.filter((coin) => categorySymbols.includes(coin.baseAsset));
+
+  return filtered.slice(0, limit);
+};
+
