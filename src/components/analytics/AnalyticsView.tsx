@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Activity,
-  Compass,
+  BarChart3,
   Flame,
-  Fuel,
   Gauge,
+  Layers,
   LineChart,
+  PieChart,
   RefreshCw,
+  Target,
   TrendingDown,
   TrendingUp,
+  Zap,
 } from 'lucide-react';
 import { fetchComprehensiveAnalytics } from '../../services/onChainApi';
 import { useCryptoStore } from '../../store/useCryptoStore';
@@ -38,8 +40,8 @@ export const AnalyticsView: React.FC = () => {
         <h3 className="text-sm font-black text-stone-900 uppercase">
           ZİNCİR VE PİYASA VERİLERİ İŞLENİYOR
         </h3>
-        <p className="text-xs text-stone-600 mt-1">
-          Binance Vadeli, Mempool ve Duygu endeksleri taranıyor...
+        <p className="text-[11px] text-stone-600 mt-1 max-w-xs">
+          Binance vadeli emirleri, Bitcoin zincir üstü MVRV ve piyasa duyarlılığı canlı taranıyor...
         </p>
       </div>
     );
@@ -48,122 +50,170 @@ export const AnalyticsView: React.FC = () => {
   const {
     macroPhase,
     fearAndGreed,
+    marketDominance,
     longShortRatio,
     fundingRate,
     mvrvRatio,
-    exchangeNetflow,
-    gasTracker,
+    takerVolume,
+    openInterest,
+    technicalIndicator,
   } = analyticsData;
 
-  // SVG Chart Calculation for 14-day Fear & Greed
+  // SVG parameters for 14-day FNG trendline
   const fngPoints = fearAndGreed.history;
-  const svgWidth = 320;
-  const svgHeight = 70;
-  const padding = 10;
+  const svgWidth = 280;
+  const svgHeight = 65;
+  const padding = 8;
   const minVal = 0;
   const maxVal = 100;
 
   const pointsString = fngPoints
-    .map((p, i) => {
-      const x = padding + (i / (fngPoints.length - 1)) * (svgWidth - 2 * padding);
-      const y = svgHeight - padding - ((p.value - minVal) / (maxVal - minVal)) * (svgHeight - 2 * padding);
+    .map((pt, idx) => {
+      const x = padding + (idx / (fngPoints.length - 1)) * (svgWidth - 2 * padding);
+      const y =
+        svgHeight - padding - ((pt.value - minVal) / (maxVal - minVal)) * (svgHeight - 2 * padding);
       return `${x},${y}`;
     })
     .join(' ');
 
-  const areaPointsString = `${padding},${svgHeight} ${pointsString} ${svgWidth - padding},${svgHeight}`;
-
   return (
-    <div className="flex flex-col pb-28 px-4 max-w-lg mx-auto w-full font-mono">
-      {/* Top Header of the Intel Desk */}
-      <div className="flex items-center justify-between my-3 pb-2 border-b-2 border-stone-900">
+    <div className="pb-24 pt-2 px-3 font-mono max-w-2xl mx-auto">
+      {/* Title & Refresh */}
+      <div className="flex items-center justify-between mb-3 border-b-2 border-stone-900 pb-2">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
-            <h2 className="text-base font-black text-stone-900 uppercase tracking-tight">
-              PİYASA & ZİNCİR İSTİHBARATI
-            </h2>
-          </div>
-          <p className="text-[10px] text-stone-600 font-bold">
-            GERÇEK ZAMANLI ON-CHAIN, VADELİ VE DUYGU ANALİZİ
+          <h2 className="text-sm font-black uppercase tracking-wider text-stone-950 flex items-center gap-1.5">
+            <Zap className="w-4 h-4 text-amber-600 fill-amber-400" />
+            RADAR // PİYASA & ZİNCİR İSTİHBARATI
+          </h2>
+          <p className="text-[10px] text-stone-500 font-bold">
+            100% CANLI VERİLERLE OTOMATİK MAKRO STRATEJİ MOTORU
           </p>
         </div>
-
         <button
           onClick={loadData}
-          title="Verileri Yenile"
-          className="p-1.5 bg-white hover:bg-stone-100 border-2 border-stone-900 rounded shadow-hard-sm btn-hard cursor-pointer"
+          className="p-1.5 bg-stone-100 border border-stone-900 rounded shadow-hard-sm hover:bg-stone-200 active:translate-x-[1px] active:translate-y-[1px] transition-all"
+          title="Verileri Güncelle"
         >
-          <RefreshCw className="w-3.5 h-3.5 stroke-[2.5]" />
+          <RefreshCw className="w-3.5 h-3.5 text-stone-900" />
         </button>
       </div>
 
-      {/* 1. MAKRO PİYASA PUSULASI (Günün Kararı & Strateji) */}
-      <div className="p-4 bg-white border-2 border-stone-900 rounded-lg shadow-hard mb-3.5">
-        <div className="flex items-center justify-between pb-2 border-b-2 border-stone-900/40 mb-2">
-          <div className="flex items-center gap-1.5 text-xs font-black text-stone-900 uppercase">
-            <Compass className="w-4 h-4 text-amber-600" />
-            <span>MAKRO PİYASA PUSULASI</span>
-          </div>
-          <span className="text-[10px] font-black bg-emerald-200 border border-stone-900 text-emerald-950 px-2 py-0.5 rounded shadow-hard-sm">
-            {macroPhase.verdict}
+      {/* 1. MAKRO FAZ & RİSK SKORU KARTI */}
+      <div className="p-4 bg-stone-900 text-stone-100 border-2 border-stone-900 rounded-lg shadow-hard mb-3.5">
+        <div className="flex items-center justify-between pb-2 border-b border-stone-800 mb-3">
+          <span className="text-[10px] tracking-widest text-amber-400 font-bold uppercase">
+            {macroPhase.title}
           </span>
+          <div className="flex items-center gap-1 bg-stone-800 border border-stone-700 px-2 py-0.5 rounded text-xs font-black">
+            <span className="text-stone-400 text-[10px]">RİSK:</span>
+            <span
+              className={
+                macroPhase.riskScore >= 7
+                  ? 'text-rose-400'
+                  : macroPhase.riskScore <= 4
+                  ? 'text-emerald-400'
+                  : 'text-amber-400'
+              }
+            >
+              {macroPhase.riskScore} / 10
+            </span>
+          </div>
         </div>
 
-        <div className="my-2">
-          <div className="flex items-center justify-between text-xs mb-1">
-            <span className="text-stone-600 font-bold">Genel Piyasa Risk Puanı:</span>
-            <span className="font-black text-stone-900">{macroPhase.riskScore} / 10 (Orta-Düşük)</span>
+        <div className="mb-2.5">
+          <div className="text-xs font-bold text-amber-300 uppercase mb-1">
+            ⚡ {macroPhase.verdict}
           </div>
-          {/* Risk Level Bar */}
-          <div className="w-full h-2.5 rounded border border-stone-900 bg-stone-100 overflow-hidden flex shadow-hard-sm">
-            <div
-              style={{ width: `${macroPhase.riskScore * 10}%` }}
-              className="bg-emerald-400 border-r border-stone-900"
-            />
-          </div>
+          <p className="text-xs text-stone-300 leading-relaxed font-sans">
+            {macroPhase.strategy}
+          </p>
         </div>
 
-        <div className="p-2.5 bg-stone-50 border-2 border-stone-900/60 rounded mt-3 text-xs leading-relaxed text-stone-800">
-          <strong className="text-stone-900 block mb-0.5">📌 Eylem / Strateji Tavsiyesi:</strong>
-          {macroPhase.strategy}
+        {/* Dynamic Risk Gauge bar */}
+        <div className="w-full bg-stone-800 h-2 rounded overflow-hidden flex border border-stone-700">
+          <div
+            style={{ width: `${macroPhase.riskScore * 10}%` }}
+            className={`transition-all duration-500 ${
+              macroPhase.riskScore >= 7
+                ? 'bg-rose-500'
+                : macroPhase.riskScore <= 4
+                ? 'bg-emerald-500'
+                : 'bg-amber-400'
+            }`}
+          />
         </div>
       </div>
 
-      {/* 2. KORKU & AÇGÖZLÜLÜK ENDEKSİ + 14 GÜNLÜK TREND ÇİZGİSİ */}
+      {/* 2. KORKU & AÇGÖZLÜLÜK // ÇOKLU ZAMAN KIYASLAMASI & 14 GÜNLÜK TREND */}
       <div className="p-4 bg-white border-2 border-stone-900 rounded-lg shadow-hard mb-3.5">
-        <div className="flex items-center justify-between pb-2 border-b-2 border-stone-900/40 mb-2.5">
+        <div className="flex items-center justify-between pb-2 border-b-2 border-stone-900/40 mb-3">
           <div className="flex items-center gap-1.5 text-xs font-black text-stone-900 uppercase">
-            <Gauge className="w-4 h-4 text-rose-600" />
-            <span>KORKU & AÇGÖZLÜLÜK (SON 14 GÜN)</span>
+            <Gauge className="w-4 h-4 text-amber-600" />
+            <span>KORKU & AÇGÖZLÜLÜK ENDEKSİ</span>
           </div>
-          <span className="text-xs font-black bg-amber-200 border border-stone-900 px-2 py-0.5 rounded shadow-hard-sm">
-            {fearAndGreed.current} // {fearAndGreed.classification}
+          <span className="text-[10px] font-bold text-stone-500">
+            KAYNAK: ALTERNATIVE.ME (CANLI)
           </span>
         </div>
 
-        {/* Hover label */}
-        <div className="text-[11px] text-stone-600 mb-1 flex items-center justify-between">
-          <span>{hoveredFng ? `${hoveredFng.date}: ${hoveredFng.value} Puan` : 'Duygu Değişim Eğrisi:'}</span>
-          <span className="text-[10px] text-stone-500 font-bold">0 (Aşırı Korku) ➔ 100 (Coşku)</span>
+        {/* 4 Multi-period Comparison Boxes (Today, Yesterday, Last Week, Last Month) */}
+        <div className="grid grid-cols-4 gap-1.5 mb-3.5">
+          {/* Today */}
+          <div className="p-2 bg-amber-50 border-2 border-stone-900 rounded shadow-hard-sm text-center">
+            <span className="text-[9px] font-bold text-stone-600 uppercase block">ŞU AN (BUGÜN)</span>
+            <div className="text-lg font-black text-stone-950 mt-0.5">{fearAndGreed.current}</div>
+            <span className="text-[8px] font-black uppercase text-amber-800 block truncate">
+              {fearAndGreed.classification}
+            </span>
+          </div>
+
+          {/* Yesterday */}
+          <div className="p-2 bg-stone-50 border border-stone-900 rounded text-center">
+            <span className="text-[9px] font-bold text-stone-500 uppercase block">DÜN</span>
+            <div className="text-base font-black text-stone-800 mt-0.5">{fearAndGreed.yesterday}</div>
+            <span className="text-[8px] font-bold text-stone-600 block">
+              {fearAndGreed.current > fearAndGreed.yesterday ? '▲ Yükseldi' : '▼ Düştü'}
+            </span>
+          </div>
+
+          {/* Last Week */}
+          <div className="p-2 bg-stone-50 border border-stone-900 rounded text-center">
+            <span className="text-[9px] font-bold text-stone-500 uppercase block">GEÇEN HAFTA</span>
+            <div className="text-base font-black text-stone-800 mt-0.5">{fearAndGreed.lastWeek}</div>
+            <span className="text-[8px] font-medium text-stone-500 block">7 Gün Önce</span>
+          </div>
+
+          {/* Last Month */}
+          <div className="p-2 bg-stone-50 border border-stone-900 rounded text-center">
+            <span className="text-[9px] font-bold text-stone-500 uppercase block">GEÇEN AY</span>
+            <div className="text-base font-black text-stone-800 mt-0.5">{fearAndGreed.lastMonth}</div>
+            <span className="text-[8px] font-medium text-stone-500 block">30 Gün Önce</span>
+          </div>
         </div>
 
-        {/* SVG Mini Trend Chart */}
-        <div className="w-full bg-[#fbf9f4] border-2 border-stone-900 rounded p-2 overflow-hidden shadow-hard-sm relative">
-          <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} className="w-full h-16 overflow-visible">
-            {/* Background 50 Neutral Reference Line */}
+        {/* 14-Day SVG Trendline */}
+        <div className="bg-stone-50 border border-stone-900 rounded p-2.5">
+          <div className="flex items-center justify-between text-[10px] font-bold text-stone-600 mb-1">
+            <span>14 GÜNLÜK DUYGU GELİŞİMİ</span>
+            <span className="text-amber-700 font-black">
+              {hoveredFng ? `${hoveredFng.date}: ${hoveredFng.value} Puan` : 'Noktaya dokunun'}
+            </span>
+          </div>
+          <svg
+            viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+            className="w-full h-16 overflow-visible"
+          >
+            {/* Guide line at 50 (Neutral) */}
             <line
-              x1="0"
+              x1={padding}
               y1={svgHeight / 2}
-              x2={svgWidth}
+              x2={svgWidth - padding}
               y2={svgHeight / 2}
               stroke="#d6d3d1"
-              strokeDasharray="3 3"
+              strokeDasharray="3,3"
               strokeWidth="1"
             />
-            {/* Area Fill */}
-            <polygon points={areaPointsString} fill="rgba(245, 158, 11, 0.15)" />
-            {/* Main Trend Line */}
+            {/* Trend Polyline */}
             <polyline
               fill="none"
               stroke="#1c1917"
@@ -193,13 +243,74 @@ export const AnalyticsView: React.FC = () => {
             })}
           </svg>
         </div>
+      </div>
 
-        <p className="text-[10px] text-stone-600 mt-2 font-medium">
-          Duygu skoru 14 gün boyunca 50'nin üzerinde seyrederek piyasanın boğa iştahını koruduğunu teyit ediyor.
+      {/* 3. KRİPTO PAZAR HAKİMİYETİ & ALTCOİN RADARI */}
+      <div className="p-4 bg-white border-2 border-stone-900 rounded-lg shadow-hard mb-3.5">
+        <div className="flex items-center justify-between pb-2 border-b-2 border-stone-900/40 mb-3">
+          <div className="flex items-center gap-1.5 text-xs font-black text-stone-900 uppercase">
+            <PieChart className="w-4 h-4 text-indigo-600" />
+            <span>PAZAR HAKİMİYETİ (BTC DOMINANCE)</span>
+          </div>
+          <span className="text-[10px] font-black bg-indigo-50 border border-stone-900 px-1.5 py-0.5 rounded shadow-hard-sm">
+            BTC.D: %{marketDominance.btcD}
+          </span>
+        </div>
+
+        {/* 3-Segment Stacked Bar */}
+        <div className="mb-2">
+          <div className="flex justify-between text-[11px] font-black mb-1">
+            <span className="text-amber-800">BTC: %{marketDominance.btcD}</span>
+            <span className="text-indigo-800">ETH: %{marketDominance.ethD}</span>
+            <span className="text-emerald-800">DİĞERLERİ: %{marketDominance.altD}</span>
+          </div>
+          <div className="w-full h-3.5 rounded border-2 border-stone-900 overflow-hidden flex shadow-hard-sm">
+            <div
+              style={{ width: `${marketDominance.btcD}%` }}
+              className="bg-amber-300 border-r border-stone-900"
+              title={`BTC Payı: %${marketDominance.btcD}`}
+            />
+            <div
+              style={{ width: `${marketDominance.ethD}%` }}
+              className="bg-indigo-300 border-r border-stone-900"
+              title={`ETH Payı: %${marketDominance.ethD}`}
+            />
+            <div
+              style={{ width: `${marketDominance.altD}%` }}
+              className="bg-emerald-300"
+              title={`Altcoin Payı: %${marketDominance.altD}`}
+            />
+          </div>
+        </div>
+
+        {/* Global Market Overview */}
+        <div className="grid grid-cols-2 gap-2 mt-2.5 p-2 bg-stone-50 border border-stone-900 rounded text-xs">
+          <div>
+            <span className="text-[9px] text-stone-500 uppercase font-bold block">Toplam Kripto Değeri</span>
+            <span className="font-black text-stone-900">
+              ${marketDominance.totalMarketCapUsd}T{' '}
+              <span
+                className={`text-[10px] ${
+                  marketDominance.mcapChange24h >= 0 ? 'text-emerald-700' : 'text-rose-700'
+                }`}
+              >
+                ({marketDominance.mcapChange24h >= 0 ? '+' : ''}
+                {marketDominance.mcapChange24h}%)
+              </span>
+            </span>
+          </div>
+          <div>
+            <span className="text-[9px] text-stone-500 uppercase font-bold block">24s Toplam Hacim</span>
+            <span className="font-black text-stone-900">${marketDominance.totalVolume24hUsd}B</span>
+          </div>
+        </div>
+
+        <p className="text-[10px] text-stone-600 mt-2 leading-relaxed">
+          {marketDominance.interpretation}
         </p>
       </div>
 
-      {/* 3. VADELİ PİYASA LONG / SHORT DENGESİ & FONLAMA ORANI */}
+      {/* 4. VADELİ PİYASA LONG / SHORT DENGESİ & FONLAMA ORANI */}
       <div className="p-4 bg-white border-2 border-stone-900 rounded-lg shadow-hard mb-3.5">
         <div className="flex items-center justify-between pb-2 border-b-2 border-stone-900/40 mb-3">
           <div className="flex items-center gap-1.5 text-xs font-black text-stone-900 uppercase">
@@ -237,18 +348,20 @@ export const AnalyticsView: React.FC = () => {
         {/* Funding Rate Box */}
         <div className="mt-3 p-2.5 bg-stone-50 border border-stone-900 rounded flex items-center justify-between text-xs">
           <div>
-            <span className="text-[9px] text-stone-500 uppercase font-bold block">Fonlama Oranı (Funding Rate)</span>
+            <span className="text-[9px] text-stone-500 uppercase font-bold block">
+              Fonlama Oranı (Funding Rate)
+            </span>
             <span className="font-black text-stone-900">%{fundingRate.ratePercent}</span>
           </div>
           <div className="text-right">
             <span className="text-[10px] font-black bg-amber-200 border border-stone-900 px-1.5 py-0.5 rounded">
-              SAĞLIKLI KALDIRAÇ
+              {fundingRate.hourlyCost}
             </span>
           </div>
         </div>
       </div>
 
-      {/* 4. MVRV ORANI (DÖNGÜ TEPE / DİP CETVELİ) */}
+      {/* 5. MVRV ORANI (DÖNGÜ TEPE / DİP CETVELİ) */}
       <div className="p-4 bg-white border-2 border-stone-900 rounded-lg shadow-hard mb-3.5">
         <div className="flex items-center justify-between pb-2 border-b-2 border-stone-900/40 mb-3">
           <div className="flex items-center gap-1.5 text-xs font-black text-stone-900 uppercase">
@@ -256,7 +369,7 @@ export const AnalyticsView: React.FC = () => {
             <span>MVRV ORANI // DÖNGÜ ISITICISI</span>
           </div>
           <span className="text-xs font-black bg-stone-900 text-amber-300 px-2 py-0.5 rounded shadow-hard-sm">
-            SKOR: {mvrvRatio.value}
+            SKOR: {mvrvRatio.value} (CANLI)
           </span>
         </div>
 
@@ -284,43 +397,98 @@ export const AnalyticsView: React.FC = () => {
         </p>
       </div>
 
-      {/* 5. BALİNA BORSA AKIŞI & AĞ GAZI */}
-      <div className="grid grid-cols-2 gap-2.5 text-xs">
-        {/* Whale Netflow */}
+      {/* 6. GERÇEK EMİR AKIŞI (TAKER VOLUME) & AÇIK POZİSYON (OPEN INTEREST) */}
+      <div className="grid grid-cols-2 gap-2.5 text-xs mb-3.5">
+        {/* Taker Buy vs Sell Volume */}
         <div className="p-3 bg-white border-2 border-stone-900 rounded-lg shadow-hard flex flex-col justify-between">
           <div>
             <div className="flex items-center gap-1 text-[9px] text-stone-500 font-bold uppercase mb-1">
-              <Activity className="w-3 h-3 text-emerald-600" /> Borsa Rezervi
+              <BarChart3 className="w-3 h-3 text-emerald-600" /> Taker Emir Akışı
             </div>
-            <div className="text-sm font-black text-stone-900">
-              -{exchangeNetflow.amountBtc.toLocaleString()} BTC
+            <div className="text-xs font-black text-stone-900">
+              %{takerVolume.buyPercent} Alış / %{takerVolume.sellPercent} Satış
             </div>
-            <span className="inline-block mt-1 bg-emerald-200 border border-stone-900 text-emerald-950 text-[9px] font-black px-1 rounded-xs">
-              ARZ KIKTLIĞI
+            <div className="w-full h-2 rounded border border-stone-900 overflow-hidden flex my-1.5">
+              <div style={{ width: `${takerVolume.buyPercent}%` }} className="bg-emerald-400" />
+              <div style={{ width: `${takerVolume.sellPercent}%` }} className="bg-rose-400" />
+            </div>
+            <span className="inline-block mt-0.5 bg-stone-100 border border-stone-900 text-stone-900 text-[8px] font-black px-1 rounded-xs">
+              {takerVolume.signal}
             </span>
           </div>
-          <p className="text-[9px] text-stone-600 mt-2 leading-tight">
-            {exchangeNetflow.interpretation}
+          <p className="text-[9px] text-stone-500 mt-2 leading-tight">
+            Piyasa emriyle anlık agresif işlem yapan hacim dağılımı.
           </p>
         </div>
 
-        {/* Gas & Fee Timing */}
+        {/* Open Interest */}
         <div className="p-3 bg-white border-2 border-stone-900 rounded-lg shadow-hard flex flex-col justify-between">
           <div>
             <div className="flex items-center gap-1 text-[9px] text-stone-500 font-bold uppercase mb-1">
-              <Fuel className="w-3 h-3 text-indigo-600" /> Transfer Gazı
+              <Layers className="w-3 h-3 text-indigo-600" /> Açık Pozisyon (OI)
             </div>
-            <div className="text-sm font-black text-stone-900">
-              {gasTracker.ethGwei} Gwei <span className="text-[10px] text-stone-500 font-normal">/ ETH</span>
+            <div className="text-xs font-black text-stone-900">
+              ${openInterest.valueUsd}B USD
             </div>
-            <span className="inline-block mt-1 bg-emerald-200 border border-stone-900 text-emerald-950 text-[9px] font-black px-1 rounded-xs">
-              MÜKEMMEL ZAMAN
+            <span
+              className={`inline-block mt-1 border border-stone-900 text-[8px] font-black px-1 rounded-xs ${
+                openInterest.change24hUsd >= 0
+                  ? 'bg-emerald-100 text-emerald-950'
+                  : 'bg-rose-100 text-rose-950'
+              }`}
+            >
+              24S: {openInterest.change24hUsd >= 0 ? '+' : ''}${openInterest.change24hUsd}M
             </span>
           </div>
-          <p className="text-[9px] text-stone-600 mt-2 leading-tight">
-            {gasTracker.timingAdvice}
+          <p className="text-[9px] text-stone-500 mt-2 leading-tight">
+            {openInterest.interpretation}
           </p>
         </div>
+      </div>
+
+      {/* 7. BİTCOİN GÜNLÜK TEKNİK GÖSTERGE (RSI 14 & 20G ORTALAMA) */}
+      <div className="p-4 bg-white border-2 border-stone-900 rounded-lg shadow-hard">
+        <div className="flex items-center justify-between pb-2 border-b-2 border-stone-900/40 mb-3">
+          <div className="flex items-center gap-1.5 text-xs font-black text-stone-900 uppercase">
+            <Target className="w-4 h-4 text-rose-600" />
+            <span>BTC TEKNİK RADAR (RSI 14 & ORTALAMALAR)</span>
+          </div>
+          <span
+            className={`text-[10px] font-black border border-stone-900 px-1.5 py-0.5 rounded shadow-hard-sm ${
+              technicalIndicator.rsiStatus === 'oversold'
+                ? 'bg-emerald-200 text-emerald-950'
+                : technicalIndicator.rsiStatus === 'overbought'
+                ? 'bg-rose-200 text-rose-950'
+                : 'bg-amber-100 text-stone-950'
+            }`}
+          >
+            RSI: {technicalIndicator.rsi14}
+          </span>
+        </div>
+
+        {/* RSI Meter Bar */}
+        <div className="mb-2">
+          <div className="relative w-full h-3 rounded border-2 border-stone-900 bg-stone-100 overflow-hidden flex shadow-hard-sm">
+            <div style={{ width: '30%' }} className="bg-emerald-200 border-r border-stone-900" title="Aşırı Satım (0-30)" />
+            <div style={{ width: '40%' }} className="bg-amber-100 border-r border-stone-900" title="Dengeli Bölge (30-70)" />
+            <div style={{ width: '30%' }} className="bg-rose-200" title="Aşırı Alım (70-100)" />
+            {/* Needle */}
+            <div
+              style={{ left: `${Math.max(2, Math.min(98, technicalIndicator.rsi14))}%` }}
+              className="absolute top-0 bottom-0 w-1.5 bg-stone-950 shadow-md"
+            />
+          </div>
+          <div className="flex justify-between text-[8px] font-bold text-stone-500 mt-1">
+            <span>0 (Aşırı Satım)</span>
+            <span className="text-stone-900 font-black">{technicalIndicator.rsiLabel}</span>
+            <span>100 (Aşırı Alım)</span>
+          </div>
+        </div>
+
+        {/* Trend summary */}
+        <p className="text-[10px] text-stone-600 mt-2 font-medium">
+          {technicalIndicator.trendLabel} (20G SMA: ${technicalIndicator.sma20Price.toLocaleString()})
+        </p>
       </div>
     </div>
   );

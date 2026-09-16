@@ -45,14 +45,26 @@ export interface CandleData {
 export interface MarketAnalyticsData {
   macroPhase: {
     title: string;
-    riskScore: number; // 1 to 10
+    riskScore: number;
     verdict: string;
     strategy: string;
   };
   fearAndGreed: {
     current: number;
     classification: string;
+    yesterday: number;
+    lastWeek: number;
+    lastMonth: number;
     history: { date: string; value: number }[];
+  };
+  marketDominance: {
+    btcD: number;
+    ethD: number;
+    altD: number;
+    totalMarketCapUsd: number;
+    mcapChange24h: number;
+    totalVolume24hUsd: number;
+    interpretation: string;
   };
   longShortRatio: {
     longPercent: number;
@@ -73,15 +85,27 @@ export interface MarketAnalyticsData {
     label: string;
     interpretation: string;
   };
-  exchangeNetflow: {
+  takerVolume: {
+    buyVolBtc: number;
+    sellVolBtc: number;
+    buyPercent: number;
+    sellPercent: number;
+    ratio: number;
+    signal: string;
+  };
+  openInterest: {
     amountBtc: number;
-    type: 'outflow' | 'inflow';
+    valueUsd: number;
+    change24hUsd: number;
     interpretation: string;
   };
-  gasTracker: {
-    ethGwei: number;
-    btcSatVb: number;
-    status: 'low' | 'normal' | 'high';
-    timingAdvice: string;
+  technicalIndicator: {
+    symbol: string;
+    rsi14: number;
+    rsiStatus: 'oversold' | 'neutral' | 'overbought';
+    rsiLabel: string;
+    sma20Price: number;
+    currentPrice: number;
+    trendLabel: string;
   };
 }

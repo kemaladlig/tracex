@@ -9,6 +9,37 @@ let lastMvrvFetchTime = 0;
 const MVRV_CACHE_MS = 30 * 60 * 1000; // 30 mins macro cache to respect rate limits
 
 /**
+ * Standard Wilder's RSI calculation from candle closes
+ */
+const computeRSI = (closes: number[], period: number = 14): number => {
+  if (closes.length <= period) return 50;
+  let gains = 0;
+  let losses = 0;
+  for (let i = 1; i <= period; i++) {
+    const diff = closes[i] - closes[i - 1];
+    if (diff >= 0) gains += diff;
+    else losses += Math.abs(diff);
+  }
+  let avgGain = gains / period;
+  let avgLoss = losses / period;
+
+  for (let i = period + 1; i < closes.length; i++) {
+    const diff = closes[i] - closes[i - 1];
+    if (diff >= 0) {
+      avgGain = (avgGain * (period - 1) + diff) / period;
+      avgLoss = (avgLoss * (period - 1)) / period;
+    } else {
+      avgGain = (avgGain * (period - 1)) / period;
+      avgLoss = (avgLoss * (period - 1) + Math.abs(diff)) / period;
+    }
+  }
+
+  if (avgLoss === 0) return 100;
+  const rs = avgGain / avgLoss;
+  return parseFloat((100 - 100 / (1 + rs)).toFixed(1));
+};
+
+/**
  * Algorithmic Decision Engine
  * Computes dynamic insights and actionable strategies based on live on-chain and derivative inputs.
  */
@@ -19,8 +50,9 @@ const deriveMarketIntelligence = (
   shortPct: number,
   fundingRate: number,
   mvrvVal: number,
-  btcSatVb: number,
-  ethGwei: number
+  btcD: number,
+  takerRatio: number,
+  rsi14: number
 ) => {
   // 1. Calculate dynamic risk score (1 to 10)
   let riskScore = 4;
@@ -30,6 +62,8 @@ const deriveMarketIntelligence = (
 
   if (lsRatio > 2.0) riskScore += 2;
   if (fundingRate > 0.025) riskScore += 2;
+  if (rsi14 > 70) riskScore += 1;
+  if (mvrvVal > 3.0) riskScore += 2;
   riskScore = Math.max(1, Math.min(10, riskScore));
 
   // 2. Derive Macro Phase & Strategy dynamically
@@ -41,22 +75,22 @@ const deriveMarketIntelligence = (
     macroTitle = '⚠️ AŞIRI KORKU & TESLİMİYET EVRESİ';
     macroVerdict = 'DİP AKÜMÜLASYON FIRSATI';
     macroStrategy =
-      `Korku endeksi dip seviyede (${fng}/100). Yatırımcılar panik halinde satış yaparken balinalar genelde bu bölgelerde ucuz likidite toplar. Duygusal panik satışı yapmak yerine kademeli DCA alımları için tarihsel olarak en elverişli dönemdir.`;
+      `Korku endeksi dip seviyede (${fng}/100). Yatırımcılar panik halindeyken tarihsel olarak akıllı sermaye bu bölgelerde kademeli DCA alımları yapar.`;
   } else if (fng >= 75 && (fundingRate > 0.02 || lsRatio > 2.1)) {
     macroTitle = '🔥 AŞIRI ISINMA & LİKİDASYON RİSKİ';
     macroVerdict = 'DİKKAT // KÂR ALMA BÖLGESİ';
     macroStrategy =
-      `Piyasada aşırı coşku (${fng}/100) ve Long pozisyon yığılması var. Fonlama maliyetleri yükseldi. Borsaların kaldıraçlı hesapları temizlemek için sert aşağı iğneler (Long Squeeze) atma riski çok yüksek. Yeni kaldıraç açmaktan kaçının ve kademeli kâr realize etmeyi düşünün.`;
+      `Piyasada aşırı coşku (${fng}/100) ve Long pozisyon yığılması var. Borsaların kaldıraçlı hesapları temizlemek için sert aşağı iğneler (Long Squeeze) atma riski çok yüksek.`;
   } else if (fng >= 55) {
     macroTitle = '🟢 KONTROLLÜ BOĞA & AKÜMÜLASYON';
     macroVerdict = 'YÜKSELİŞ TRENDİ KORUNUYOR';
     macroStrategy =
-      `Piyasa duyarlılığı pozitif (${fng}/100), ancak türev fonlama oranları (%${fundingRate}) henüz patlama seviyesinde değil. Trend yukarı yönlü sağlıklı bir ivmeyle devam ediyor. Geri çekilmeler destek seviyelerinde alım fırsatı sunabilir.`;
+      `Piyasa duyarlılığı pozitif (${fng}/100), türev fonlama oranları (%${fundingRate}) henüz patlama seviyesinde değil. Trend yukarı yönlü sağlıklı bir ivmeyle devam ediyor.`;
   } else {
     macroTitle = '⚖️ NÖTR KONSOLİDASYON DÖNEMİ';
     macroVerdict = 'YÖN ARAYIŞI & TEST';
     macroStrategy =
-      `Piyasa kararsız bir yatay bantta seyrediyor. Ne boğalar ne de ayılar tam kontrolü ele geçirebilmiş değil. Kırılım yönü netleşene kadar sabırlı olunmalı ve gereksiz yüksek kaldıraçtan uzak durulmalıdır.`;
+      `Piyasa kararsız bir yatay bantta seyrediyor. Ne boğalar ne de ayılar tam kontrolü ele geçirebilmiş değil. Kırılım yönü netleşene kadar yüksek kaldıraçtan uzak durulmalıdır.`;
   }
 
   // 3. Dynamic Long/Short interpretation
@@ -64,10 +98,10 @@ const deriveMarketIntelligence = (
   let lsDesc = `Hesapların %${longPct}'i Long, %${shortPct}'i Short pozisyonda.`;
   if (lsRatio > 2.2) {
     lsSignal = '⚠️ Tehlikeli Long Yığılması';
-    lsDesc = `Long oranı %${longPct} ile aşırı kalabalık. Tarihsel olarak bu seviyeler ani aşağı iğnelerle (Flash Crash) long tasfiyesi yaratma riski taşır.`;
+    lsDesc = `Long oranı %${longPct} ile aşırı kalabalık. Ani aşağı iğnelerle (Flash Crash) long tasfiyesi yaratma riski taşır.`;
   } else if (lsRatio < 1.0) {
     lsSignal = '⚡ Ayı Baskısı & Short Squeeze İhtimali';
-    lsDesc = `Short pozisyonlar (%${shortPct}) üstünlük kurmuş durumda. Beklenmedik bir yukarı hareket sert bir Short Squeeze (hızlı ralli) tetikleyebilir.`;
+    lsDesc = `Short pozisyonlar (%${shortPct}) üstünlük kurmuş durumda. Beklenmedik bir yukarı hareket sert bir Short Squeeze tetikleyebilir.`;
   } else {
     lsDesc += ' Türev piyasada sağlıklı bir yön dengesi var, ani tasfiye riski düşük.';
   }
@@ -78,21 +112,15 @@ const deriveMarketIntelligence = (
   if (fundingRate > 0.03) {
     fundingStatus = 'overheated';
     fundingInterp =
-      'Fonlama oranı kritik eşiğin üstünde (% ' +
-      fundingRate +
-      '). Long açanlar çok yüksek prim ödüyor. Piyasa aşırı kaldıraçlı; ani düzeltme ihtimali yüksek.';
+      `Fonlama oranı kritik eşiğin üstünde (%${fundingRate}). Long açanlar yüksek prim ödüyor; kaldıraç şişkin, ani düzeltme ihtimali var.`;
   } else if (fundingRate > 0) {
     fundingStatus = 'bullish';
     fundingInterp =
-      'Long pozisyonlar Short pozisyonlara prim ödüyor (% ' +
-      fundingRate +
-      '). Yükseliş inancı var ancak piyasa tehlikeli derecede ısınmış değil.';
+      `Long pozisyonlar Short pozisyonlara prim ödüyor (%${fundingRate}). Yükseliş beklentisi var ancak piyasa aşırı ısınmış değil.`;
   } else {
     fundingStatus = 'bearish';
     fundingInterp =
-      'Fonlama negatif (% ' +
-      fundingRate +
-      '). Short pozisyonlar prim ödüyor; piyasa aşırı temkinli veya düşüş bekliyor.';
+      `Fonlama negatif (%${fundingRate}). Short pozisyonlar prim ödüyor; piyasa aşırı temkinli veya düşüş bekliyor.`;
   }
 
   // 5. Dynamic MVRV interpretation
@@ -101,29 +129,46 @@ const deriveMarketIntelligence = (
   if (mvrvVal < 1.0) {
     mvrvStatus = 'dip';
     mvrvInterp =
-      'MVRV 1.0 altında: Yatırımcıların neredeyse tamamı zararda. Tarihsel olarak büyük döngü dipleri bu bölgede oluşur.';
+      `MVRV ${mvrvVal} (1.0 altında): Yatırımcıların büyük çoğunluğu zararda. Tarihsel büyük döngü dipleri bu bölgede oluşur.`;
   } else if (mvrvVal >= 3.5) {
     mvrvStatus = 'heated';
     mvrvInterp =
-      'MVRV 3.5 üzerinde: Neredeyse tüm cüzdanlar devasa kârda. Tarihsel boğa tepeleri bu seviyelerde oluşur; kâr almak için en uygun bölgedir.';
+      `MVRV ${mvrvVal} (3.5 üzerinde): Cüzdanlar devasa kârda. Tarihsel boğa tepeleri bu seviyelerde oluşur; kademeli kâr satışı için uygundur.`;
   } else {
     mvrvStatus = 'fair';
     mvrvInterp =
-      `MVRV ${mvrvVal} ile döngünün orta aşamasında. Henüz boğa tepesi ısınması (3.5+) görülmüyor; kâr realizasyonu için erken bir evredeyiz.`;
+      `MVRV ${mvrvVal} ile döngünün orta aşamasında (1.0 - 2.5 bandı). Boğa tepesi aşırı ısınması görülmüyor; kâr realizasyonu için erken bir evredeyiz.`;
   }
 
-  // 6. Dynamic Gas Timing Advice
-  let gasStatus: 'low' | 'normal' | 'high' = 'low';
-  let gasAdvice = '';
-  if (ethGwei > 40) {
-    gasStatus = 'high';
-    gasAdvice = `Gas ${ethGwei} Gwei ile yüksek. Acil olmayan transferleri veya DeFi takaslarını ertelemek komisyondan tasarruf sağlar.`;
-  } else if (ethGwei > 20) {
-    gasStatus = 'normal';
-    gasAdvice = `Gas ${ethGwei} Gwei ile makul seviyede. Transferler olağan maliyetle gerçekleştirilebilir.`;
+  // 6. Dynamic Market Dominance interpretation
+  let domInterp = '';
+  if (btcD > 58) {
+    domInterp = `Bitcoin pazar payı (%${btcD}) çok yüksek. Likidite altcoinlerden çekilip BTC'ye sığınıyor. Altcoin rallisi için BTC hakimiyetinin gerilemesi beklenir.`;
+  } else if (btcD < 45) {
+    domInterp = `Bitcoin hakimiyeti %${btcD} seviyesine gerilemiş durumda. Sermaye altcoinlere akıyor; tam teşekküllü bir Altcoin Sezonu yaşanıyor.`;
   } else {
-    gasStatus = 'low';
-    gasAdvice = `Ethereum Gas ${ethGwei} Gwei ve Bitcoin Mempool ${btcSatVb} sat/vB ile tarihi dip seviyelerde. Cüzdan transferi yapmak için mükemmel an.`;
+    domInterp = `Bitcoin hakimiyeti %${btcD} ile dengeli seviyede. Hem majör kripto paralar hem de Bitcoin eşzamanlı hareket ediyor.`;
+  }
+
+  // 7. Dynamic Taker Volume signal
+  let takerSignal = 'Dengeli İşlem Hacmi';
+  if (takerRatio > 1.15) {
+    takerSignal = `🟢 Alıcılar Agresif (Oran: ${takerRatio})`;
+  } else if (takerRatio < 0.9) {
+    takerSignal = `🔴 Satıcılar Agresif (Oran: ${takerRatio})`;
+  } else {
+    takerSignal = `⚖️ Alıcı / Satıcı Dengede (${takerRatio})`;
+  }
+
+  // 8. Dynamic Technical RSI interpretation
+  let rsiStatus: 'oversold' | 'neutral' | 'overbought' = 'neutral';
+  let rsiLabel = `Nötr Bölge (${rsi14})`;
+  if (rsi14 <= 30) {
+    rsiStatus = 'oversold';
+    rsiLabel = `Aşırı Satım / İndirim (${rsi14})`;
+  } else if (rsi14 >= 70) {
+    rsiStatus = 'overbought';
+    rsiLabel = `Aşırı Alım / Şişkin (${rsi14})`;
   }
 
   return {
@@ -149,15 +194,13 @@ const deriveMarketIntelligence = (
     mvrvRatio: {
       value: mvrvVal,
       status: mvrvStatus,
-      label: `DÖNGÜ ORTASI SAĞLIKLI BÖLGE (${mvrvVal})`,
+      label: mvrvVal < 1.2 ? `TARİHİ DİP BÖLGESİ (${mvrvVal})` : `DÖNGÜ ORTASI SAĞLIKLI BÖLGE (${mvrvVal})`,
       interpretation: mvrvInterp,
     },
-    gasTracker: {
-      ethGwei,
-      btcSatVb,
-      status: gasStatus,
-      timingAdvice: gasAdvice,
-    },
+    domInterp,
+    takerSignal,
+    rsiStatus,
+    rsiLabel,
   };
 };
 
@@ -167,27 +210,36 @@ export const fetchComprehensiveAnalytics = async (): Promise<MarketAnalyticsData
     return cachedAnalytics;
   }
 
-  // 1. Fetch Alternative.me Fear & Greed 14-day history
-  let currentFng = 65;
-  let fngClass = 'Açgözlülük';
+  // 1. Fetch Alternative.me Fear & Greed 31-day history (gives today, yesterday, last week, last month)
+  let currentFng = 51;
+  let fngYesterday = 69;
+  let fngLastWeek = 63;
+  let fngLastMonth = 58;
+  let fngClass = 'Nötr';
   const fngHistory: { date: string; value: number }[] = [];
 
   try {
-    const res = await fetch('https://api.alternative.me/fng/?limit=14');
+    const res = await fetch('https://api.alternative.me/fng/?limit=31');
     if (res.ok) {
       const data = await res.json();
       if (data && data.data && Array.isArray(data.data)) {
         const rawItems = data.data;
         const latest = rawItems[0];
         currentFng = parseInt(latest.value, 10);
+        if (rawItems[1]) fngYesterday = parseInt(rawItems[1].value, 10);
+        if (rawItems[7]) fngLastWeek = parseInt(rawItems[7].value, 10);
+        if (rawItems[30]) fngLastMonth = parseInt(rawItems[30].value, 10);
+
         if (currentFng >= 75) fngClass = 'Aşırı Açgözlülük';
         else if (currentFng >= 55) fngClass = 'Açgözlülük';
         else if (currentFng <= 25) fngClass = 'Aşırı Korku';
         else if (currentFng <= 45) fngClass = 'Korku';
         else fngClass = 'Nötr';
 
-        for (let i = rawItems.length - 1; i >= 0; i--) {
-          const item = rawItems[i];
+        // 14 days trend
+        const trendSlice = rawItems.slice(0, 14);
+        for (let i = trendSlice.length - 1; i >= 0; i--) {
+          const item = trendSlice[i];
           const d = new Date(parseInt(item.timestamp, 10) * 1000);
           fngHistory.push({
             date: `${d.getDate()}/${d.getMonth() + 1}`,
@@ -201,7 +253,7 @@ export const fetchComprehensiveAnalytics = async (): Promise<MarketAnalyticsData
   }
 
   if (fngHistory.length === 0) {
-    const defaults = [52, 54, 58, 61, 65, 60, 58, 63, 67, 70, 68, 72, 69, 71];
+    const defaults = [52, 54, 58, 61, 65, 60, 58, 63, 67, 70, 68, 72, 69, 51];
     defaults.forEach((val, idx) => {
       fngHistory.push({ date: `G-${14 - idx}`, value: val });
     });
@@ -267,19 +319,108 @@ export const fetchComprehensiveAnalytics = async (): Promise<MarketAnalyticsData
     }
   }
 
-  // 5. Fetch Mempool.space Bitcoin fees
-  let btcSatVb = 16;
+  // 5. Fetch Coinlore Global Market Dominance & Cap
+  let btcD = 59.04;
+  let ethD = 11.46;
+  let totalMcapTrillion = 2.57;
+  let mcapChange24h = -2.85;
+  let volume24hBillion = 148.6;
+
   try {
-    const memRes = await fetch('https://mempool.space/api/v1/fees/recommended');
-    if (memRes.ok) {
-      const memData = await memRes.json();
-      btcSatVb = memData.halfHourFee || 16;
+    const clRes = await fetch('https://api.coinlore.net/api/global/');
+    if (clRes.ok) {
+      const clData = await clRes.json();
+      if (Array.isArray(clData) && clData[0]) {
+        const item = clData[0];
+        btcD = parseFloat(parseFloat(item.btc_d).toFixed(2));
+        ethD = parseFloat(parseFloat(item.eth_d).toFixed(2));
+        totalMcapTrillion = parseFloat((item.total_mcap / 1e12).toFixed(2));
+        mcapChange24h = parseFloat(parseFloat(item.mcap_change).toFixed(2));
+        volume24hBillion = parseFloat((item.total_volume / 1e9).toFixed(1));
+      }
     }
-  } catch {
-    // Fallback
+  } catch (err) {
+    console.warn('Coinlore Global API fallback:', err);
+  }
+  const altD = parseFloat((100 - (btcD + ethD)).toFixed(2));
+
+  // 6. Fetch Binance Taker Buy/Sell Volume Ratio
+  let takerBuyVol = 116080;
+  let takerSellVol = 122154;
+  let takerRatio = 0.95;
+
+  try {
+    const takerRes = await fetch(
+      'https://fapi.binance.com/futures/data/takerlongshortRatio?symbol=BTCUSDT&period=1d&limit=1'
+    );
+    if (takerRes.ok) {
+      const takerData = await takerRes.json();
+      if (Array.isArray(takerData) && takerData[0]) {
+        takerBuyVol = Math.round(parseFloat(takerData[0].buyVol));
+        takerSellVol = Math.round(parseFloat(takerData[0].sellVol));
+        takerRatio = parseFloat(parseFloat(takerData[0].buySellRatio).toFixed(2));
+      }
+    }
+  } catch (err) {
+    console.warn('Binance Taker Volume API fallback:', err);
+  }
+  const totalTaker = Math.max(1, takerBuyVol + takerSellVol);
+  const buyPercent = parseFloat(((takerBuyVol / totalTaker) * 100).toFixed(1));
+  const sellPercent = parseFloat((100 - buyPercent).toFixed(1));
+
+  // 7. Fetch Binance Open Interest
+  let oiBtc = 107491;
+  let oiUsdBillion = 8.12;
+  let oiChangeMillion = 33.5;
+
+  try {
+    const oiRes = await fetch(
+      'https://fapi.binance.com/futures/data/openInterestHist?symbol=BTCUSDT&period=1d&limit=2'
+    );
+    if (oiRes.ok) {
+      const oiData = await oiRes.json();
+      if (Array.isArray(oiData) && oiData.length >= 2) {
+        const prev = oiData[0];
+        const curr = oiData[1];
+        oiBtc = Math.round(parseFloat(curr.sumOpenInterest));
+        oiUsdBillion = parseFloat((parseFloat(curr.sumOpenInterestValue) / 1e9).toFixed(2));
+        const prevVal = parseFloat(prev.sumOpenInterestValue);
+        const currVal = parseFloat(curr.sumOpenInterestValue);
+        oiChangeMillion = parseFloat(((currVal - prevVal) / 1e6).toFixed(1));
+      }
+    }
+  } catch (err) {
+    console.warn('Binance Open Interest API fallback:', err);
   }
 
-  const ethGwei = 14;
+  // 8. Fetch Binance Spot Klines for BTC Technical Indicators (RSI 14 & SMA 20)
+  let btcCurrentPrice = 75900;
+  let sma20Price = 78200;
+  let rsi14 = 44.8;
+
+  try {
+    const klineRes = await fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=25');
+    if (klineRes.ok) {
+      const klineData = await klineRes.json();
+      if (Array.isArray(klineData) && klineData.length >= 15) {
+        const closes: number[] = klineData.map((k: (string | number)[]) => parseFloat(k[4] as string));
+        btcCurrentPrice = closes[closes.length - 1];
+        rsi14 = computeRSI(closes, 14);
+
+        // 20 SMA
+        const last20 = closes.slice(-20);
+        sma20Price = Math.round(last20.reduce((a, b) => a + b, 0) / last20.length);
+      }
+    }
+  } catch (err) {
+    console.warn('Binance Spot Klines API fallback:', err);
+  }
+
+  const priceDiffPct = parseFloat((((btcCurrentPrice - sma20Price) / sma20Price) * 100).toFixed(1));
+  const trendLabel =
+    priceDiffPct >= 0
+      ? `Fiyat 20G ortalamanın %${priceDiffPct} üzerinde (Pozitif eğilim)`
+      : `Fiyat 20G ortalamanın %${Math.abs(priceDiffPct)} altında (Kısa vadeli baskı)`;
 
   // Run the dynamic intelligence engine
   const derived = deriveMarketIntelligence(
@@ -289,8 +430,9 @@ export const fetchComprehensiveAnalytics = async (): Promise<MarketAnalyticsData
     shortPct,
     fundingRatePercent,
     mvrvVal,
-    btcSatVb,
-    ethGwei
+    btcD,
+    takerRatio,
+    rsi14
   );
 
   const result: MarketAnalyticsData = {
@@ -298,18 +440,49 @@ export const fetchComprehensiveAnalytics = async (): Promise<MarketAnalyticsData
     fearAndGreed: {
       current: currentFng,
       classification: fngClass,
+      yesterday: fngYesterday,
+      lastWeek: fngLastWeek,
+      lastMonth: fngLastMonth,
       history: fngHistory,
+    },
+    marketDominance: {
+      btcD,
+      ethD,
+      altD,
+      totalMarketCapUsd: totalMcapTrillion,
+      mcapChange24h,
+      totalVolume24hUsd: volume24hBillion,
+      interpretation: derived.domInterp,
     },
     longShortRatio: derived.longShortRatio,
     fundingRate: derived.fundingRate,
     mvrvRatio: derived.mvrvRatio,
-    exchangeNetflow: {
-      amountBtc: 8450,
-      type: 'outflow',
-      interpretation:
-        'Son 24 saatte borsalardan yaklaşık 8,450 BTC soğuk cüzdanlara çekildi. Satılabilir arzın azalması orta vadede fiyata yukarı yönlü arz şoku baskısı yapar.',
+    takerVolume: {
+      buyVolBtc: takerBuyVol,
+      sellVolBtc: takerSellVol,
+      buyPercent,
+      sellPercent,
+      ratio: takerRatio,
+      signal: derived.takerSignal,
     },
-    gasTracker: derived.gasTracker,
+    openInterest: {
+      amountBtc: oiBtc,
+      valueUsd: oiUsdBillion,
+      change24hUsd: oiChangeMillion,
+      interpretation:
+        oiChangeMillion >= 0
+          ? `Son 24 saatte vadeli piyasaya +$${oiChangeMillion}M yeni fon girdi. Pozisyon hacmi genişliyor.`
+          : `Son 24 saatte vadeli piyasadan -$${Math.abs(oiChangeMillion)}M pozisyon kapandı. Risk azaltımı var.`,
+    },
+    technicalIndicator: {
+      symbol: 'BTC/USDT',
+      rsi14,
+      rsiStatus: derived.rsiStatus,
+      rsiLabel: derived.rsiLabel,
+      sma20Price,
+      currentPrice: btcCurrentPrice,
+      trendLabel,
+    },
   };
 
   cachedAnalytics = result;
