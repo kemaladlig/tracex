@@ -58,11 +58,11 @@ export const MarketItem: React.FC<MarketItemProps> = ({
     if (ticker?.price && prevPriceRef.current !== undefined) {
       if (ticker.price > prevPriceRef.current) {
         setFlashClass('flash-up font-black');
-        const timer = setTimeout(() => setFlashClass(''), 700);
+        const timer = setTimeout(() => setFlashClass(''), 650);
         return () => clearTimeout(timer);
       } else if (ticker.price < prevPriceRef.current) {
         setFlashClass('flash-down font-black');
-        const timer = setTimeout(() => setFlashClass(''), 700);
+        const timer = setTimeout(() => setFlashClass(''), 650);
         return () => clearTimeout(timer);
       }
     }

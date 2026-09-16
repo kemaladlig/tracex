@@ -63,11 +63,11 @@ export const MarketList: React.FC = () => {
     }
 
     setIsLoadingCategory(true);
-    getCategoryCoins(category, 25).then((coins) => {
+    getCategoryCoins(category).then((coins) => {
       setCategoryCoins(coins);
       setIsLoadingCategory(false);
 
-      // Subscribe live WebSocket stream to these 25 symbols
+      // Subscribe live WebSocket stream to these symbols
       const symbols = coins.map((c) => c.symbol);
       setActiveMarketSymbols(symbols);
 
@@ -86,28 +86,22 @@ export const MarketList: React.FC = () => {
   const displaySymbols = useMemo(() => {
     const query = searchQuery.toLowerCase().trim();
 
-    // 1. Determine base symbol candidates
+    // 1. Determine base symbol candidates (Search is ALWAYS global across all pairs)
     let baseSymbols: string[] = [];
 
-    if (category === 'favorites') {
+    if (query) {
+      const filtered = allMarketCoins
+        .filter(
+          (c) =>
+            c.symbol.toLowerCase().includes(query) ||
+            c.baseAsset.toLowerCase().includes(query)
+        )
+        .slice(0, 25);
+      baseSymbols = filtered.map((c) => c.symbol);
+    } else if (category === 'favorites') {
       baseSymbols = watchlist;
-      if (query) {
-        baseSymbols = baseSymbols.filter((sym) => sym.toLowerCase().includes(query));
-      }
     } else {
-      if (query) {
-        // Global search across all pairs if searching
-        const filtered = allMarketCoins
-          .filter(
-            (c) =>
-              c.symbol.toLowerCase().includes(query) ||
-              c.baseAsset.toLowerCase().includes(query)
-          )
-          .slice(0, 25);
-        baseSymbols = filtered.map((c) => c.symbol);
-      } else {
-        baseSymbols = categoryCoins.map((c) => c.symbol);
-      }
+      baseSymbols = categoryCoins.map((c) => c.symbol);
     }
 
     // 2. Sorting
@@ -224,7 +218,7 @@ export const MarketList: React.FC = () => {
           <Search className="absolute left-3 w-4 h-4 text-stone-500" />
           <input
             type="text"
-            placeholder={category === 'favorites' ? 'Favorilerde ara...' : 'Coin veya sembol ara...'}
+            placeholder="Tüm piyasada coin veya sembol ara..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-9 pr-3 py-2 bg-white border-2 border-stone-900 rounded-md text-stone-900 text-xs font-mono placeholder-stone-400 shadow-hard-sm focus:outline-none focus:bg-stone-50"
@@ -318,7 +312,12 @@ export const MarketList: React.FC = () => {
         style={{ '--stagger-idx': 4 } as React.CSSProperties}
       >
         <div className="flex items-center gap-1.5 text-xs font-mono font-black text-stone-900 uppercase tracking-wider">
-          {category === 'favorites' ? (
+          {searchQuery.trim() ? (
+            <>
+              <Search className="w-3.5 h-3.5 text-amber-600" />
+              <span>ARAMA SONUÇLARI ({displaySymbols.length})</span>
+            </>
+          ) : category === 'favorites' ? (
             <>
               <BookmarkCheck className="w-3.5 h-3.5" />
               <span>FAVORİLERİM ({displaySymbols.length})</span>
@@ -327,7 +326,7 @@ export const MarketList: React.FC = () => {
             <>
               <Compass className="w-3.5 h-3.5 text-amber-600" />
               <span>
-                {currentTabInfo?.label} // İLK 25 ({displaySymbols.length})
+                {currentTabInfo?.label} ({displaySymbols.length})
               </span>
             </>
           )}

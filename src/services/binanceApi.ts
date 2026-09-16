@@ -136,21 +136,22 @@ export const CATEGORY_TAGS: Record<Exclude<MarketCategory, 'favorites' | 'all'>,
 };
 
 /**
- * Get top coins for a specific category (default limit 25), sorted by 24h quote volume
+ * Get top coins for a specific category (25 for all, 12 for other groups), sorted by 24h quote volume
  */
 export const getCategoryCoins = async (
   category: MarketCategory,
-  limit: number = 25
+  limit?: number
 ): Promise<CoinSearchResult[]> => {
   const allCoins = await fetchAllUsdtPairs();
+  const maxLimit = limit ?? (category === 'all' ? 25 : 12);
 
   if (category === 'all' || category === 'favorites') {
-    return allCoins.slice(0, limit);
+    return allCoins.slice(0, maxLimit);
   }
 
   const categorySymbols = CATEGORY_TAGS[category] || [];
   const filtered = allCoins.filter((coin) => categorySymbols.includes(coin.baseAsset));
 
-  return filtered.slice(0, limit);
+  return filtered.slice(0, maxLimit);
 };
 

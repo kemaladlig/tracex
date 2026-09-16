@@ -35,14 +35,14 @@ export const useBinanceWebSocket = () => {
 
     let isDestroyed = false;
 
-    // Flush buffered ticker messages every 120ms (8.3 fps instead of 50 fps) to optimize CPU/battery
+    // Flush buffered ticker messages every 1000ms (1 second) for calm readability, smooth color transitions and battery efficiency
     flushIntervalRef.current = window.setInterval(() => {
       if (tickerBufferRef.current.size > 0) {
         const batch = Array.from(tickerBufferRef.current.values());
         tickerBufferRef.current.clear();
         updateTickersBatch(batch);
       }
-    }, 120);
+    }, 1000);
 
     const connect = () => {
       if (isDestroyed) return;
