@@ -26,7 +26,7 @@ export const App: React.FC = () => {
   const handlePullRefresh = async () => {
     if (activeTab === 'analytics') {
       try {
-        const fresh = await fetchComprehensiveAnalytics();
+        const fresh = await fetchComprehensiveAnalytics(true);
         setAnalyticsData(fresh);
       } catch (err) {
         console.warn('Refresh error:', err);

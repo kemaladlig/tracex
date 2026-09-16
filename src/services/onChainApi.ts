@@ -2,11 +2,41 @@ import type { MarketAnalyticsData } from '../types/crypto';
 
 let cachedAnalytics: MarketAnalyticsData | null = null;
 let cacheTimestamp = 0;
-const CACHE_DURATION_MS = 60 * 1000; // 1 minute cache
+const DERIVATIVES_MEM_CACHE_MS = 3 * 60 * 1000; // 3 mins memory cache for live futures flow
+const MACRO_FNG_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours for Fear & Greed Index (updates only once daily at 00:00 UTC)
+const MACRO_MVRV_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours for On-Chain Bitcoin MVRV (daily calculation)
+const MACRO_DOMINANCE_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours for Global Market Dominance & Cap
 
-let cachedMvrv: number = 1.48;
-let lastMvrvFetchTime = 0;
-const MVRV_CACHE_MS = 30 * 60 * 1000; // 30 mins macro cache to respect rate limits
+interface StorageCacheItem<T> {
+  data: T;
+  timestamp: number;
+}
+
+function getStorageCache<T>(key: string, maxAgeMs: number): T | null {
+  try {
+    const raw = localStorage.getItem(`tracex_macro_${key}`);
+    if (!raw) return null;
+    const item: StorageCacheItem<T> = JSON.parse(raw);
+    if (Date.now() - item.timestamp < maxAgeMs) {
+      return item.data;
+    }
+  } catch {
+    // fallback if private browsing or corrupted
+  }
+  return null;
+}
+
+function setStorageCache<T>(key: string, data: T): void {
+  try {
+    const item: StorageCacheItem<T> = {
+      data,
+      timestamp: Date.now(),
+    };
+    localStorage.setItem(`tracex_macro_${key}`, JSON.stringify(item));
+  } catch {
+    // quota exceeded or no-op
+  }
+}
 
 /**
  * Standard Wilder's RSI calculation from candle closes
@@ -204,62 +234,99 @@ const deriveMarketIntelligence = (
   };
 };
 
-export const fetchComprehensiveAnalytics = async (): Promise<MarketAnalyticsData> => {
+interface CachedFngPayload {
+  currentFng: number;
+  fngYesterday: number;
+  fngLastWeek: number;
+  fngLastMonth: number;
+  fngClass: string;
+  fngHistory: { date: string; value: number }[];
+}
+
+interface CachedDominancePayload {
+  btcD: number;
+  ethD: number;
+  altD: number;
+  totalMcapTrillion: number;
+  mcapChange24h: number;
+  volume24hBillion: number;
+}
+
+export const fetchComprehensiveAnalytics = async (forceFresh: boolean = false): Promise<MarketAnalyticsData> => {
   const now = Date.now();
-  if (cachedAnalytics && now - cacheTimestamp < CACHE_DURATION_MS) {
+  if (!forceFresh && cachedAnalytics && now - cacheTimestamp < DERIVATIVES_MEM_CACHE_MS) {
     return cachedAnalytics;
   }
 
-  // 1. Fetch Alternative.me Fear & Greed 31-day history (gives today, yesterday, last week, last month)
+  // 1. Fetch Alternative.me Fear & Greed (12-hour macro cache in localStorage)
   let currentFng = 51;
   let fngYesterday = 69;
   let fngLastWeek = 63;
   let fngLastMonth = 58;
   let fngClass = 'Nötr';
-  const fngHistory: { date: string; value: number }[] = [];
+  let fngHistory: { date: string; value: number }[] = [];
 
-  try {
-    const res = await fetch('https://api.alternative.me/fng/?limit=31');
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data.data && Array.isArray(data.data)) {
-        const rawItems = data.data;
-        const latest = rawItems[0];
-        currentFng = parseInt(latest.value, 10);
-        if (rawItems[1]) fngYesterday = parseInt(rawItems[1].value, 10);
-        if (rawItems[7]) fngLastWeek = parseInt(rawItems[7].value, 10);
-        if (rawItems[30]) fngLastMonth = parseInt(rawItems[30].value, 10);
+  const storedFng = !forceFresh ? getStorageCache<CachedFngPayload>('fng', MACRO_FNG_TTL_MS) : null;
+  if (storedFng) {
+    currentFng = storedFng.currentFng;
+    fngYesterday = storedFng.fngYesterday;
+    fngLastWeek = storedFng.fngLastWeek;
+    fngLastMonth = storedFng.fngLastMonth;
+    fngClass = storedFng.fngClass;
+    fngHistory = storedFng.fngHistory;
+  } else {
+    try {
+      const res = await fetch('https://api.alternative.me/fng/?limit=31');
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.data && Array.isArray(data.data)) {
+          const rawItems = data.data;
+          const latest = rawItems[0];
+          currentFng = parseInt(latest.value, 10);
+          if (rawItems[1]) fngYesterday = parseInt(rawItems[1].value, 10);
+          if (rawItems[7]) fngLastWeek = parseInt(rawItems[7].value, 10);
+          if (rawItems[30]) fngLastMonth = parseInt(rawItems[30].value, 10);
 
-        if (currentFng >= 75) fngClass = 'Aşırı Açgözlülük';
-        else if (currentFng >= 55) fngClass = 'Açgözlülük';
-        else if (currentFng <= 25) fngClass = 'Aşırı Korku';
-        else if (currentFng <= 45) fngClass = 'Korku';
-        else fngClass = 'Nötr';
+          if (currentFng >= 75) fngClass = 'Aşırı Açgözlülük';
+          else if (currentFng >= 55) fngClass = 'Açgözlülük';
+          else if (currentFng <= 25) fngClass = 'Aşırı Korku';
+          else if (currentFng <= 45) fngClass = 'Korku';
+          else fngClass = 'Nötr';
 
-        // 14 days trend
-        const trendSlice = rawItems.slice(0, 14);
-        for (let i = trendSlice.length - 1; i >= 0; i--) {
-          const item = trendSlice[i];
-          const d = new Date(parseInt(item.timestamp, 10) * 1000);
-          fngHistory.push({
-            date: `${d.getDate()}/${d.getMonth() + 1}`,
-            value: parseInt(item.value, 10),
+          // 14 days trend
+          const trendSlice = rawItems.slice(0, 14);
+          for (let i = trendSlice.length - 1; i >= 0; i--) {
+            const item = trendSlice[i];
+            const d = new Date(parseInt(item.timestamp, 10) * 1000);
+            fngHistory.push({
+              date: `${d.getDate()}/${d.getMonth() + 1}`,
+              value: parseInt(item.value, 10),
+            });
+          }
+
+          setStorageCache<CachedFngPayload>('fng', {
+            currentFng,
+            fngYesterday,
+            fngLastWeek,
+            fngLastMonth,
+            fngClass,
+            fngHistory,
           });
         }
       }
+    } catch (err) {
+      console.warn('Alternative.me API fallback:', err);
     }
-  } catch (err) {
-    console.warn('Alternative.me API fallback:', err);
+
+    if (fngHistory.length === 0) {
+      const defaults = [52, 54, 58, 61, 65, 60, 58, 63, 67, 70, 68, 72, 69, 51];
+      defaults.forEach((val, idx) => {
+        fngHistory.push({ date: `G-${14 - idx}`, value: val });
+      });
+    }
   }
 
-  if (fngHistory.length === 0) {
-    const defaults = [52, 54, 58, 61, 65, 60, 58, 63, 67, 70, 68, 72, 69, 51];
-    defaults.forEach((val, idx) => {
-      fngHistory.push({ date: `G-${14 - idx}`, value: val });
-    });
-  }
-
-  // 2. Fetch Binance Global Long/Short Ratio
+  // 2. Fetch Binance Global Long/Short Ratio (Dynamic futures flow)
   let longPct = 63.8;
   let shortPct = 36.2;
   let lsRatio = 1.76;
@@ -280,7 +347,7 @@ export const fetchComprehensiveAnalytics = async (): Promise<MarketAnalyticsData
     console.warn('Binance Long/Short API fallback:', err);
   }
 
-  // 3. Fetch Binance Funding Rate
+  // 3. Fetch Binance Funding Rate (Dynamic futures flow)
   let fundingRatePercent = 0.0058;
   try {
     const fundRes = await fetch('https://fapi.binance.com/fapi/v1/fundingRate?symbol=BTCUSDT&limit=1');
@@ -294,9 +361,10 @@ export const fetchComprehensiveAnalytics = async (): Promise<MarketAnalyticsData
     console.warn('Binance Funding Rate API fallback:', err);
   }
 
-  // 4. Fetch Bitcoin MVRV (Market Value to Realized Value)
-  let mvrvVal = cachedMvrv;
-  if (now - lastMvrvFetchTime > MVRV_CACHE_MS) {
+  // 4. Fetch Bitcoin MVRV (12-hour macro cache in localStorage)
+  let mvrvVal = !forceFresh ? getStorageCache<number>('mvrv', MACRO_MVRV_TTL_MS) : null;
+  if (mvrvVal === null) {
+    mvrvVal = 1.48; // Baseline fallback
     try {
       const mvrvUrl =
         typeof window !== 'undefined' && window.location.hostname === 'localhost'
@@ -309,8 +377,7 @@ export const fetchComprehensiveAnalytics = async (): Promise<MarketAnalyticsData
           const latestPoint = mvrvData[mvrvData.length - 1];
           if (latestPoint && typeof latestPoint.mvrv === 'number') {
             mvrvVal = parseFloat(latestPoint.mvrv.toFixed(2));
-            cachedMvrv = mvrvVal;
-            lastMvrvFetchTime = now;
+            setStorageCache<number>('mvrv', mvrvVal);
           }
         }
       }
@@ -319,30 +386,50 @@ export const fetchComprehensiveAnalytics = async (): Promise<MarketAnalyticsData
     }
   }
 
-  // 5. Fetch Coinlore Global Market Dominance & Cap
+  // 5. Fetch Coinlore Global Market Dominance & Cap (2-hour macro cache in localStorage)
   let btcD = 59.04;
   let ethD = 11.46;
+  let altD = 29.50;
   let totalMcapTrillion = 2.57;
   let mcapChange24h = -2.85;
   let volume24hBillion = 148.6;
 
-  try {
-    const clRes = await fetch('https://api.coinlore.net/api/global/');
-    if (clRes.ok) {
-      const clData = await clRes.json();
-      if (Array.isArray(clData) && clData[0]) {
-        const item = clData[0];
-        btcD = parseFloat(parseFloat(item.btc_d).toFixed(2));
-        ethD = parseFloat(parseFloat(item.eth_d).toFixed(2));
-        totalMcapTrillion = parseFloat((item.total_mcap / 1e12).toFixed(2));
-        mcapChange24h = parseFloat(parseFloat(item.mcap_change).toFixed(2));
-        volume24hBillion = parseFloat((item.total_volume / 1e9).toFixed(1));
+  const storedDom = !forceFresh ? getStorageCache<CachedDominancePayload>('dominance', MACRO_DOMINANCE_TTL_MS) : null;
+  if (storedDom) {
+    btcD = storedDom.btcD;
+    ethD = storedDom.ethD;
+    altD = storedDom.altD;
+    totalMcapTrillion = storedDom.totalMcapTrillion;
+    mcapChange24h = storedDom.mcapChange24h;
+    volume24hBillion = storedDom.volume24hBillion;
+  } else {
+    try {
+      const clRes = await fetch('https://api.coinlore.net/api/global/');
+      if (clRes.ok) {
+        const clData = await clRes.json();
+        if (Array.isArray(clData) && clData[0]) {
+          const item = clData[0];
+          btcD = parseFloat(parseFloat(item.btc_d).toFixed(2));
+          ethD = parseFloat(parseFloat(item.eth_d).toFixed(2));
+          altD = parseFloat((100 - (btcD + ethD)).toFixed(2));
+          totalMcapTrillion = parseFloat((item.total_mcap / 1e12).toFixed(2));
+          mcapChange24h = parseFloat(parseFloat(item.mcap_change).toFixed(2));
+          volume24hBillion = parseFloat((item.total_volume / 1e9).toFixed(1));
+
+          setStorageCache<CachedDominancePayload>('dominance', {
+            btcD,
+            ethD,
+            altD,
+            totalMcapTrillion,
+            mcapChange24h,
+            volume24hBillion,
+          });
+        }
       }
+    } catch (err) {
+      console.warn('Coinlore Global API fallback:', err);
     }
-  } catch (err) {
-    console.warn('Coinlore Global API fallback:', err);
   }
-  const altD = parseFloat((100 - (btcD + ethD)).toFixed(2));
 
   // 6. Fetch Binance Taker Buy/Sell Volume Ratio
   let takerBuyVol = 116080;
