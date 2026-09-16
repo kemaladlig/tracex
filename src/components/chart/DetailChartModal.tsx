@@ -298,8 +298,8 @@ export const DetailChartModal: React.FC = () => {
 
     resizeObserver.observe(container);
 
-    // Fetch historical klines
-    fetchHistoricalKlines(selectedSymbol, interval, 120)
+    // Fetch historical klines (500 candles for deep historical panning)
+    fetchHistoricalKlines(selectedSymbol, interval, 500)
       .then((data) => {
         if (isCancelled) return;
         if (data.length === 0) {
