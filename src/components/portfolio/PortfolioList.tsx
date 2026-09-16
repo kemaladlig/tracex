@@ -1,19 +1,23 @@
 import React, { useState, useMemo } from 'react';
 import { ArrowUpDown, Coins, Plus } from 'lucide-react';
+import type { PortfolioAsset } from '../../types/crypto';
 import { useCryptoStore } from '../../store/useCryptoStore';
 import { PortfolioSummary } from './PortfolioSummary';
 import { PortfolioItem } from './PortfolioItem';
 import { AddAssetModal } from './AddAssetModal';
+import { SellAssetModal } from './SellAssetModal';
 
 type SortOption = 'value' | 'pnl' | 'name';
 
 export const PortfolioList: React.FC = () => {
   const portfolio = useCryptoStore((state) => state.portfolio);
   const tickers = useCryptoStore((state) => state.tickers);
+
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [selectedSymbolForBuy, setSelectedSymbolForBuy] = useState<string>('');
+  const [assetToSell, setAssetToSell] = useState<PortfolioAsset | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>('value');
 
-  // Sorted assets
   const sortedPortfolio = useMemo(() => {
     const list = [...portfolio];
     if (sortBy === 'name') {
@@ -36,31 +40,41 @@ export const PortfolioList: React.FC = () => {
     return list;
   }, [portfolio, tickers, sortBy]);
 
+  const handleBuyMore = (symbol: string) => {
+    setSelectedSymbolForBuy(symbol);
+    setIsAddModalOpen(true);
+  };
+
+  const handleOpenAdd = () => {
+    setSelectedSymbolForBuy('');
+    setIsAddModalOpen(true);
+  };
+
   return (
-    <div className="flex flex-col pb-24 px-4 max-w-lg mx-auto w-full">
+    <div className="flex flex-col pb-28 px-4 max-w-lg mx-auto w-full font-mono">
       {/* Portfolio Top PnL Summary */}
-      <div className="mt-3.5">
-        <PortfolioSummary onAddClick={() => setIsAddModalOpen(true)} />
+      <div className="mt-3">
+        <PortfolioSummary onAddClick={handleOpenAdd} />
       </div>
 
       {/* Assets List Section Header & Sorter */}
       <div className="flex items-center justify-between px-1 mb-2.5">
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-          <Coins className="w-3.5 h-3.5 text-indigo-400" />
-          <span>Varlıklarım ({portfolio.length})</span>
+        <div className="flex items-center gap-1.5 text-xs font-black text-stone-900 uppercase tracking-wider">
+          <Coins className="w-3.5 h-3.5" />
+          <span>VARLIKLARIM ({portfolio.length})</span>
         </div>
 
         {portfolio.length > 1 && (
-          <div className="flex items-center gap-1">
-            <ArrowUpDown className="w-3 h-3 text-slate-500" />
+          <div className="flex items-center gap-1 bg-white border-2 border-stone-900 px-2 py-0.5 rounded shadow-hard-sm">
+            <ArrowUpDown className="w-3 h-3 text-stone-600" />
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as SortOption)}
-              className="bg-slate-900 border border-slate-800 text-[11px] text-slate-300 rounded-lg px-1.5 py-0.5 focus:outline-none focus:border-indigo-500"
+              className="bg-transparent text-[10px] font-bold text-stone-900 focus:outline-none cursor-pointer"
             >
-              <option value="value">Değere Göre</option>
-              <option value="pnl">Kâr/Zarara Göre</option>
-              <option value="name">İsme Göre</option>
+              <option value="value">DEĞERE GÖRE</option>
+              <option value="pnl">K/Z GÖRE</option>
+              <option value="name">İSME GÖRE</option>
             </select>
           </div>
         )}
@@ -70,23 +84,28 @@ export const PortfolioList: React.FC = () => {
       {sortedPortfolio.length > 0 ? (
         <div className="flex flex-col">
           {sortedPortfolio.map((asset) => (
-            <PortfolioItem key={asset.id} asset={asset} />
+            <PortfolioItem
+              key={asset.id}
+              asset={asset}
+              onBuyMoreClick={handleBuyMore}
+              onSellClick={(item) => setAssetToSell(item)}
+            />
           ))}
         </div>
       ) : (
-        <div className="text-center py-12 px-4 rounded-2xl bg-slate-900/40 border border-slate-800/60 mt-2">
-          <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center mx-auto mb-3">
-            <Coins className="w-6 h-6" />
+        <div className="text-center py-10 px-4 rounded-lg bg-white border-2 border-dashed border-stone-900/60 shadow-hard-sm mt-2">
+          <div className="w-12 h-12 rounded-md bg-amber-200 border-2 border-stone-900 text-stone-900 flex items-center justify-center mx-auto mb-3 shadow-hard-sm">
+            <Coins className="w-6 h-6 stroke-[2.5]" />
           </div>
-          <h3 className="text-sm font-bold text-white mb-1">Henüz Varlık Eklenmedi</h3>
-          <p className="text-xs text-slate-400 mb-4 max-w-xs mx-auto">
-            Portföyünüzü ve anlık kâr/zarar durumunuzu takip etmek için ilk kripto varlığınızı ekleyin.
+          <h3 className="text-sm font-black text-stone-900 mb-1">HENÜZ VARLIK BULUNMUYOR</h3>
+          <p className="text-xs text-stone-600 mb-4 max-w-xs mx-auto">
+            Portföyünüzü ve anlık kâr/zarar durumunuzu takip etmek için ilk varlığınızı ekleyin.
           </p>
           <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-indigo-600/30 transition active:scale-95"
+            onClick={handleOpenAdd}
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-300 border-2 border-stone-900 text-stone-900 text-xs font-black rounded shadow-hard-sm btn-hard cursor-pointer"
           >
-            <Plus className="w-4 h-4" /> Varlık Ekle
+            <Plus className="w-4 h-4 stroke-[3]" /> Varlık Ekle
           </button>
         </div>
       )}
@@ -94,7 +113,18 @@ export const PortfolioList: React.FC = () => {
       {/* Add Modal */}
       <AddAssetModal
         isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
+        initialSymbol={selectedSymbolForBuy}
+        onClose={() => {
+          setIsAddModalOpen(false);
+          setSelectedSymbolForBuy('');
+        }}
+      />
+
+      {/* Sell Modal */}
+      <SellAssetModal
+        asset={assetToSell}
+        isOpen={!!assetToSell}
+        onClose={() => setAssetToSell(null)}
       />
     </div>
   );

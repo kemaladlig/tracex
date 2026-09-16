@@ -1,30 +1,40 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { ConnectionStatus, PortfolioAsset, TabType, TickerData } from '../types/crypto';
+import type { ConnectionStatus, Currency, OnChainMetrics, PortfolioAsset, TabType, TickerData } from '../types/crypto';
 
 interface CryptoState {
   // Watchlist & Portfolio (Persisted)
   watchlist: string[];
   portfolio: PortfolioAsset[];
+  hideBalances: boolean;
+  realizedPnL: number;
+  currency: Currency;
   
   // Realtime Data (Memory only)
   tickers: Record<string, TickerData>;
+  tryRate: number;
+  eurRate: number;
+  onChainData: OnChainMetrics | null;
   activeTab: TabType;
   selectedCoinForChart: string | null;
   connectionStatus: ConnectionStatus;
 
   // Actions
+  setCurrency: (c: Currency) => void;
+  setOnChainData: (data: OnChainMetrics) => void;
   addToWatchlist: (symbol: string) => void;
   removeFromWatchlist: (symbol: string) => void;
   addPortfolioAsset: (asset: Omit<PortfolioAsset, 'id' | 'timestamp'>) => void;
+  sellPortfolioAsset: (id: string, sellAmount: number, sellPrice: number) => { pnl: number; success: boolean };
   removePortfolioAsset: (id: string) => void;
   updateTicker: (data: Partial<TickerData> & { symbol: string; price: number }) => void;
   setActiveTab: (tab: TabType) => void;
   setSelectedCoinForChart: (symbol: string | null) => void;
   setConnectionStatus: (status: ConnectionStatus) => void;
+  toggleHideBalances: () => void;
 }
 
-const DEFAULT_WATCHLIST = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT'];
+const DEFAULT_WATCHLIST = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'USDTTRY'];
 
 export const useCryptoStore = create<CryptoState>()(
   persist(
@@ -46,10 +56,20 @@ export const useCryptoStore = create<CryptoState>()(
           timestamp: Date.now() - 86400000 * 3,
         },
       ],
+      hideBalances: false,
+      realizedPnL: 0,
+      currency: 'USD',
       tickers: {},
+      tryRate: 38.65,
+      eurRate: 1.08,
+      onChainData: null,
       activeTab: 'markets',
       selectedCoinForChart: null,
       connectionStatus: 'connecting',
+
+      setCurrency: (currency) => set({ currency }),
+      setOnChainData: (onChainData) => set({ onChainData }),
+      toggleHideBalances: () => set((state) => ({ hideBalances: !state.hideBalances })),
 
       addToWatchlist: (rawSymbol: string) => {
         const symbol = rawSymbol.trim().toUpperCase();
@@ -66,25 +86,72 @@ export const useCryptoStore = create<CryptoState>()(
       },
 
       addPortfolioAsset: (assetData) => {
-        const newAsset: PortfolioAsset = {
-          ...assetData,
-          id: `asset-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-          symbol: assetData.symbol.trim().toUpperCase(),
-          timestamp: Date.now(),
-        };
-
-        // Also ensure it is in the watchlist for live stream
+        const cleanSymbol = assetData.symbol.trim().toUpperCase();
+        const currentPortfolio = get().portfolio;
         const currentWatchlist = get().watchlist;
-        if (!currentWatchlist.includes(newAsset.symbol)) {
-          set((state) => ({
-            watchlist: [...state.watchlist, newAsset.symbol],
-            portfolio: [newAsset, ...state.portfolio],
-          }));
+
+        const existingIndex = currentPortfolio.findIndex((p) => p.symbol === cleanSymbol);
+
+        let updatedPortfolio: PortfolioAsset[];
+        if (existingIndex > -1) {
+          const existing = currentPortfolio[existingIndex];
+          const totalAmount = existing.amount + assetData.amount;
+          const weightedBuyPrice =
+            (existing.amount * existing.buyPrice + assetData.amount * assetData.buyPrice) / totalAmount;
+
+          const updatedAsset: PortfolioAsset = {
+            ...existing,
+            amount: totalAmount,
+            buyPrice: weightedBuyPrice,
+            timestamp: Date.now(),
+          };
+
+          updatedPortfolio = [...currentPortfolio];
+          updatedPortfolio[existingIndex] = updatedAsset;
         } else {
-          set((state) => ({
-            portfolio: [newAsset, ...state.portfolio],
-          }));
+          const newAsset: PortfolioAsset = {
+            ...assetData,
+            id: `asset-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+            symbol: cleanSymbol,
+            timestamp: Date.now(),
+          };
+          updatedPortfolio = [newAsset, ...currentPortfolio];
         }
+
+        if (!currentWatchlist.includes(cleanSymbol)) {
+          set({
+            watchlist: [...currentWatchlist, cleanSymbol],
+            portfolio: updatedPortfolio,
+          });
+        } else {
+          set({ portfolio: updatedPortfolio });
+        }
+      },
+
+      sellPortfolioAsset: (id, sellAmount, sellPrice) => {
+        const currentPortfolio = get().portfolio;
+        const asset = currentPortfolio.find((p) => p.id === id);
+        if (!asset || sellAmount <= 0) return { pnl: 0, success: false };
+
+        const actualSellAmount = Math.min(sellAmount, asset.amount);
+        const pnl = actualSellAmount * (sellPrice - asset.buyPrice);
+        const remainingAmount = asset.amount - actualSellAmount;
+
+        let updatedPortfolio: PortfolioAsset[];
+        if (remainingAmount <= 0.00000001) {
+          updatedPortfolio = currentPortfolio.filter((p) => p.id !== id);
+        } else {
+          updatedPortfolio = currentPortfolio.map((p) =>
+            p.id === id ? { ...p, amount: remainingAmount } : p
+          );
+        }
+
+        set((state) => ({
+          portfolio: updatedPortfolio,
+          realizedPnL: state.realizedPnL + pnl,
+        }));
+
+        return { pnl, success: true };
       },
 
       removePortfolioAsset: (id: string) => {
@@ -117,11 +184,22 @@ export const useCryptoStore = create<CryptoState>()(
             lastUpdated: Date.now(),
           };
 
+          // If this is USDTTRY or EURUSDT, update fiat rates
+          let tryRate = state.tryRate;
+          let eurRate = state.eurRate;
+          if (incoming.symbol === 'USDTTRY') {
+            tryRate = incoming.price;
+          } else if (incoming.symbol === 'EURUSDT') {
+            eurRate = incoming.price;
+          }
+
           return {
             tickers: {
               ...state.tickers,
               [incoming.symbol]: updated,
             },
+            tryRate,
+            eurRate,
           };
         });
       },
@@ -131,12 +209,14 @@ export const useCryptoStore = create<CryptoState>()(
       setConnectionStatus: (status) => set({ connectionStatus: status }),
     }),
     {
-      name: 'tracex-storage-v1',
+      name: 'tracex-storage-v3',
       storage: createJSONStorage(() => localStorage),
-      // Only persist watchlist and portfolio, keep realtime tickers in memory
       partialize: (state) => ({
         watchlist: state.watchlist,
         portfolio: state.portfolio,
+        hideBalances: state.hideBalances,
+        realizedPnL: state.realizedPnL,
+        currency: state.currency,
       }),
     }
   )

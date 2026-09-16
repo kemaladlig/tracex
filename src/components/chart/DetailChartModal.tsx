@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useTransition } from 'react';
 import { createChart, ColorType, CandlestickSeries, AreaSeries } from 'lightweight-charts';
 import type { IChartApi, ISeriesApi, CandlestickData, AreaData, UTCTimestamp } from 'lightweight-charts';
-import { X, TrendingUp, TrendingDown, Clock, BarChart2, LineChart } from 'lucide-react';
+import { X, ArrowUpRight, ArrowDownRight, Clock, BarChart2, LineChart } from 'lucide-react';
 import { useCryptoStore } from '../../store/useCryptoStore';
 import { fetchHistoricalKlines } from '../../services/binanceApi';
 import { cleanSymbol, formatCurrency, formatPercentage } from '../../utils/formatters';
@@ -25,7 +25,6 @@ export const DetailChartModal: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Hovered bar state for detailed OHLC display
   const [hoveredData, setHoveredData] = useState<{
     open: number;
     high: number;
@@ -42,7 +41,6 @@ export const DetailChartModal: React.FC = () => {
 
   const [, startTransition] = useTransition();
 
-  // Load chart & historical klines when symbol, interval, or chart type changes
   useEffect(() => {
     if (!selectedSymbol || !chartContainerRef.current) return;
 
@@ -54,24 +52,25 @@ export const DetailChartModal: React.FC = () => {
     const container = chartContainerRef.current;
     container.innerHTML = '';
 
+    // Technical Blueprint / Paper styled chart
     const chart = createChart(container, {
       layout: {
-        background: { type: ColorType.Solid, color: '#0b0e14' },
-        textColor: '#94a3b8',
+        background: { type: ColorType.Solid, color: '#faf7f0' },
+        textColor: '#1c1917',
       },
       grid: {
-        vertLines: { color: 'rgba(30, 41, 59, 0.35)' },
-        horzLines: { color: 'rgba(30, 41, 59, 0.35)' },
+        vertLines: { color: 'rgba(28, 25, 23, 0.08)' },
+        horzLines: { color: 'rgba(28, 25, 23, 0.08)' },
       },
       crosshair: {
         mode: 1,
       },
       rightPriceScale: {
-        borderColor: '#1e293b',
+        borderColor: '#1c1917',
         autoScale: true,
       },
       timeScale: {
-        borderColor: '#1e293b',
+        borderColor: '#1c1917',
         timeVisible: true,
         secondsVisible: false,
       },
@@ -89,21 +88,23 @@ export const DetailChartModal: React.FC = () => {
       try {
         if (typeof chart.addSeries === 'function' && CandlestickSeries) {
           candleSeries = chart.addSeries(CandlestickSeries, {
-            upColor: '#10b981',
-            downColor: '#ef4444',
-            borderVisible: false,
-            wickUpColor: '#10b981',
-            wickDownColor: '#ef4444',
+            upColor: '#16a34a',
+            downColor: '#dc2626',
+            borderVisible: true,
+            borderColor: '#1c1917',
+            wickUpColor: '#16a34a',
+            wickDownColor: '#dc2626',
           });
         } else {
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-expect-error fallback
           candleSeries = chart.addCandlestickSeries({
-            upColor: '#10b981',
-            downColor: '#ef4444',
-            borderVisible: false,
-            wickUpColor: '#10b981',
-            wickDownColor: '#ef4444',
+            upColor: '#16a34a',
+            downColor: '#dc2626',
+            borderVisible: true,
+            borderColor: '#1c1917',
+            wickUpColor: '#16a34a',
+            wickDownColor: '#dc2626',
           });
         }
       } catch {
@@ -116,18 +117,18 @@ export const DetailChartModal: React.FC = () => {
       try {
         if (typeof chart.addSeries === 'function' && AreaSeries) {
           areaSeries = chart.addSeries(AreaSeries, {
-            lineColor: '#6366f1',
-            topColor: 'rgba(99, 102, 241, 0.4)',
-            bottomColor: 'rgba(99, 102, 241, 0.0)',
+            lineColor: '#1c1917',
+            topColor: 'rgba(245, 158, 11, 0.35)',
+            bottomColor: 'rgba(245, 158, 11, 0.02)',
             lineWidth: 2,
           });
         } else {
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-expect-error fallback
           areaSeries = chart.addAreaSeries({
-            lineColor: '#6366f1',
-            topColor: 'rgba(99, 102, 241, 0.4)',
-            bottomColor: 'rgba(99, 102, 241, 0.0)',
+            lineColor: '#1c1917',
+            topColor: 'rgba(245, 158, 11, 0.35)',
+            bottomColor: 'rgba(245, 158, 11, 0.02)',
             lineWidth: 2,
           });
         }
@@ -139,7 +140,6 @@ export const DetailChartModal: React.FC = () => {
       areaSeriesRef.current = areaSeries;
     }
 
-    // Subscribe to crosshair move for OHLC display
     chart.subscribeCrosshairMove((param) => {
       if (!param.time || !param.seriesData) {
         setHoveredData(null);
@@ -227,7 +227,6 @@ export const DetailChartModal: React.FC = () => {
     };
   }, [selectedSymbol, interval, chartType]);
 
-  // Live WebSocket update on last candle/point
   useEffect(() => {
     if (!ticker) return;
 
@@ -259,34 +258,34 @@ export const DetailChartModal: React.FC = () => {
   const isPositive = (ticker?.changePercent24h ?? 0) >= 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[#0b0e14] animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex flex-col bg-[#f4f0e6] animate-in fade-in duration-150 font-mono">
       {/* Top Bar / Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800/80 bg-[#0e121a]/90 backdrop-blur-md pt-safe">
+      <div className="flex items-center justify-between px-4 py-3 border-b-2 border-stone-900 bg-[#ede8dd] pt-safe">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center font-bold text-sm text-indigo-400">
+          <div className="w-9 h-9 rounded-md bg-stone-900 text-amber-300 border-2 border-stone-900 flex items-center justify-center font-black text-sm shadow-hard-sm">
             {base.substring(0, 3)}
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <h2 className="text-base font-bold text-white tracking-tight">{base}</h2>
-              <span className="text-xs text-slate-400 font-medium bg-slate-800 px-1.5 py-0.5 rounded font-mono">
+              <h2 className="text-base font-black text-stone-900">{base}</h2>
+              <span className="text-[10px] text-stone-700 bg-stone-200 border border-stone-900 px-1 rounded-xs font-bold">
                 /{quote}
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 font-medium">Binance Canlı Akış</p>
+            <p className="text-[10px] text-stone-600 font-bold">BİNANCE CANLI GRAFİK</p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           {/* Chart Type Toggle Button */}
-          <div className="flex items-center bg-slate-800/80 p-0.5 rounded-lg border border-slate-700/60">
+          <div className="flex items-center bg-white p-0.5 rounded border-2 border-stone-900 shadow-hard-sm">
             <button
               onClick={() => setChartType('candlestick')}
               title="Mum Grafiği"
-              className={`p-1.5 rounded-md transition ${
+              className={`p-1.5 rounded transition cursor-pointer ${
                 chartType === 'candlestick'
-                  ? 'bg-indigo-600 text-white shadow-xs'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-amber-300 text-stone-900 font-bold'
+                  : 'text-stone-500 hover:text-stone-900'
               }`}
             >
               <BarChart2 className="w-4 h-4" />
@@ -294,10 +293,10 @@ export const DetailChartModal: React.FC = () => {
             <button
               onClick={() => setChartType('area')}
               title="Çizgi Grafiği"
-              className={`p-1.5 rounded-md transition ${
+              className={`p-1.5 rounded transition cursor-pointer ${
                 chartType === 'area'
-                  ? 'bg-indigo-600 text-white shadow-xs'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-amber-300 text-stone-900 font-bold'
+                  : 'text-stone-500 hover:text-stone-900'
               }`}
             >
               <LineChart className="w-4 h-4" />
@@ -306,29 +305,29 @@ export const DetailChartModal: React.FC = () => {
 
           <button
             onClick={() => setSelectedSymbol(null)}
-            className="p-2 rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+            className="p-1.5 rounded-md bg-white border-2 border-stone-900 hover:bg-stone-200 shadow-hard-sm btn-hard cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4 stroke-[3]" />
           </button>
         </div>
       </div>
 
       {/* Ticker Price & Stats Overview */}
-      <div className="px-4 py-3 bg-[#0d1117] border-b border-slate-800/60">
+      <div className="px-4 py-3 bg-[#faf7f0] border-b-2 border-stone-900">
         <div className="flex items-baseline justify-between mb-2">
           <div className="flex items-baseline gap-2.5">
-            <span className="text-2xl font-black text-white font-mono tracking-tight">
+            <span className="text-2xl font-black text-stone-900 tracking-tight">
               {ticker ? formatCurrency(ticker.price) : '...'}
             </span>
             {ticker && (
               <span
-                className={`inline-flex items-center gap-0.5 text-xs font-bold px-2 py-0.5 rounded-md font-mono ${
+                className={`inline-flex items-center gap-0.5 text-xs font-black px-1.5 py-0.5 rounded border border-stone-900 ${
                   isPositive
-                    ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
-                    : 'bg-rose-500/15 text-rose-400 border border-rose-500/20'
+                    ? 'bg-emerald-200 text-emerald-950'
+                    : 'bg-rose-200 text-rose-950'
                 }`}
               >
-                {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                {isPositive ? <ArrowUpRight className="w-3 h-3 stroke-[3]" /> : <ArrowDownRight className="w-3 h-3 stroke-[3]" />}
                 {formatPercentage(ticker.changePercent24h)}
               </span>
             )}
@@ -337,33 +336,31 @@ export const DetailChartModal: React.FC = () => {
 
         {/* Hovered OHLC Details Bar */}
         {hoveredData ? (
-          <div className="flex items-center gap-3 text-[11px] font-mono text-slate-300 bg-slate-800/50 px-2.5 py-1 rounded-lg border border-slate-700/40 mb-2 overflow-x-auto no-scrollbar">
-            <span className="text-slate-500">{hoveredData.time}</span>
-            <span>A: <strong className="text-white">{formatCurrency(hoveredData.open)}</strong></span>
-            <span>Y: <strong className="text-emerald-400">{formatCurrency(hoveredData.high)}</strong></span>
-            <span>D: <strong className="text-rose-400">{formatCurrency(hoveredData.low)}</strong></span>
-            <span>K: <strong className="text-white">{formatCurrency(hoveredData.close)}</strong></span>
+          <div className="flex items-center gap-3 text-[10px] text-stone-900 bg-white px-2.5 py-1 rounded border-2 border-stone-900 shadow-hard-sm mb-1 overflow-x-auto no-scrollbar">
+            <span className="text-stone-500 font-bold">{hoveredData.time}</span>
+            <span>A: <strong className="text-stone-900">{formatCurrency(hoveredData.open)}</strong></span>
+            <span>Y: <strong className="text-emerald-700">{formatCurrency(hoveredData.high)}</strong></span>
+            <span>D: <strong className="text-rose-700">{formatCurrency(hoveredData.low)}</strong></span>
+            <span>K: <strong className="text-stone-900">{formatCurrency(hoveredData.close)}</strong></span>
           </div>
         ) : (
           <div className="grid grid-cols-3 gap-2 text-xs">
-            <div className="bg-slate-900/60 border border-slate-800/80 rounded-xl p-2">
-              <span className="text-[10px] text-slate-400 block font-medium">24s En Yüksek</span>
-              <span className="text-slate-200 font-semibold font-mono">
+            <div className="bg-white border-2 border-stone-900 rounded p-1.5 shadow-hard-sm">
+              <span className="text-[9px] text-stone-500 block font-bold uppercase">24s En Yüksek</span>
+              <span className="text-stone-900 font-black">
                 {ticker ? formatCurrency(ticker.high24h) : '--'}
               </span>
             </div>
-            <div className="bg-slate-900/60 border border-slate-800/80 rounded-xl p-2">
-              <span className="text-[10px] text-slate-400 block font-medium">24s En Düşük</span>
-              <span className="text-slate-200 font-semibold font-mono">
+            <div className="bg-white border-2 border-stone-900 rounded p-1.5 shadow-hard-sm">
+              <span className="text-[9px] text-stone-500 block font-bold uppercase">24s En Düşük</span>
+              <span className="text-stone-900 font-black">
                 {ticker ? formatCurrency(ticker.low24h) : '--'}
               </span>
             </div>
-            <div className="bg-slate-900/60 border border-slate-800/80 rounded-xl p-2">
-              <span className="text-[10px] text-slate-400 block font-medium">24s Hacim (USDT)</span>
-              <span className="text-slate-200 font-semibold font-mono">
-                {ticker?.quoteVolume
-                  ? `${(ticker.quoteVolume / 1_000_000).toFixed(2)}M`
-                  : '--'}
+            <div className="bg-white border-2 border-stone-900 rounded p-1.5 shadow-hard-sm">
+              <span className="text-[9px] text-stone-500 block font-bold uppercase">24s Hacim</span>
+              <span className="text-stone-900 font-black">
+                {ticker?.quoteVolume ? `${(ticker.quoteVolume / 1_000_000).toFixed(1)}M` : '--'}
               </span>
             </div>
           </div>
@@ -371,9 +368,9 @@ export const DetailChartModal: React.FC = () => {
       </div>
 
       {/* Interval Selector Tabs */}
-      <div className="flex items-center justify-between px-4 py-2 bg-[#0c1016] border-b border-slate-800/40">
+      <div className="flex items-center justify-between px-4 py-1.5 bg-[#ede8dd] border-b-2 border-stone-900">
         <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
-          <Clock className="w-3.5 h-3.5 text-slate-500 mr-1 shrink-0" />
+          <Clock className="w-3.5 h-3.5 text-stone-600 mr-1 shrink-0" />
           {INTERVALS.map((item) => (
             <button
               key={item.value}
@@ -382,10 +379,10 @@ export const DetailChartModal: React.FC = () => {
                   setInterval(item.value);
                 });
               }}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all shrink-0 ${
+              className={`px-2 py-0.5 rounded text-xs font-bold transition-all shrink-0 border cursor-pointer ${
                 interval === item.value
-                  ? 'bg-indigo-600 text-white shadow-xs'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  ? 'bg-stone-900 text-white border-stone-900 shadow-hard-sm'
+                  : 'bg-white text-stone-700 border-stone-900/40 hover:bg-stone-100'
               }`}
             >
               {item.label}
@@ -393,26 +390,26 @@ export const DetailChartModal: React.FC = () => {
           ))}
         </div>
 
-        <div className="text-[11px] text-slate-500 font-medium shrink-0 ml-2">
-          {chartType === 'candlestick' ? 'Mum' : 'Çizgi'}
+        <div className="text-[10px] text-stone-700 font-bold shrink-0 ml-2">
+          {chartType === 'candlestick' ? 'MUM' : 'ÇİZGİ'}
         </div>
       </div>
 
       {/* Chart Canvas Area */}
-      <div className="relative flex-1 w-full bg-[#0b0e14] overflow-hidden min-h-[300px]">
+      <div className="relative flex-1 w-full bg-[#faf7f0] overflow-hidden min-h-[300px]">
         {isLoading && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#0b0e14]/80 backdrop-blur-xs">
-            <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mb-2" />
-            <p className="text-xs text-slate-400 font-medium">Grafik verisi yükleniyor...</p>
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#faf7f0]/80 backdrop-blur-xs">
+            <div className="w-7 h-7 border-2 border-stone-900 border-t-amber-400 rounded-full animate-spin mb-2" />
+            <p className="text-xs text-stone-700 font-bold">Grafik verisi yükleniyor...</p>
           </div>
         )}
 
         {error && !isLoading && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-4 text-center">
-            <p className="text-sm text-rose-400 mb-2">{error}</p>
+            <p className="text-xs text-rose-700 font-bold mb-2">{error}</p>
             <button
               onClick={() => setInterval((prev) => prev)}
-              className="px-3 py-1.5 bg-slate-800 text-slate-200 rounded-lg text-xs font-semibold"
+              className="px-3 py-1 bg-amber-300 border-2 border-stone-900 text-stone-900 rounded text-xs font-bold shadow-hard-sm btn-hard cursor-pointer"
             >
               Tekrar Dene
             </button>
@@ -422,8 +419,7 @@ export const DetailChartModal: React.FC = () => {
         <div ref={chartContainerRef} className="w-full h-full" />
       </div>
 
-      {/* Mobile Safe Bottom Space */}
-      <div className="pb-safe bg-[#0b0e14]" />
+      <div className="pb-safe bg-[#ede8dd] border-t-2 border-stone-900" />
     </div>
   );
 };

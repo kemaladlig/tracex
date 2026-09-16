@@ -15,7 +15,7 @@ export const App: React.FC = () => {
   const selectedCoinForChart = useCryptoStore((state) => state.selectedCoinForChart);
 
   return (
-    <div className="min-h-screen bg-[#0b0e14] text-slate-100 flex flex-col selection:bg-indigo-500/30">
+    <div className="min-h-screen bg-[#f4f0e6] text-stone-900 flex flex-col selection:bg-amber-200">
       {/* Top Mobile Bar */}
       <Header />
 

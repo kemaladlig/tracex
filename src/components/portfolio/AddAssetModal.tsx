@@ -7,10 +7,15 @@ import { formatCurrency } from '../../utils/formatters';
 
 interface AddAssetModalProps {
   isOpen: boolean;
+  initialSymbol?: string;
   onClose: () => void;
 }
 
-export const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose }) => {
+export const AddAssetModal: React.FC<AddAssetModalProps> = ({
+  isOpen,
+  initialSymbol = '',
+  onClose,
+}) => {
   const [symbol, setSymbol] = useState('');
   const [amount, setAmount] = useState('');
   const [buyPrice, setBuyPrice] = useState('');
@@ -24,8 +29,16 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose })
   useEffect(() => {
     if (isOpen) {
       fetchAllUsdtPairs().then(setAllCoins);
+      if (initialSymbol) {
+        setSymbol(initialSymbol.replace('USDT', ''));
+      }
+    } else {
+      setSymbol('');
+      setAmount('');
+      setBuyPrice('');
+      setError('');
     }
-  }, [isOpen]);
+  }, [isOpen, initialSymbol]);
 
   const currentFormattedSymbol = useMemo(() => {
     let s = symbol.trim().toUpperCase();
@@ -76,7 +89,7 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose })
 
     const numAmount = parseFloat(amount);
     if (isNaN(numAmount) || numAmount <= 0) {
-      setError('Lütfen geçerli bir adet / miktar girin (0\'dan büyük).');
+      setError('Lütfen geçerli bir adet girin (0\'dan büyük).');
       return;
     }
 
@@ -92,68 +105,71 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose })
       buyPrice: numPrice,
     });
 
-    setSymbol('');
-    setAmount('');
-    setBuyPrice('');
-    setError('');
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-md bg-[#10141d] border border-slate-800 rounded-t-3xl sm:rounded-2xl p-5 shadow-2xl pb-safe">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-stone-900/60 backdrop-blur-xs animate-in fade-in duration-150">
+      <div className="w-full max-w-md bg-[#faf7f0] border-2 border-stone-900 rounded-t-xl sm:rounded-xl p-5 shadow-hard-lg pb-safe font-mono">
         {/* Modal Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div className="flex items-center justify-between pb-3 border-b-2 border-stone-900">
           <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-indigo-500/20 text-indigo-400">
-              <Plus className="w-4 h-4" />
+            <div className="w-8 h-8 rounded-md bg-amber-300 border-2 border-stone-900 text-stone-900 flex items-center justify-center shadow-hard-sm">
+              <Plus className="w-5 h-5 stroke-[3]" />
             </div>
-            <h2 className="text-base font-bold text-white tracking-tight">Yeni Varlık / İşlem Ekle</h2>
+            <div>
+              <h2 className="text-base font-black text-stone-900 tracking-tight">
+                İŞLEM / VARLIK GİRİŞİ
+              </h2>
+              <span className="text-[10px] text-stone-500 font-bold">
+                Aynı coin varsa ortalama maliyet (DCA) hesaplanır
+              </span>
+            </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            className="p-1.5 rounded-md border-2 border-stone-900 bg-white hover:bg-stone-200 shadow-hard-sm btn-hard cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4 stroke-[3]" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+        <form onSubmit={handleSubmit} className="mt-4 space-y-3.5">
           {/* Symbol Input with Autocomplete */}
           <div className="relative">
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+            <label className="block text-xs font-bold text-stone-700 uppercase mb-1">
               Coin Sembolü (Binance)
             </label>
             <div className="relative flex items-center">
-              <Search className="absolute left-3 w-4 h-4 text-slate-500" />
+              <Search className="absolute left-3 w-4 h-4 text-stone-500" />
               <input
                 type="text"
-                placeholder="Örn: BTC, ETH, SOL, PEPE, SUI..."
+                placeholder="Örn: BTC, ETH, SOL, PEPE..."
                 value={symbol}
                 onFocus={() => setIsDropdownOpen(true)}
                 onChange={(e) => {
                   setSymbol(e.target.value);
                   setIsDropdownOpen(true);
                 }}
-                className="w-full pl-9 pr-3 py-2.5 bg-slate-900 border border-slate-700/80 rounded-xl text-white text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-500 uppercase font-mono"
+                className="w-full pl-9 pr-3 py-2.5 bg-white border-2 border-stone-900 rounded-md text-stone-900 text-sm font-bold shadow-hard-sm focus:outline-none uppercase"
               />
             </div>
 
             {/* Dropdown Suggestions */}
             {isDropdownOpen && filteredCoins.length > 0 && (
-              <div className="absolute left-0 right-0 top-full mt-1.5 bg-[#141924] border border-slate-700/80 rounded-xl shadow-2xl max-h-48 overflow-y-auto z-50 divide-y divide-slate-800/60 no-scrollbar">
+              <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border-2 border-stone-900 rounded-md shadow-hard max-h-44 overflow-y-auto z-50 divide-y border-stone-900/20 no-scrollbar">
                 {filteredCoins.map((coin) => (
                   <button
                     key={coin.symbol}
                     type="button"
                     onClick={() => handleSelectCoin(coin)}
-                    className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-indigo-600/20 transition"
+                    className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-amber-100 transition cursor-pointer"
                   >
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-white text-xs font-mono">{coin.baseAsset}</span>
-                      <span className="text-[10px] text-slate-400">/USDT</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-bold text-stone-900 text-xs">{coin.baseAsset}</span>
+                      <span className="text-[10px] text-stone-500">/USDT</span>
                     </div>
-                    <span className="text-xs text-slate-300 font-mono">
+                    <span className="text-xs text-stone-900 font-bold">
                       {formatCurrency(coin.price)}
                     </span>
                   </button>
@@ -164,30 +180,30 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose })
 
           {/* Amount Input */}
           <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+            <label className="block text-xs font-bold text-stone-700 uppercase mb-1">
               Alınan Miktar (Adet)
             </label>
             <input
               type="number"
               step="any"
-              placeholder="Örn: 0.5 veya 100"
+              placeholder="Örn: 0.25 veya 500"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className="w-full px-3 py-2.5 bg-slate-900 border border-slate-700/80 rounded-xl text-white text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono"
+              className="w-full px-3 py-2.5 bg-white border-2 border-stone-900 rounded-md text-stone-900 text-sm font-bold shadow-hard-sm focus:outline-none"
             />
           </div>
 
           {/* Buy Price Input */}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              <label className="block text-xs font-bold text-stone-700 uppercase">
                 Birim Alış Fiyatı ($)
               </label>
               {(liveTicker || allCoins.some((c) => c.symbol === currentFormattedSymbol)) && (
                 <button
                   type="button"
                   onClick={handleUseCurrentPrice}
-                  className="text-[11px] text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-medium transition"
+                  className="text-[10px] text-stone-900 bg-amber-200 border border-stone-900 px-1.5 py-0.5 rounded flex items-center gap-1 font-bold cursor-pointer"
                 >
                   <Sparkles className="w-3 h-3" /> Canlı Fiyatı Kullan
                 </button>
@@ -196,29 +212,29 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose })
             <input
               type="number"
               step="any"
-              placeholder="Örn: 65000 veya 180.50"
+              placeholder="Örn: 92000 veya 185.50"
               value={buyPrice}
               onChange={(e) => setBuyPrice(e.target.value)}
-              className="w-full px-3 py-2.5 bg-slate-900 border border-slate-700/80 rounded-xl text-white text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono"
+              className="w-full px-3 py-2.5 bg-white border-2 border-stone-900 rounded-md text-stone-900 text-sm font-bold shadow-hard-sm focus:outline-none"
             />
           </div>
 
-          {error && <p className="text-xs text-rose-400 font-medium">{error}</p>}
+          {error && <p className="text-xs text-rose-700 font-bold">{error}</p>}
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2 pt-2">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl transition"
+              className="flex-1 py-2.5 bg-stone-200 hover:bg-stone-300 border-2 border-stone-900 text-stone-900 text-xs font-bold rounded-md shadow-hard-sm btn-hard cursor-pointer"
             >
               İptal
             </button>
             <button
               type="submit"
-              className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-indigo-600/30 transition flex items-center justify-center gap-1.5"
+              className="flex-1 py-2.5 bg-amber-300 hover:bg-amber-400 border-2 border-stone-900 text-stone-950 text-xs font-black rounded-md shadow-hard btn-hard cursor-pointer flex items-center justify-center gap-1.5"
             >
-              <Check className="w-4 h-4" /> Portföye Kaydet
+              <Check className="w-4 h-4 stroke-[3]" /> Portföye Kaydet
             </button>
           </div>
         </form>

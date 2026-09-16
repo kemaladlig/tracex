@@ -1,4 +1,5 @@
 export type PriceDirection = 'up' | 'down' | null;
+export type Currency = 'USD' | 'TRY' | 'EUR';
 
 export interface TickerData {
   symbol: string;
@@ -21,13 +22,49 @@ export interface PortfolioAsset {
   timestamp: number;
 }
 
+export interface SellTransaction {
+  id: string;
+  symbol: string;
+  sellAmount: number;
+  sellPrice: number;
+  realizedPnL: number;
+  timestamp: number;
+}
+
 export interface CandleData {
-  time: number; // in seconds for lightweight-charts
+  time: number;
   open: number;
   high: number;
   low: number;
   close: number;
   volume?: number;
+}
+
+export interface OnChainMetrics {
+  fearAndGreed: {
+    score: number;
+    classification: string;
+  };
+  exchangeNetflow: {
+    type: 'outflow' | 'inflow' | 'neutral';
+    amountBtc: number;
+    label: string;
+    description: string;
+  };
+  mvrvRatio: {
+    value: number;
+    status: 'dip' | 'fair' | 'heated';
+    label: string;
+  };
+  gasTracker: {
+    ethGwei: number;
+    btcSatVb: number;
+    status: 'low' | 'normal' | 'high';
+  };
+  btcDominance: {
+    percent: number;
+    signal: string;
+  };
 }
 
 export type TabType = 'markets' | 'portfolio';
