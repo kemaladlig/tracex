@@ -35,14 +35,47 @@ export const AnalyticsView: React.FC = () => {
 
   if (isLoading || !analyticsData) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] p-6 text-center font-mono">
-        <div className="w-9 h-9 border-2 border-stone-900 border-t-amber-400 rounded-full animate-spin mb-3 shadow-hard-sm" />
-        <h3 className="text-sm font-black text-stone-900 uppercase">
-          ZİNCİR VE PİYASA VERİLERİ İŞLENİYOR
-        </h3>
-        <p className="text-[11px] text-stone-600 mt-1 max-w-xs">
-          Binance vadeli emirleri, Bitcoin zincir üstü MVRV ve piyasa duyarlılığı canlı taranıyor...
-        </p>
+      <div className="pb-24 pt-2 px-3 font-mono max-w-2xl mx-auto animate-pulse">
+        {/* Skeleton Title */}
+        <div className="flex items-center justify-between mb-3 border-b-2 border-stone-900 pb-2">
+          <div className="h-4 w-44 bg-stone-300 rounded" />
+          <div className="h-6 w-6 bg-stone-200 border border-stone-400 rounded" />
+        </div>
+
+        {/* Skeleton 1: Macro Phase Card */}
+        <div className="p-4 bg-stone-800 border-2 border-stone-900 rounded-lg shadow-hard mb-3.5">
+          <div className="flex justify-between mb-3">
+            <div className="h-3.5 w-36 bg-stone-700 rounded" />
+            <div className="h-4 w-16 bg-stone-700 rounded" />
+          </div>
+          <div className="h-3 w-48 bg-stone-600 rounded mb-2" />
+          <div className="h-2.5 w-full bg-stone-700 rounded mb-1" />
+          <div className="h-2.5 w-3/4 bg-stone-700 rounded" />
+        </div>
+
+        {/* Skeleton 2: FNG 4-boxes */}
+        <div className="p-4 bg-white border-2 border-stone-900 rounded-lg shadow-hard mb-3.5">
+          <div className="h-3.5 w-40 bg-stone-200 rounded mb-3" />
+          <div className="grid grid-cols-4 gap-1.5 mb-3">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-16 bg-stone-100 border border-stone-300 rounded" />
+            ))}
+          </div>
+          <div className="h-14 bg-stone-50 border border-stone-200 rounded" />
+        </div>
+
+        {/* Skeleton 3: Dominance Bar */}
+        <div className="p-4 bg-white border-2 border-stone-900 rounded-lg shadow-hard mb-3.5">
+          <div className="h-3.5 w-48 bg-stone-200 rounded mb-3" />
+          <div className="h-3.5 w-full bg-stone-200 rounded mb-2" />
+          <div className="h-10 bg-stone-100 border border-stone-200 rounded" />
+        </div>
+
+        {/* Skeleton 4: Long/Short & MVRV */}
+        <div className="p-4 bg-white border-2 border-stone-900 rounded-lg shadow-hard mb-3.5">
+          <div className="h-3.5 w-36 bg-stone-200 rounded mb-3" />
+          <div className="h-3 w-full bg-stone-200 rounded" />
+        </div>
       </div>
     );
   }
