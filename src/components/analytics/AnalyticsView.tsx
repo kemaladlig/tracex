@@ -132,7 +132,10 @@ export const AnalyticsView: React.FC = () => {
       </div>
 
       {/* 1. MAKRO FAZ & RİSK SKORU KARTI */}
-      <div className="p-4 bg-stone-900 text-stone-100 border-2 border-stone-900 rounded-lg shadow-hard mb-3.5">
+      <div
+        className="p-4 bg-stone-900 text-stone-100 border-2 border-stone-900 rounded-lg shadow-hard mb-3.5 stagger-item"
+        style={{ '--stagger-idx': 0 } as React.CSSProperties}
+      >
         <div className="flex items-center justify-between pb-2 border-b border-stone-800 mb-3">
           <span className="text-[10px] tracking-widest text-amber-400 font-bold uppercase">
             {macroPhase.title}
@@ -179,7 +182,10 @@ export const AnalyticsView: React.FC = () => {
       </div>
 
       {/* 2. KORKU & AÇGÖZLÜLÜK // ÇOKLU ZAMAN KIYASLAMASI & 14 GÜNLÜK TREND */}
-      <div className="p-4 bg-white border-2 border-stone-900 rounded-lg shadow-hard mb-3.5">
+      <div
+        className="p-4 bg-white border-2 border-stone-900 rounded-lg shadow-hard mb-3.5 stagger-item"
+        style={{ '--stagger-idx': 1 } as React.CSSProperties}
+      >
         <div className="flex items-center justify-between pb-2 border-b-2 border-stone-900/40 mb-3">
           <div className="flex items-center gap-1.5 text-xs font-black text-stone-900 uppercase">
             <Gauge className="w-4 h-4 text-amber-600" />
@@ -205,8 +211,8 @@ export const AnalyticsView: React.FC = () => {
           <div className="p-2 bg-stone-50 border border-stone-900 rounded text-center">
             <span className="text-[9px] font-bold text-stone-500 uppercase block">DÜN</span>
             <div className="text-base font-black text-stone-800 mt-0.5">{fearAndGreed.yesterday}</div>
-            <span className="text-[8px] font-bold text-stone-600 block">
-              {fearAndGreed.current > fearAndGreed.yesterday ? '+ Yükseldi' : '- Düştü'}
+            <span className="text-[8px] font-bold uppercase text-stone-600 block truncate">
+              {fearAndGreed.classification}
             </span>
           </div>
 
@@ -214,43 +220,54 @@ export const AnalyticsView: React.FC = () => {
           <div className="p-2 bg-stone-50 border border-stone-900 rounded text-center">
             <span className="text-[9px] font-bold text-stone-500 uppercase block">GEÇEN HAFTA</span>
             <div className="text-base font-black text-stone-800 mt-0.5">{fearAndGreed.lastWeek}</div>
-            <span className="text-[8px] font-medium text-stone-500 block">7 Gün Önce</span>
+            <span className="text-[8px] font-bold uppercase text-stone-600 block truncate">
+              {fearAndGreed.classification}
+            </span>
           </div>
 
           {/* Last Month */}
           <div className="p-2 bg-stone-50 border border-stone-900 rounded text-center">
             <span className="text-[9px] font-bold text-stone-500 uppercase block">GEÇEN AY</span>
             <div className="text-base font-black text-stone-800 mt-0.5">{fearAndGreed.lastMonth}</div>
-            <span className="text-[8px] font-medium text-stone-500 block">30 Gün Önce</span>
+            <span className="text-[8px] font-bold uppercase text-stone-600 block truncate">
+              {fearAndGreed.classification}
+            </span>
           </div>
         </div>
 
-        {/* 14-Day SVG Trendline */}
-        <div className="bg-stone-50 border border-stone-900 rounded p-2.5">
-          <div className="flex items-center justify-between text-[10px] font-bold text-stone-600 mb-1">
-            <span>14 GÜNLÜK DUYGU GELİŞİMİ</span>
-            <span className="text-amber-700 font-black">
-              {hoveredFng ? `${hoveredFng.date}: ${hoveredFng.value} Puan` : 'Noktaya dokunun'}
+        {/* 14-Day Micro Historical Trend Chart with hover inspection */}
+        <div className="mt-2 pt-2 border-t border-stone-200">
+          <div className="flex items-center justify-between text-[10px] text-stone-600 font-bold mb-1">
+            <span>14 GÜNLÜK DUYGU DALGASI</span>
+            <span>
+              {hoveredFng ? (
+                <strong className="text-amber-800">
+                  {hoveredFng.date}: Skor {hoveredFng.value}
+                </strong>
+              ) : (
+                'Son 14 Gün Eğilimi'
+              )}
             </span>
           </div>
+
           <svg
             viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-            className="w-full h-16 overflow-visible"
+            className="w-full h-16 bg-stone-50 rounded border border-stone-900/60 p-1"
+            onMouseLeave={() => setHoveredFng(null)}
           >
-            {/* Guide line at 50 (Neutral) */}
+            {/* Guide line at 50 */}
             <line
-              x1={padding}
+              x1="0"
               y1={svgHeight / 2}
-              x2={svgWidth - padding}
+              x2={svgWidth}
               y2={svgHeight / 2}
               stroke="#d6d3d1"
               strokeDasharray="3,3"
-              strokeWidth="1"
             />
-            {/* Trend Polyline */}
+            {/* The SVG Trendline */}
             <polyline
               fill="none"
-              stroke="#1c1917"
+              stroke="#d97706"
               strokeWidth="2.5"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -260,7 +277,9 @@ export const AnalyticsView: React.FC = () => {
             {fngPoints.map((pt, idx) => {
               const x = padding + (idx / (fngPoints.length - 1)) * (svgWidth - 2 * padding);
               const y =
-                svgHeight - padding - ((pt.value - minVal) / (maxVal - minVal)) * (svgHeight - 2 * padding);
+                svgHeight -
+                padding -
+                ((pt.value - minVal) / (maxVal - minVal)) * (svgHeight - 2 * padding);
               return (
                 <circle
                   key={pt.date}
@@ -280,7 +299,10 @@ export const AnalyticsView: React.FC = () => {
       </div>
 
       {/* 3. KRİPTO PAZAR HAKİMİYETİ & ALTCOİN RADARI */}
-      <div className="p-4 bg-white border-2 border-stone-900 rounded-lg shadow-hard mb-3.5">
+      <div
+        className="p-4 bg-white border-2 border-stone-900 rounded-lg shadow-hard mb-3.5 stagger-item"
+        style={{ '--stagger-idx': 2 } as React.CSSProperties}
+      >
         <div className="flex items-center justify-between pb-2 border-b-2 border-stone-900/40 mb-3">
           <div className="flex items-center gap-1.5 text-xs font-black text-stone-900 uppercase">
             <PieChart className="w-4 h-4 text-indigo-600" />
@@ -345,7 +367,10 @@ export const AnalyticsView: React.FC = () => {
       </div>
 
       {/* 4. VADELİ PİYASA LONG / SHORT DENGESİ & FONLAMA ORANI */}
-      <div className="p-4 bg-white border-2 border-stone-900 rounded-lg shadow-hard mb-3.5">
+      <div
+        className="p-4 bg-white border-2 border-stone-900 rounded-lg shadow-hard mb-3.5 stagger-item"
+        style={{ '--stagger-idx': 3 } as React.CSSProperties}
+      >
         <div className="flex items-center justify-between pb-2 border-b-2 border-stone-900/40 mb-3">
           <div className="flex items-center gap-1.5 text-xs font-black text-stone-900 uppercase">
             <Flame className="w-4 h-4 text-amber-600" />
@@ -396,7 +421,10 @@ export const AnalyticsView: React.FC = () => {
       </div>
 
       {/* 5. MVRV ORANI (DÖNGÜ TEPE / DİP CETVELİ) */}
-      <div className="p-4 bg-white border-2 border-stone-900 rounded-lg shadow-hard mb-3.5">
+      <div
+        className="p-4 bg-white border-2 border-stone-900 rounded-lg shadow-hard mb-3.5 stagger-item"
+        style={{ '--stagger-idx': 4 } as React.CSSProperties}
+      >
         <div className="flex items-center justify-between pb-2 border-b-2 border-stone-900/40 mb-3">
           <div className="flex items-center gap-1.5 text-xs font-black text-stone-900 uppercase">
             <LineChart className="w-4 h-4 text-purple-600" />
@@ -432,7 +460,10 @@ export const AnalyticsView: React.FC = () => {
       </div>
 
       {/* 6. GERÇEK EMİR AKIŞI (TAKER VOLUME) & AÇIK POZİSYON (OPEN INTEREST) */}
-      <div className="grid grid-cols-2 gap-2.5 text-xs mb-3.5">
+      <div
+        className="grid grid-cols-2 gap-2.5 text-xs mb-3.5 stagger-item"
+        style={{ '--stagger-idx': 5 } as React.CSSProperties}
+      >
         {/* Taker Buy vs Sell Volume */}
         <div className="p-3 bg-white border-2 border-stone-900 rounded-lg shadow-hard flex flex-col justify-between">
           <div>
@@ -481,7 +512,10 @@ export const AnalyticsView: React.FC = () => {
       </div>
 
       {/* 7. BİTCOİN GÜNLÜK TEKNİK GÖSTERGE (RSI 14 & 20G ORTALAMA) */}
-      <div className="p-4 bg-white border-2 border-stone-900 rounded-lg shadow-hard">
+      <div
+        className="p-4 bg-white border-2 border-stone-900 rounded-lg shadow-hard stagger-item"
+        style={{ '--stagger-idx': 6 } as React.CSSProperties}
+      >
         <div className="flex items-center justify-between pb-2 border-b-2 border-stone-900/40 mb-3">
           <div className="flex items-center gap-1.5 text-xs font-black text-stone-900 uppercase">
             <Target className="w-4 h-4 text-rose-600" />

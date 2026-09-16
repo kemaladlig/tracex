@@ -54,17 +54,20 @@ export const PortfolioList: React.FC = () => {
   return (
     <div className="flex flex-col pb-28 px-4 max-w-lg mx-auto w-full font-mono">
       {/* Multi-Portfolio Group Tabs & Backup Toolbar */}
-      <div className="mt-3">
+      <div className="mt-3 stagger-item" style={{ '--stagger-idx': 0 } as React.CSSProperties}>
         <PortfolioGroupSwitcher />
       </div>
 
       {/* Portfolio Top PnL Summary */}
-      <div>
+      <div className="stagger-item" style={{ '--stagger-idx': 1 } as React.CSSProperties}>
         <PortfolioSummary onAddClick={handleOpenAdd} />
       </div>
 
       {/* Assets List Section Header & Sorter */}
-      <div className="flex items-center justify-between px-1 mb-2.5">
+      <div
+        className="flex items-center justify-between px-1 mb-2.5 stagger-item"
+        style={{ '--stagger-idx': 2 } as React.CSSProperties}
+      >
         <div className="flex items-center gap-1.5 text-xs font-black text-stone-900 uppercase tracking-wider">
           <Coins className="w-3.5 h-3.5" />
           <span>VARLIKLARIM ({portfolio.length})</span>
@@ -89,10 +92,11 @@ export const PortfolioList: React.FC = () => {
       {/* Assets Items */}
       {sortedPortfolio.length > 0 ? (
         <div className="flex flex-col">
-          {sortedPortfolio.map((asset) => (
+          {sortedPortfolio.map((asset, idx) => (
             <PortfolioItem
               key={asset.id}
               asset={asset}
+              index={3 + idx}
               onBuyMoreClick={handleBuyMore}
               onSellClick={(item) => setAssetToSell(item)}
             />

@@ -6,12 +6,14 @@ import { cleanSymbol, formatCurrency, formatNumber, formatPercentage } from '../
 
 interface PortfolioItemProps {
   asset: PortfolioAsset;
+  index?: number;
   onSellClick: (asset: PortfolioAsset) => void;
   onBuyMoreClick: (symbol: string) => void;
 }
 
 export const PortfolioItem: React.FC<PortfolioItemProps> = ({
   asset,
+  index = 0,
   onSellClick,
   onBuyMoreClick,
 }) => {
@@ -46,7 +48,10 @@ export const PortfolioItem: React.FC<PortfolioItemProps> = ({
   };
 
   return (
-    <div className="relative flex flex-col p-3.5 mb-3 bg-white border-2 border-stone-900 rounded-lg shadow-hard font-mono transition-transform">
+    <div
+      style={{ '--stagger-idx': Math.min(index, 8) } as React.CSSProperties}
+      className="relative flex flex-col p-3.5 mb-3 bg-white border-2 border-stone-900 rounded-lg shadow-hard font-mono transition-all duration-150 stagger-item"
+    >
       {/* Top Row: Symbol, Quantity & Current Total Value */}
       <div className="flex items-center justify-between pb-2.5 border-b-2 border-stone-900/40">
         <div className="flex items-center gap-2.5">

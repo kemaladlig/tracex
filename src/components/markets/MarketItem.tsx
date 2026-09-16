@@ -93,7 +93,8 @@ export const MarketItem: React.FC<MarketItemProps> = ({
       onDrop={onDrop}
       onDragEnd={onDragEnd}
       data-drag-index={index}
-      className={`group relative flex items-center justify-between p-3 mb-2.5 bg-white border-2 border-stone-900 rounded-lg shadow-hard hover:bg-stone-50 active:scale-[0.99] btn-hard cursor-pointer transition-all duration-150 select-none ${
+      style={{ '--stagger-idx': Math.min(index, 10) } as React.CSSProperties}
+      className={`group relative flex items-center justify-between p-3 mb-2.5 bg-white border-2 border-stone-900 rounded-lg shadow-hard hover:bg-stone-50 active:scale-[0.99] btn-hard cursor-pointer transition-all duration-150 select-none stagger-item ${
         isDragging
           ? 'opacity-40 scale-[0.98] border-dashed border-amber-500 bg-amber-50/60'
           : isDragOver

@@ -143,10 +143,15 @@ export const MarketList: React.FC = () => {
   return (
     <div className="flex flex-col pb-28 px-4 max-w-lg mx-auto w-full">
       {/* 24h Top Gainers & Losers Banner */}
-      <MarketTrendsBanner />
+      <div className="stagger-item" style={{ '--stagger-idx': 0 } as React.CSSProperties}>
+        <MarketTrendsBanner />
+      </div>
 
       {/* Search & Add Action Bar */}
-      <div className="flex items-center gap-2.5 my-2">
+      <div
+        className="flex items-center gap-2.5 my-2 stagger-item"
+        style={{ '--stagger-idx': 1 } as React.CSSProperties}
+      >
         <div className="relative flex-1 flex items-center">
           <Search className="absolute left-3 w-4 h-4 text-stone-500" />
           <input
@@ -166,7 +171,10 @@ export const MarketList: React.FC = () => {
       </div>
 
       {/* Category Pills Bar */}
-      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 mb-1 font-mono text-[11px]">
+      <div
+        className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 mb-1 font-mono text-[11px] stagger-item"
+        style={{ '--stagger-idx': 2 } as React.CSSProperties}
+      >
         {(
           [
             { id: 'all', label: 'TÜMÜ' },
@@ -191,7 +199,10 @@ export const MarketList: React.FC = () => {
       </div>
 
       {/* Sort Chips Bar */}
-      <div className="flex items-center justify-between px-1 my-1.5 font-mono text-[10px]">
+      <div
+        className="flex items-center justify-between px-1 my-1.5 font-mono text-[10px] stagger-item"
+        style={{ '--stagger-idx': 3 } as React.CSSProperties}
+      >
         <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
           <ArrowUpDown className="w-3 h-3 text-stone-500 mr-0.5 shrink-0" />
           {(
@@ -219,7 +230,10 @@ export const MarketList: React.FC = () => {
       </div>
 
       {/* List Header */}
-      <div className="flex items-center justify-between px-1 my-2">
+      <div
+        className="flex items-center justify-between px-1 my-2 stagger-item"
+        style={{ '--stagger-idx': 4 } as React.CSSProperties}
+      >
         <div className="flex items-center gap-1.5 text-xs font-mono font-black text-stone-900 uppercase tracking-wider">
           <BookmarkCheck className="w-3.5 h-3.5" />
           <span>TAKİP LİSTESİ ({filteredAndSortedWatchlist.length})</span>
