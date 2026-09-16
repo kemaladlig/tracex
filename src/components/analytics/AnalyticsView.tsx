@@ -36,135 +36,80 @@ export const AnalyticsView: React.FC = () => {
 
   if (isLoading || !analyticsData) {
     return (
-      <div className="pb-24 pt-2 px-3 font-mono max-w-2xl mx-auto animate-pulse">
-        {/* Skeleton Title Bar */}
+      <div className="pb-24 pt-2 px-3 font-mono max-w-2xl mx-auto">
+        {/* Title Bar (Solid frame, zero layout shift) */}
         <div className="flex items-center justify-between mb-3 border-b-2 border-stone-900 pb-2">
           <div>
-            <div className="h-4 w-48 bg-stone-300 rounded mb-1" />
-            <div className="h-2.5 w-64 bg-stone-200 rounded" />
+            <h2 className="text-sm font-black uppercase tracking-wider text-stone-950 flex items-center gap-1.5">
+              <Zap className="w-4 h-4 text-amber-600 fill-amber-400" />
+              RADAR // PİYASA & ZİNCİR İSTİHBARATI
+            </h2>
+            <p className="text-[10px] text-stone-500 font-bold">
+              100% CANLI VERİLERLE OTOMATİK MAKRO STRATEJİ MOTORU
+            </p>
           </div>
-          <div className="w-7 h-7 bg-stone-200 border border-stone-900 rounded shadow-hard-sm" />
-        </div>
-
-        {/* Skeleton 1: Macro Phase Card */}
-        <div className="p-4 bg-stone-900 border-2 border-stone-900 rounded-lg shadow-hard mb-3.5">
-          <div className="flex items-center justify-between pb-2 border-b border-stone-800 mb-3">
-            <div className="h-3 w-32 bg-stone-700 rounded" />
-            <div className="h-5 w-20 bg-stone-800 border border-stone-700 rounded" />
-          </div>
-          <div className="mb-2.5">
-            <div className="h-3 w-40 bg-amber-400/40 rounded mb-2" />
-            <div className="h-2.5 w-full bg-stone-700 rounded mb-1.5" />
-            <div className="h-2.5 w-3/4 bg-stone-700 rounded" />
-          </div>
-          <div className="w-full bg-stone-800 h-2 rounded border border-stone-700" />
-        </div>
-
-        {/* Skeleton 2: Fear & Greed Card */}
-        <div className="p-4 bg-white border-2 border-stone-900 rounded-lg shadow-hard mb-3.5">
-          <div className="flex items-center justify-between pb-2 border-b-2 border-stone-900/40 mb-3">
-            <div className="h-4 w-44 bg-stone-300 rounded" />
-            <div className="w-4 h-4 bg-stone-200 rounded" />
-          </div>
-          <div className="grid grid-cols-4 gap-1.5 mb-3.5">
-            <div className="p-2 bg-amber-50/70 border-2 border-stone-900 rounded shadow-hard-sm h-18" />
-            <div className="p-2 bg-stone-50 border border-stone-900 rounded h-18" />
-            <div className="p-2 bg-stone-50 border border-stone-900 rounded h-18" />
-            <div className="p-2 bg-stone-50 border border-stone-900 rounded h-18" />
-          </div>
-          <div className="mt-2 pt-2 border-t border-stone-200">
-            <div className="flex justify-between mb-1">
-              <div className="h-2.5 w-28 bg-stone-200 rounded" />
-              <div className="h-2.5 w-20 bg-stone-200 rounded" />
-            </div>
-            <div className="w-full h-16 bg-stone-50 rounded border border-stone-900/60" />
+          <div className="p-1.5 bg-stone-100 border border-stone-900 rounded shadow-hard-sm opacity-60">
+            <RefreshCw className="w-3.5 h-3.5 text-stone-900 animate-spin" />
           </div>
         </div>
 
-        {/* Skeleton 3: Market Dominance Card */}
-        <div className="p-4 bg-white border-2 border-stone-900 rounded-lg shadow-hard mb-3.5">
-          <div className="flex items-center justify-between pb-2 border-b-2 border-stone-900/40 mb-3">
-            <div className="h-4 w-48 bg-stone-300 rounded" />
-            <div className="h-5 w-24 bg-stone-200 border border-stone-900 rounded" />
+        {/* Tactical Intelligence Radar Scanner Card */}
+        <div className="my-8 p-6 bg-white border-2 border-stone-900 rounded-lg shadow-hard-lg flex flex-col items-center justify-center text-center animate-popIn">
+          {/* Status Header */}
+          <div className="flex items-center gap-2 px-2.5 py-1 bg-amber-100 border border-stone-900 rounded shadow-hard-xs mb-4">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-livePulse" />
+            <span className="text-[10px] font-black tracking-wider text-stone-900 uppercase">
+              MAKRO İSTİHBARAT RADARI BAŞLATILIYOR
+            </span>
           </div>
-          <div className="mb-2">
-            <div className="flex justify-between mb-1.5">
-              <div className="h-2.5 w-16 bg-stone-200 rounded" />
-              <div className="h-2.5 w-16 bg-stone-200 rounded" />
-              <div className="h-2.5 w-20 bg-stone-200 rounded" />
-            </div>
-            <div className="w-full h-3.5 rounded border-2 border-stone-900 bg-stone-200 shadow-hard-sm" />
-          </div>
-          <div className="grid grid-cols-2 gap-2 mt-2.5 p-2 bg-stone-50 border border-stone-900 rounded">
-            <div className="h-8 bg-stone-200/60 rounded" />
-            <div className="h-8 bg-stone-200/60 rounded" />
-          </div>
-        </div>
 
-        {/* Skeleton 4: Long / Short & Funding Rate Card */}
-        <div className="p-4 bg-white border-2 border-stone-900 rounded-lg shadow-hard mb-3.5">
-          <div className="flex items-center justify-between pb-2 border-b-2 border-stone-900/40 mb-3">
-            <div className="h-4 w-52 bg-stone-300 rounded" />
-            <div className="h-5 w-20 bg-stone-200 border border-stone-900 rounded" />
-          </div>
-          <div className="mb-2">
-            <div className="flex justify-between mb-1">
-              <div className="h-2.5 w-20 bg-stone-200 rounded" />
-              <div className="h-2.5 w-20 bg-stone-200 rounded" />
-            </div>
-            <div className="w-full h-3 rounded border-2 border-stone-900 bg-stone-200 shadow-hard-sm" />
-          </div>
-          <div className="mt-2.5 p-2 bg-stone-50 border border-stone-900 rounded h-10" />
-        </div>
+          {/* Radar Scanner Scope with Sweep Beam */}
+          <div className="relative w-32 h-32 rounded-full border-2 border-stone-900 bg-stone-950 flex items-center justify-center overflow-hidden shadow-hard my-2">
+            {/* Concentric rings */}
+            <div className="absolute w-24 h-24 rounded-full border border-emerald-500/25" />
+            <div className="absolute w-16 h-16 rounded-full border border-emerald-500/35" />
+            <div className="absolute w-8 h-8 rounded-full border border-emerald-500/40" />
 
-        {/* Skeleton 5: MVRV Ratio Card */}
-        <div className="p-4 bg-white border-2 border-stone-900 rounded-lg shadow-hard mb-3.5">
-          <div className="flex items-center justify-between pb-2 border-b-2 border-stone-900/40 mb-3">
-            <div className="h-4 w-44 bg-stone-300 rounded" />
-            <div className="h-5 w-20 bg-stone-900 rounded" />
-          </div>
-          <div className="my-2">
-            <div className="w-full h-4 rounded border-2 border-stone-900 bg-stone-200 shadow-hard-sm" />
-            <div className="flex justify-between mt-1">
-              <div className="h-2 w-24 bg-stone-200 rounded" />
-              <div className="h-2 w-24 bg-stone-200 rounded" />
-            </div>
-          </div>
-        </div>
+            {/* Crosshair grid */}
+            <div className="absolute w-full h-[1px] bg-emerald-500/25" />
+            <div className="absolute h-full w-[1px] bg-emerald-500/25" />
 
-        {/* Skeleton 6: Taker Volume & Open Interest Grid */}
-        <div className="grid grid-cols-2 gap-2.5 mb-3.5">
-          <div className="p-3 bg-white border-2 border-stone-900 rounded-lg shadow-hard h-28 flex flex-col justify-between">
-            <div className="flex justify-between">
-              <div className="h-2.5 w-20 bg-stone-200 rounded" />
-              <div className="w-3.5 h-3.5 bg-stone-200 rounded" />
-            </div>
-            <div className="h-3 w-28 bg-stone-300 rounded" />
-            <div className="w-full h-2 rounded border border-stone-900 bg-stone-200" />
-            <div className="h-3 w-16 bg-stone-200 rounded" />
-          </div>
-          <div className="p-3 bg-white border-2 border-stone-900 rounded-lg shadow-hard h-28 flex flex-col justify-between">
-            <div className="flex justify-between">
-              <div className="h-2.5 w-20 bg-stone-200 rounded" />
-              <div className="w-3.5 h-3.5 bg-stone-200 rounded" />
-            </div>
-            <div className="h-3 w-20 bg-stone-300 rounded" />
-            <div className="h-3.5 w-24 bg-stone-200 border border-stone-900 rounded" />
-          </div>
-        </div>
+            {/* Rotating Radar Sweep Beam */}
+            <div
+              className="absolute inset-0 rounded-full animate-spin"
+              style={{
+                background: 'conic-gradient(from 0deg, transparent 0deg, transparent 270deg, rgba(52, 211, 153, 0.45) 360deg)',
+                animationDuration: '2s',
+              }}
+            />
 
-        {/* Skeleton 7: BTC Technical Radar Card */}
-        <div className="p-4 bg-white border-2 border-stone-900 rounded-lg shadow-hard">
-          <div className="flex items-center justify-between pb-2 border-b-2 border-stone-900/40 mb-3">
-            <div className="h-4 w-44 bg-stone-300 rounded" />
-            <div className="h-5 w-16 bg-stone-200 border border-stone-900 rounded" />
+            {/* Blipping Target Signal */}
+            <div className="absolute top-7 right-8 w-2.5 h-2.5 rounded-full bg-amber-400 border border-stone-900 animate-ping" />
+            <div className="absolute top-7 right-8 w-2 h-2 rounded-full bg-amber-400" />
           </div>
-          <div className="mb-2">
-            <div className="w-full h-3 rounded border-2 border-stone-900 bg-stone-200 shadow-hard-sm" />
-            <div className="flex justify-between mt-1">
-              <div className="h-2 w-20 bg-stone-200 rounded" />
-              <div className="h-2 w-20 bg-stone-200 rounded" />
-            </div>
+
+          {/* Telemetry Progress Info */}
+          <div className="mt-4 space-y-1">
+            <h3 className="text-xs font-black text-stone-900 tracking-tight uppercase">
+              Piyasa ve Zincir Verileri Çözümleniyor
+            </h3>
+            <p className="text-[11px] text-stone-600 max-w-xs leading-relaxed font-sans font-medium">
+              Binance Vadeli emir akışı, MVRV oranı ve Alternative.me duygu endeksi tek ekranda birleştiriliyor...
+            </p>
+          </div>
+
+          {/* Segmented Loading Bar */}
+          <div className="w-52 h-2.5 rounded border-2 border-stone-900 overflow-hidden bg-stone-200 mt-4 shadow-hard-xs">
+            <div className="h-full bg-amber-300 border-r-2 border-stone-900 w-3/4 animate-pulse" />
+          </div>
+
+          {/* Telemetry Footer Tags */}
+          <div className="flex items-center gap-2 mt-4 text-[9px] font-bold text-stone-500">
+            <span>[FNG: ÇÖZÜLÜYOR]</span>
+            <span>//</span>
+            <span>[MVRV: BAĞLANDI]</span>
+            <span>//</span>
+            <span>[VADELİ: CANLI]</span>
           </div>
         </div>
       </div>
