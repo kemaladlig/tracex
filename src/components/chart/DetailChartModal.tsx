@@ -1,7 +1,33 @@
 import React, { useEffect, useRef, useState, useTransition } from 'react';
-import { createChart, ColorType, CandlestickSeries, AreaSeries } from 'lightweight-charts';
-import type { IChartApi, ISeriesApi, CandlestickData, AreaData, UTCTimestamp } from 'lightweight-charts';
-import { X, ArrowUpRight, ArrowDownRight, Clock, BarChart2, LineChart } from 'lucide-react';
+import {
+  createChart,
+  ColorType,
+  CandlestickSeries,
+  AreaSeries,
+  HistogramSeries,
+  LineSeries,
+  LineStyle,
+} from 'lightweight-charts';
+import type {
+  IChartApi,
+  ISeriesApi,
+  CandlestickData,
+  AreaData,
+  HistogramData,
+  LineData,
+  UTCTimestamp,
+} from 'lightweight-charts';
+import {
+  X,
+  ArrowUpRight,
+  ArrowDownRight,
+  Clock,
+  BarChart2,
+  LineChart,
+  Layers,
+  Activity,
+  Tag,
+} from 'lucide-react';
 import { useCryptoStore } from '../../store/useCryptoStore';
 import { fetchHistoricalKlines } from '../../services/binanceApi';
 import { cleanSymbol, formatCurrency, formatPercentage } from '../../utils/formatters';
@@ -15,18 +41,47 @@ const INTERVALS = [
   { label: '1h', value: '1w' },
 ];
 
+const calculateEMA = (data: { time: UTCTimestamp; close: number }[], period: number) => {
+  if (data.length < period) return [];
+  const k = 2 / (period + 1);
+  const result: { time: UTCTimestamp; value: number }[] = [];
+  let ema = data.slice(0, period).reduce((sum, d) => sum + d.close, 0) / period;
+  result.push({ time: data[period - 1].time, value: parseFloat(ema.toFixed(4)) });
+  for (let i = period; i < data.length; i++) {
+    ema = data[i].close * k + ema * (1 - k);
+    result.push({ time: data[i].time, value: parseFloat(ema.toFixed(4)) });
+  }
+  return result;
+};
+
+const calculateSMA = (data: { time: UTCTimestamp; close: number }[], period: number) => {
+  if (data.length < period) return [];
+  const result: { time: UTCTimestamp; value: number }[] = [];
+  for (let i = period - 1; i < data.length; i++) {
+    const sum = data.slice(i - period + 1, i + 1).reduce((acc, d) => acc + d.close, 0);
+    result.push({ time: data[i].time, value: parseFloat((sum / period).toFixed(4)) });
+  }
+  return result;
+};
+
 export const DetailChartModal: React.FC = () => {
   const selectedSymbol = useCryptoStore((state) => state.selectedCoinForChart);
   const setSelectedSymbol = useCryptoStore((state) => state.setSelectedCoinForChart);
   const ticker = useCryptoStore((state) => (selectedSymbol ? state.tickers[selectedSymbol] : undefined));
+  const portfolio = useCryptoStore((state) => state.portfolio);
   const currency = useCryptoStore((state) => state.currency);
   const tryRate = useCryptoStore((state) => state.tryRate);
   const eurRate = useCryptoStore((state) => state.eurRate);
 
   const activeRate = currency === 'TRY' ? tryRate : eurRate;
+  const userAsset = portfolio.find((a) => a.symbol === selectedSymbol);
 
   const [interval, setInterval] = useState<string>('1h');
   const [chartType, setChartType] = useState<'candlestick' | 'area'>('candlestick');
+  const [showVolume, setShowVolume] = useState<boolean>(true);
+  const [showEMA, setShowEMA] = useState<boolean>(false);
+  const [showCostLine, setShowCostLine] = useState<boolean>(true);
+
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -58,7 +113,7 @@ export const DetailChartModal: React.FC = () => {
     const container = chartContainerRef.current;
     container.innerHTML = '';
 
-    // Technical Blueprint / Paper styled chart
+    // Blueprint / Paper styled chart
     const chart = createChart(container, {
       layout: {
         background: { type: ColorType.Solid, color: '#faf7f0' },
@@ -92,27 +147,14 @@ export const DetailChartModal: React.FC = () => {
 
     if (chartType === 'candlestick') {
       try {
-        if (typeof chart.addSeries === 'function' && CandlestickSeries) {
-          candleSeries = chart.addSeries(CandlestickSeries, {
-            upColor: '#16a34a',
-            downColor: '#dc2626',
-            borderVisible: true,
-            borderColor: '#1c1917',
-            wickUpColor: '#16a34a',
-            wickDownColor: '#dc2626',
-          });
-        } else {
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-          // @ts-expect-error fallback
-          candleSeries = chart.addCandlestickSeries({
-            upColor: '#16a34a',
-            downColor: '#dc2626',
-            borderVisible: true,
-            borderColor: '#1c1917',
-            wickUpColor: '#16a34a',
-            wickDownColor: '#dc2626',
-          });
-        }
+        candleSeries = chart.addSeries(CandlestickSeries, {
+          upColor: '#16a34a',
+          downColor: '#dc2626',
+          borderVisible: true,
+          borderColor: '#1c1917',
+          wickUpColor: '#16a34a',
+          wickDownColor: '#dc2626',
+        });
       } catch {
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-expect-error fallback
@@ -121,27 +163,16 @@ export const DetailChartModal: React.FC = () => {
       candleSeriesRef.current = candleSeries;
     } else {
       try {
-        if (typeof chart.addSeries === 'function' && AreaSeries) {
-          areaSeries = chart.addSeries(AreaSeries, {
-            lineColor: '#1c1917',
-            topColor: 'rgba(217, 119, 6, 0.35)',
-            bottomColor: 'rgba(217, 119, 6, 0.02)',
-            lineWidth: 3,
-            crosshairMarkerVisible: true,
-            crosshairMarkerRadius: 5,
-            crosshairMarkerBorderColor: '#1c1917',
-            crosshairMarkerBackgroundColor: '#d97706',
-          });
-        } else {
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-          // @ts-expect-error fallback
-          areaSeries = chart.addAreaSeries({
-            lineColor: '#1c1917',
-            topColor: 'rgba(217, 119, 6, 0.35)',
-            bottomColor: 'rgba(217, 119, 6, 0.02)',
-            lineWidth: 3,
-          });
-        }
+        areaSeries = chart.addSeries(AreaSeries, {
+          lineColor: '#1c1917',
+          topColor: 'rgba(217, 119, 6, 0.35)',
+          bottomColor: 'rgba(217, 119, 6, 0.02)',
+          lineWidth: 3,
+          crosshairMarkerVisible: true,
+          crosshairMarkerRadius: 5,
+          crosshairMarkerBorderColor: '#1c1917',
+          crosshairMarkerBackgroundColor: '#d97706',
+        });
       } catch {
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-expect-error fallback
@@ -199,6 +230,8 @@ export const DetailChartModal: React.FC = () => {
           return;
         }
 
+        const primarySeries = candleSeries || areaSeries;
+
         if (chartType === 'candlestick' && candleSeries) {
           const formattedData: CandlestickData<UTCTimestamp>[] = data.map((d) => ({
             time: d.time as UTCTimestamp,
@@ -216,6 +249,84 @@ export const DetailChartModal: React.FC = () => {
           }));
           areaSeries.setData(formattedArea);
           lastAreaPointRef.current = formattedArea[formattedArea.length - 1];
+        }
+
+        // 1. Optional Volume Sub-Series
+        if (showVolume) {
+          try {
+            const volumeSeries = chart.addSeries(HistogramSeries, {
+              priceFormat: { type: 'volume' },
+              priceScaleId: '',
+            });
+            volumeSeries.priceScale().applyOptions({
+              scaleMargins: {
+                top: 0.82,
+                bottom: 0,
+              },
+            });
+            const volumeData: HistogramData<UTCTimestamp>[] = data.map((d) => ({
+              time: d.time as UTCTimestamp,
+              value: d.volume ?? 0,
+              color: d.close >= d.open ? 'rgba(22, 163, 74, 0.45)' : 'rgba(220, 38, 38, 0.45)',
+            }));
+            volumeSeries.setData(volumeData);
+          } catch (e) {
+            console.warn('Volume series fallback:', e);
+          }
+        }
+
+        // 2. Optional EMA 20 & SMA 50 Trend Lines
+        if (showEMA) {
+          try {
+            const closes = data.map((d) => ({ time: d.time as UTCTimestamp, close: d.close }));
+            const ema20 = calculateEMA(closes, 20);
+            const sma50 = calculateSMA(closes, 50);
+
+            if (ema20.length > 0) {
+              const emaSeries = chart.addSeries(LineSeries, {
+                color: '#d97706',
+                lineWidth: 2,
+                title: 'EMA20',
+                crosshairMarkerVisible: false,
+              });
+              emaSeries.setData(ema20 as LineData<UTCTimestamp>[]);
+            }
+
+            if (sma50.length > 0) {
+              const smaSeries = chart.addSeries(LineSeries, {
+                color: '#2563eb',
+                lineWidth: 2,
+                title: 'SMA50',
+                crosshairMarkerVisible: false,
+              });
+              smaSeries.setData(sma50 as LineData<UTCTimestamp>[]);
+            }
+          } catch (e) {
+            console.warn('EMA series fallback:', e);
+          }
+        }
+
+        // 3. Optional Portfolio Entry Cost Line
+        if (showCostLine && userAsset && primarySeries) {
+          try {
+            const convertedCost =
+              currency === 'TRY'
+                ? userAsset.buyPrice * tryRate
+                : currency === 'EUR'
+                ? userAsset.buyPrice * eurRate
+                : userAsset.buyPrice;
+
+            primarySeries.createPriceLine({
+              price: convertedCost,
+              color: '#1c1917',
+              lineWidth: 2,
+              lineStyle: LineStyle.Dashed,
+              axisLabelVisible: true,
+              title: `MALİYETİM (${formatCurrency(userAsset.buyPrice, currency, activeRate)})`,
+            });
+          } catch (e) {
+            console.warn('Cost line fallback:', e);
+          }
         }
 
         chart.timeScale().fitContent();
@@ -238,7 +349,19 @@ export const DetailChartModal: React.FC = () => {
       lastCandleRef.current = null;
       lastAreaPointRef.current = null;
     };
-  }, [selectedSymbol, interval, chartType]);
+  }, [
+    selectedSymbol,
+    interval,
+    chartType,
+    showVolume,
+    showEMA,
+    showCostLine,
+    currency,
+    tryRate,
+    eurRate,
+    activeRate,
+    userAsset,
+  ]);
 
   // Handle live WebSocket price updates on the active chart
   useEffect(() => {
@@ -257,16 +380,14 @@ export const DetailChartModal: React.FC = () => {
       lastCandleRef.current = updatedCandle;
       candleSeriesRef.current.update(updatedCandle);
     } else if (chartType === 'area' && areaSeriesRef.current && lastAreaPointRef.current) {
-      // Synchronize with the exact timestamp of the current bar instead of Date.now()
-      const prev = lastAreaPointRef.current;
-      const updatedPoint: AreaData<UTCTimestamp> = {
-        time: prev.time,
+      const updatedArea: AreaData<UTCTimestamp> = {
+        time: lastAreaPointRef.current.time,
         value: currentPrice,
       };
-      lastAreaPointRef.current = updatedPoint;
-      areaSeriesRef.current.update(updatedPoint);
+      lastAreaPointRef.current = updatedArea;
+      areaSeriesRef.current.update(updatedArea);
     }
-  }, [ticker?.price, chartType]);
+  }, [ticker, chartType]);
 
   if (!selectedSymbol) return null;
 
@@ -329,7 +450,7 @@ export const DetailChartModal: React.FC = () => {
       </div>
 
       {/* Ticker Price & Stats Overview */}
-      <div className="px-4 py-3 bg-[#faf7f0] border-b-2 border-stone-900">
+      <div className="px-4 py-2.5 bg-[#faf7f0] border-b-2 border-stone-900">
         <div className="flex items-baseline justify-between mb-2">
           <div className="flex items-baseline gap-2.5">
             <span className="text-2xl font-black text-stone-900 tracking-tight">
@@ -343,21 +464,45 @@ export const DetailChartModal: React.FC = () => {
                     : 'bg-rose-200 text-rose-950'
                 }`}
               >
-                {isPositive ? <ArrowUpRight className="w-3 h-3 stroke-[3]" /> : <ArrowDownRight className="w-3 h-3 stroke-[3]" />}
+                {isPositive ? (
+                  <ArrowUpRight className="w-3 h-3 stroke-[3]" />
+                ) : (
+                  <ArrowDownRight className="w-3 h-3 stroke-[3]" />
+                )}
                 {formatPercentage(ticker.changePercent24h)}
               </span>
             )}
           </div>
         </div>
 
-        {/* Hovered OHLC Details Bar */}
+        {/* Hovered OHLC Details Bar OR 24h Stats Bar */}
         {hoveredData ? (
           <div className="flex items-center gap-3 text-[10px] text-stone-900 bg-white px-2.5 py-1 rounded border-2 border-stone-900 shadow-hard-sm mb-1 overflow-x-auto no-scrollbar">
             <span className="text-stone-500 font-bold">{hoveredData.time}</span>
-            <span>A: <strong className="text-stone-900">{formatCurrency(hoveredData.open, currency, activeRate)}</strong></span>
-            <span>Y: <strong className="text-emerald-700">{formatCurrency(hoveredData.high, currency, activeRate)}</strong></span>
-            <span>D: <strong className="text-rose-700">{formatCurrency(hoveredData.low, currency, activeRate)}</strong></span>
-            <span>K: <strong className="text-stone-900">{formatCurrency(hoveredData.close, currency, activeRate)}</strong></span>
+            <span>
+              A:{' '}
+              <strong className="text-stone-900">
+                {formatCurrency(hoveredData.open, currency, activeRate)}
+              </strong>
+            </span>
+            <span>
+              Y:{' '}
+              <strong className="text-emerald-700">
+                {formatCurrency(hoveredData.high, currency, activeRate)}
+              </strong>
+            </span>
+            <span>
+              D:{' '}
+              <strong className="text-rose-700">
+                {formatCurrency(hoveredData.low, currency, activeRate)}
+              </strong>
+            </span>
+            <span>
+              K:{' '}
+              <strong className="text-stone-900">
+                {formatCurrency(hoveredData.close, currency, activeRate)}
+              </strong>
+            </span>
           </div>
         ) : (
           <div className="grid grid-cols-3 gap-2 text-xs">
@@ -383,7 +528,7 @@ export const DetailChartModal: React.FC = () => {
         )}
       </div>
 
-      {/* Interval Selector Tabs */}
+      {/* Interval Selector Tabs & Feature Toggles Bar */}
       <div className="flex items-center justify-between px-4 py-1.5 bg-[#ede8dd] border-b-2 border-stone-900">
         <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
           <Clock className="w-3.5 h-3.5 text-stone-600 mr-1 shrink-0" />
@@ -406,8 +551,48 @@ export const DetailChartModal: React.FC = () => {
           ))}
         </div>
 
-        <div className="text-[10px] text-stone-700 font-bold shrink-0 ml-2">
-          {chartType === 'candlestick' ? 'MUM' : 'ÇİZGİ'}
+        {/* Feature Toggles (Volume, EMA, Cost Line) */}
+        <div className="flex items-center gap-1 shrink-0 ml-2">
+          {/* Volume Toggle */}
+          <button
+            onClick={() => setShowVolume(!showVolume)}
+            className={`px-1.5 py-0.5 rounded text-[10px] font-black border border-stone-900 transition flex items-center gap-0.5 cursor-pointer ${
+              showVolume
+                ? 'bg-amber-300 text-stone-900 shadow-hard-sm'
+                : 'bg-white text-stone-500 hover:text-stone-900'
+            }`}
+            title="Hacim Barlarını Aç/Kapa"
+          >
+            <Layers className="w-3 h-3" /> VOL
+          </button>
+
+          {/* EMA Toggle */}
+          <button
+            onClick={() => setShowEMA(!showEMA)}
+            className={`px-1.5 py-0.5 rounded text-[10px] font-black border border-stone-900 transition flex items-center gap-0.5 cursor-pointer ${
+              showEMA
+                ? 'bg-amber-300 text-stone-900 shadow-hard-sm'
+                : 'bg-white text-stone-500 hover:text-stone-900'
+            }`}
+            title="EMA 20 ve SMA 50 Trend Çizgilerini Aç/Kapa"
+          >
+            <Activity className="w-3 h-3" /> EMA
+          </button>
+
+          {/* My Cost Line Toggle (Only if user owns this asset) */}
+          {userAsset && (
+            <button
+              onClick={() => setShowCostLine(!showCostLine)}
+              className={`px-1.5 py-0.5 rounded text-[10px] font-black border border-stone-900 transition flex items-center gap-0.5 cursor-pointer ${
+                showCostLine
+                  ? 'bg-emerald-300 text-stone-950 shadow-hard-sm'
+                  : 'bg-white text-stone-500 hover:text-stone-900'
+              }`}
+              title="Cüzdan Alış Maliyeti Seviyesini Göster/Gizle"
+            >
+              <Tag className="w-3 h-3" /> MALİYET
+            </button>
+          )}
         </div>
       </div>
 

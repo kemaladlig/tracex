@@ -113,6 +113,66 @@ export const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({ onAddClick }
         </div>
       </div>
 
+      {/* Best & Worst Performer Badges */}
+      {portfolio.length >= 2 && !hideBalances && (() => {
+        const performers = portfolio.map((asset) => {
+          const livePrice = tickers[asset.symbol]?.price ?? asset.buyPrice;
+          const pnlPercent = asset.buyPrice > 0 ? ((livePrice - asset.buyPrice) / asset.buyPrice) * 100 : 0;
+          const pnlAmount = (livePrice - asset.buyPrice) * asset.amount;
+          return {
+            symbol: asset.symbol.replace('USDT', ''),
+            pnlPercent,
+            pnlAmount,
+          };
+        });
+        const sorted = [...performers].sort((a, b) => b.pnlPercent - a.pnlPercent);
+        const best = sorted[0];
+        const worst = sorted[sorted.length - 1];
+        if (!best || !worst || best.symbol === worst.symbol) return null;
+
+        return (
+          <div className="grid grid-cols-2 gap-2 mb-3 pt-2 border-t border-stone-200">
+            <div className="p-2 bg-emerald-50 border border-stone-900 rounded shadow-hard-sm">
+              <span className="text-[9px] font-bold text-emerald-900 uppercase flex items-center gap-1">
+                🏆 En Çok Kazandıran
+              </span>
+              <div className="flex items-baseline justify-between mt-0.5">
+                <span className="text-xs font-black text-stone-900">{best.symbol}</span>
+                <span className="text-xs font-black text-emerald-700">
+                  {best.pnlPercent >= 0 ? '+' : ''}
+                  {best.pnlPercent.toFixed(1)}%
+                </span>
+              </div>
+              <span className="text-[9px] text-stone-500 font-bold block">
+                {best.pnlAmount >= 0 ? '+' : ''}
+                {formatCurrency(best.pnlAmount, currency, activeRate)}
+              </span>
+            </div>
+
+            <div className="p-2 bg-rose-50 border border-stone-900 rounded shadow-hard-sm">
+              <span className="text-[9px] font-bold text-rose-900 uppercase flex items-center gap-1">
+                🔻 En Çok Gerileyen
+              </span>
+              <div className="flex items-baseline justify-between mt-0.5">
+                <span className="text-xs font-black text-stone-900">{worst.symbol}</span>
+                <span
+                  className={`text-xs font-black ${
+                    worst.pnlPercent >= 0 ? 'text-emerald-700' : 'text-rose-700'
+                  }`}
+                >
+                  {worst.pnlPercent >= 0 ? '+' : ''}
+                  {worst.pnlPercent.toFixed(1)}%
+                </span>
+              </div>
+              <span className="text-[9px] text-stone-500 font-bold block">
+                {worst.pnlAmount >= 0 ? '+' : ''}
+                {formatCurrency(worst.pnlAmount, currency, activeRate)}
+              </span>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Asset Allocation Ruler Bar */}
       {assetValues.length > 0 && totalCurrentValue > 0 && !hideBalances && (
         <div className="my-3 pt-2 border-t border-stone-200">
