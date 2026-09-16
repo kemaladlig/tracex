@@ -19,6 +19,11 @@ export const DetailChartModal: React.FC = () => {
   const selectedSymbol = useCryptoStore((state) => state.selectedCoinForChart);
   const setSelectedSymbol = useCryptoStore((state) => state.setSelectedCoinForChart);
   const ticker = useCryptoStore((state) => (selectedSymbol ? state.tickers[selectedSymbol] : undefined));
+  const currency = useCryptoStore((state) => state.currency);
+  const tryRate = useCryptoStore((state) => state.tryRate);
+  const eurRate = useCryptoStore((state) => state.eurRate);
+
+  const activeRate = currency === 'TRY' ? tryRate : eurRate;
 
   const [interval, setInterval] = useState<string>('1h');
   const [chartType, setChartType] = useState<'candlestick' | 'area'>('candlestick');
@@ -38,6 +43,7 @@ export const DetailChartModal: React.FC = () => {
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const areaSeriesRef = useRef<ISeriesApi<'Area'> | null>(null);
   const lastCandleRef = useRef<CandlestickData<UTCTimestamp> | null>(null);
+  const lastAreaPointRef = useRef<AreaData<UTCTimestamp> | null>(null);
 
   const [, startTransition] = useTransition();
 
@@ -118,18 +124,22 @@ export const DetailChartModal: React.FC = () => {
         if (typeof chart.addSeries === 'function' && AreaSeries) {
           areaSeries = chart.addSeries(AreaSeries, {
             lineColor: '#1c1917',
-            topColor: 'rgba(245, 158, 11, 0.35)',
-            bottomColor: 'rgba(245, 158, 11, 0.02)',
-            lineWidth: 2,
+            topColor: 'rgba(217, 119, 6, 0.35)',
+            bottomColor: 'rgba(217, 119, 6, 0.02)',
+            lineWidth: 3,
+            crosshairMarkerVisible: true,
+            crosshairMarkerRadius: 5,
+            crosshairMarkerBorderColor: '#1c1917',
+            crosshairMarkerBackgroundColor: '#d97706',
           });
         } else {
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-expect-error fallback
           areaSeries = chart.addAreaSeries({
             lineColor: '#1c1917',
-            topColor: 'rgba(245, 158, 11, 0.35)',
-            bottomColor: 'rgba(245, 158, 11, 0.02)',
-            lineWidth: 2,
+            topColor: 'rgba(217, 119, 6, 0.35)',
+            bottomColor: 'rgba(217, 119, 6, 0.02)',
+            lineWidth: 3,
           });
         }
       } catch {
@@ -205,6 +215,7 @@ export const DetailChartModal: React.FC = () => {
             value: d.close,
           }));
           areaSeries.setData(formattedArea);
+          lastAreaPointRef.current = formattedArea[formattedArea.length - 1];
         }
 
         chart.timeScale().fitContent();
@@ -224,14 +235,17 @@ export const DetailChartModal: React.FC = () => {
       chartRef.current = null;
       candleSeriesRef.current = null;
       areaSeriesRef.current = null;
+      lastCandleRef.current = null;
+      lastAreaPointRef.current = null;
     };
   }, [selectedSymbol, interval, chartType]);
 
+  // Handle live WebSocket price updates on the active chart
   useEffect(() => {
     if (!ticker) return;
+    const currentPrice = ticker.price;
 
     if (chartType === 'candlestick' && candleSeriesRef.current && lastCandleRef.current) {
-      const currentPrice = ticker.price;
       const prev = lastCandleRef.current;
       const updatedCandle: CandlestickData<UTCTimestamp> = {
         time: prev.time,
@@ -242,13 +256,15 @@ export const DetailChartModal: React.FC = () => {
       };
       lastCandleRef.current = updatedCandle;
       candleSeriesRef.current.update(updatedCandle);
-    } else if (chartType === 'area' && areaSeriesRef.current) {
-      const currentPrice = ticker.price;
-      const nowSeconds = Math.floor(Date.now() / 1000) as UTCTimestamp;
-      areaSeriesRef.current.update({
-        time: nowSeconds,
+    } else if (chartType === 'area' && areaSeriesRef.current && lastAreaPointRef.current) {
+      // Synchronize with the exact timestamp of the current bar instead of Date.now()
+      const prev = lastAreaPointRef.current;
+      const updatedPoint: AreaData<UTCTimestamp> = {
+        time: prev.time,
         value: currentPrice,
-      });
+      };
+      lastAreaPointRef.current = updatedPoint;
+      areaSeriesRef.current.update(updatedPoint);
     }
   }, [ticker?.price, chartType]);
 
@@ -317,7 +333,7 @@ export const DetailChartModal: React.FC = () => {
         <div className="flex items-baseline justify-between mb-2">
           <div className="flex items-baseline gap-2.5">
             <span className="text-2xl font-black text-stone-900 tracking-tight">
-              {ticker ? formatCurrency(ticker.price) : '...'}
+              {ticker ? formatCurrency(ticker.price, currency, activeRate) : '...'}
             </span>
             {ticker && (
               <span
@@ -338,23 +354,23 @@ export const DetailChartModal: React.FC = () => {
         {hoveredData ? (
           <div className="flex items-center gap-3 text-[10px] text-stone-900 bg-white px-2.5 py-1 rounded border-2 border-stone-900 shadow-hard-sm mb-1 overflow-x-auto no-scrollbar">
             <span className="text-stone-500 font-bold">{hoveredData.time}</span>
-            <span>A: <strong className="text-stone-900">{formatCurrency(hoveredData.open)}</strong></span>
-            <span>Y: <strong className="text-emerald-700">{formatCurrency(hoveredData.high)}</strong></span>
-            <span>D: <strong className="text-rose-700">{formatCurrency(hoveredData.low)}</strong></span>
-            <span>K: <strong className="text-stone-900">{formatCurrency(hoveredData.close)}</strong></span>
+            <span>A: <strong className="text-stone-900">{formatCurrency(hoveredData.open, currency, activeRate)}</strong></span>
+            <span>Y: <strong className="text-emerald-700">{formatCurrency(hoveredData.high, currency, activeRate)}</strong></span>
+            <span>D: <strong className="text-rose-700">{formatCurrency(hoveredData.low, currency, activeRate)}</strong></span>
+            <span>K: <strong className="text-stone-900">{formatCurrency(hoveredData.close, currency, activeRate)}</strong></span>
           </div>
         ) : (
           <div className="grid grid-cols-3 gap-2 text-xs">
             <div className="bg-white border-2 border-stone-900 rounded p-1.5 shadow-hard-sm">
               <span className="text-[9px] text-stone-500 block font-bold uppercase">24s En Yüksek</span>
               <span className="text-stone-900 font-black">
-                {ticker ? formatCurrency(ticker.high24h) : '--'}
+                {ticker ? formatCurrency(ticker.high24h, currency, activeRate) : '--'}
               </span>
             </div>
             <div className="bg-white border-2 border-stone-900 rounded p-1.5 shadow-hard-sm">
               <span className="text-[9px] text-stone-500 block font-bold uppercase">24s En Düşük</span>
               <span className="text-stone-900 font-black">
-                {ticker ? formatCurrency(ticker.low24h) : '--'}
+                {ticker ? formatCurrency(ticker.low24h, currency, activeRate) : '--'}
               </span>
             </div>
             <div className="bg-white border-2 border-stone-900 rounded p-1.5 shadow-hard-sm">
