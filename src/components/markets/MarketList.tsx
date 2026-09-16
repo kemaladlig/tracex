@@ -4,7 +4,6 @@ import { useCryptoStore } from '../../store/useCryptoStore';
 import { MarketItem } from './MarketItem';
 import { AddWatchlistModal } from './AddWatchlistModal';
 import { MarketTrendsBanner } from './MarketTrendsBanner';
-import { OnChainRadarBanner } from './OnChainRadarBanner';
 
 export const MarketList: React.FC = () => {
   const watchlist = useCryptoStore((state) => state.watchlist);
@@ -17,13 +16,10 @@ export const MarketList: React.FC = () => {
 
   return (
     <div className="flex flex-col pb-28 px-4 max-w-lg mx-auto w-full">
-      {/* 1. Fundamental On-Chain Radar & Fear & Greed */}
-      <OnChainRadarBanner />
-
-      {/* 2. 24h Top Gainers & Losers Banner */}
+      {/* 24h Top Gainers & Losers Banner */}
       <MarketTrendsBanner />
 
-      {/* 3. Search & Add Action Bar */}
+      {/* Search & Add Action Bar */}
       <div className="flex items-center gap-2.5 my-2">
         <div className="relative flex-1 flex items-center">
           <Search className="absolute left-3 w-4 h-4 text-stone-500" />

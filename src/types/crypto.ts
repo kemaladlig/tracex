@@ -1,5 +1,7 @@
 export type PriceDirection = 'up' | 'down' | null;
 export type Currency = 'USD' | 'TRY' | 'EUR';
+export type TabType = 'markets' | 'analytics' | 'portfolio';
+export type ConnectionStatus = 'connected' | 'connecting' | 'disconnected';
 
 export interface TickerData {
   symbol: string;
@@ -40,32 +42,46 @@ export interface CandleData {
   volume?: number;
 }
 
-export interface OnChainMetrics {
-  fearAndGreed: {
-    score: number;
-    classification: string;
+export interface MarketAnalyticsData {
+  macroPhase: {
+    title: string;
+    riskScore: number; // 1 to 10
+    verdict: string;
+    strategy: string;
   };
-  exchangeNetflow: {
-    type: 'outflow' | 'inflow' | 'neutral';
-    amountBtc: number;
-    label: string;
+  fearAndGreed: {
+    current: number;
+    classification: string;
+    history: { date: string; value: number }[];
+  };
+  longShortRatio: {
+    longPercent: number;
+    shortPercent: number;
+    ratio: number;
+    signal: string;
     description: string;
+  };
+  fundingRate: {
+    ratePercent: number;
+    hourlyCost: string;
+    status: 'bullish' | 'neutral' | 'overheated' | 'bearish';
+    interpretation: string;
   };
   mvrvRatio: {
     value: number;
     status: 'dip' | 'fair' | 'heated';
     label: string;
+    interpretation: string;
+  };
+  exchangeNetflow: {
+    amountBtc: number;
+    type: 'outflow' | 'inflow';
+    interpretation: string;
   };
   gasTracker: {
     ethGwei: number;
     btcSatVb: number;
     status: 'low' | 'normal' | 'high';
-  };
-  btcDominance: {
-    percent: number;
-    signal: string;
+    timingAdvice: string;
   };
 }
-
-export type TabType = 'markets' | 'portfolio';
-export type ConnectionStatus = 'connected' | 'connecting' | 'disconnected';

@@ -5,6 +5,7 @@ import { Header } from './components/common/Header';
 import { BottomNav } from './components/common/BottomNav';
 import { MarketList } from './components/markets/MarketList';
 import { PortfolioList } from './components/portfolio/PortfolioList';
+import { AnalyticsView } from './components/analytics/AnalyticsView';
 import { DetailChartModal } from './components/chart/DetailChartModal';
 
 export const App: React.FC = () => {
@@ -19,9 +20,11 @@ export const App: React.FC = () => {
       {/* Top Mobile Bar */}
       <Header />
 
-      {/* Main Content View (Switchable tabs) */}
+      {/* Main Content View (Switchable 3 tabs) */}
       <main className="flex-1 w-full max-w-lg mx-auto flex flex-col">
-        {activeTab === 'markets' ? <MarketList /> : <PortfolioList />}
+        {activeTab === 'markets' && <MarketList />}
+        {activeTab === 'analytics' && <AnalyticsView />}
+        {activeTab === 'portfolio' && <PortfolioList />}
       </main>
 
       {/* Fullscreen / Modal Interactive Chart */}

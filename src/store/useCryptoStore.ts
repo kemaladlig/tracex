@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { ConnectionStatus, Currency, OnChainMetrics, PortfolioAsset, TabType, TickerData } from '../types/crypto';
+import type { ConnectionStatus, Currency, MarketAnalyticsData, PortfolioAsset, TabType, TickerData } from '../types/crypto';
 
 interface CryptoState {
   // Watchlist & Portfolio (Persisted)
@@ -14,14 +14,14 @@ interface CryptoState {
   tickers: Record<string, TickerData>;
   tryRate: number;
   eurRate: number;
-  onChainData: OnChainMetrics | null;
+  analyticsData: MarketAnalyticsData | null;
   activeTab: TabType;
   selectedCoinForChart: string | null;
   connectionStatus: ConnectionStatus;
 
   // Actions
   setCurrency: (c: Currency) => void;
-  setOnChainData: (data: OnChainMetrics) => void;
+  setAnalyticsData: (data: MarketAnalyticsData) => void;
   addToWatchlist: (symbol: string) => void;
   removeFromWatchlist: (symbol: string) => void;
   addPortfolioAsset: (asset: Omit<PortfolioAsset, 'id' | 'timestamp'>) => void;
@@ -62,13 +62,13 @@ export const useCryptoStore = create<CryptoState>()(
       tickers: {},
       tryRate: 38.65,
       eurRate: 1.08,
-      onChainData: null,
+      analyticsData: null,
       activeTab: 'markets',
       selectedCoinForChart: null,
       connectionStatus: 'connecting',
 
       setCurrency: (currency) => set({ currency }),
-      setOnChainData: (onChainData) => set({ onChainData }),
+      setAnalyticsData: (analyticsData) => set({ analyticsData }),
       toggleHideBalances: () => set((state) => ({ hideBalances: !state.hideBalances })),
 
       addToWatchlist: (rawSymbol: string) => {
@@ -184,7 +184,6 @@ export const useCryptoStore = create<CryptoState>()(
             lastUpdated: Date.now(),
           };
 
-          // If this is USDTTRY or EURUSDT, update fiat rates
           let tryRate = state.tryRate;
           let eurRate = state.eurRate;
           if (incoming.symbol === 'USDTTRY') {
