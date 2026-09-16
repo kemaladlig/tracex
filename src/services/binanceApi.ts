@@ -30,7 +30,7 @@ const CACHE_TTL_MS = 60 * 1000; // 1 minute cache
 export const fetchHistoricalKlines = async (
   symbol: string,
   interval: string = '1h',
-  limit: number = 500
+  limit: number = 1000
 ): Promise<CandleData[]> => {
   try {
     const formattedSymbol = symbol.toUpperCase().replace('/', '');

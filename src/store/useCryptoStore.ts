@@ -52,6 +52,7 @@ interface CryptoState {
   moveWatchlistItem: (symbol: string, direction: 'up' | 'down') => void;
   reorderWatchlist: (sourceIndex: number, targetIndex: number) => void;
   addPortfolioAsset: (asset: Omit<PortfolioAsset, 'id' | 'timestamp'>) => void;
+  bulkAddPortfolioAssets: (assets: Omit<PortfolioAsset, 'id' | 'timestamp'>[]) => void;
   sellPortfolioAsset: (id: string, sellAmount: number, sellPrice: number) => { pnl: number; success: boolean };
   removePortfolioAsset: (id: string) => void;
   updateTicker: (data: Partial<TickerData> & { symbol: string; price: number }) => void;
@@ -361,6 +362,57 @@ export const useCryptoStore = create<CryptoState>()(
             portfolioGroups: updatedGroups,
           });
         }
+      },
+
+      bulkAddPortfolioAssets: (incomingAssets) => {
+        if (!incomingAssets || incomingAssets.length === 0) return;
+        const state = get();
+        let updatedPortfolio = [...state.portfolio];
+        const newWatchlistItems: string[] = [];
+
+        incomingAssets.forEach((assetData) => {
+          const cleanSymbol = assetData.symbol.trim().toUpperCase();
+          if (!cleanSymbol || assetData.amount <= 0) return;
+
+          const existingIndex = updatedPortfolio.findIndex((p) => p.symbol === cleanSymbol);
+
+          if (existingIndex > -1) {
+            const existing = updatedPortfolio[existingIndex];
+            const totalAmount = existing.amount + assetData.amount;
+            const weightedBuyPrice =
+              (existing.amount * existing.buyPrice + assetData.amount * assetData.buyPrice) / totalAmount;
+
+            updatedPortfolio[existingIndex] = {
+              ...existing,
+              amount: totalAmount,
+              buyPrice: weightedBuyPrice,
+              timestamp: Date.now(),
+            };
+          } else {
+            const newAsset: PortfolioAsset = {
+              id: `asset-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+              symbol: cleanSymbol,
+              amount: assetData.amount,
+              buyPrice: assetData.buyPrice,
+              timestamp: Date.now(),
+            };
+            updatedPortfolio.unshift(newAsset);
+          }
+
+          if (!state.watchlist.includes(cleanSymbol) && !newWatchlistItems.includes(cleanSymbol)) {
+            newWatchlistItems.push(cleanSymbol);
+          }
+        });
+
+        const updatedGroups = state.portfolioGroups.map((g) =>
+          g.id === state.activeGroupId ? { ...g, assets: updatedPortfolio } : g
+        );
+
+        set({
+          portfolio: updatedPortfolio,
+          portfolioGroups: updatedGroups,
+          watchlist: newWatchlistItems.length > 0 ? [...state.watchlist, ...newWatchlistItems] : state.watchlist,
+        });
       },
 
       sellPortfolioAsset: (id, sellAmount, sellPrice) => {

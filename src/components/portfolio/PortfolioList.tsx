@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ArrowUpDown, Coins, Plus } from 'lucide-react';
+import { ArrowUpDown, Coins, Plus, Zap } from 'lucide-react';
 import type { PortfolioAsset } from '../../types/crypto';
 import { useCryptoStore } from '../../store/useCryptoStore';
 import { PortfolioSummary } from './PortfolioSummary';
@@ -7,6 +7,7 @@ import { PortfolioGroupSwitcher } from './PortfolioGroupSwitcher';
 import { PortfolioItem } from './PortfolioItem';
 import { AddAssetModal } from './AddAssetModal';
 import { SellAssetModal } from './SellAssetModal';
+import { SmartImportModal } from './SmartImportModal';
 
 type SortOption = 'value' | 'pnl' | 'name';
 
@@ -15,6 +16,7 @@ export const PortfolioList: React.FC = () => {
   const tickers = useCryptoStore((state) => state.tickers);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isSmartImportOpen, setIsSmartImportOpen] = useState(false);
   const [selectedSymbolForBuy, setSelectedSymbolForBuy] = useState<string>('');
   const [assetToSell, setAssetToSell] = useState<PortfolioAsset | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>('value');
@@ -60,7 +62,10 @@ export const PortfolioList: React.FC = () => {
 
       {/* Portfolio Top PnL Summary */}
       <div className="stagger-item" style={{ '--stagger-idx': 1 } as React.CSSProperties}>
-        <PortfolioSummary onAddClick={handleOpenAdd} />
+        <PortfolioSummary
+          onAddClick={handleOpenAdd}
+          onSmartImportClick={() => setIsSmartImportOpen(true)}
+        />
       </div>
 
       {/* Assets List Section Header & Sorter */}
@@ -109,14 +114,22 @@ export const PortfolioList: React.FC = () => {
           </div>
           <h3 className="text-sm font-black text-stone-900 mb-1">HENÜZ VARLIK BULUNMUYOR</h3>
           <p className="text-xs text-stone-600 mb-4 max-w-xs mx-auto">
-            Portföyünüzü ve anlık kâr/zarar durumunuzu takip etmek için ilk varlığınızı ekleyin.
+            Portföyünüzü ve anlık kâr/zarar durumunuzu takip etmek için ilk varlığınızı ekleyin veya borsa listenizi yapıştırın.
           </p>
-          <button
-            onClick={handleOpenAdd}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-300 border-2 border-stone-900 text-stone-900 text-xs font-black rounded shadow-hard-sm btn-hard cursor-pointer"
-          >
-            <Plus className="w-4 h-4 stroke-[3]" /> Varlık Ekle
-          </button>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <button
+              onClick={() => setIsSmartImportOpen(true)}
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-stone-100 hover:bg-stone-200 border-2 border-stone-900 text-stone-900 text-xs font-black rounded shadow-hard-sm btn-hard cursor-pointer"
+            >
+              <Zap className="w-4 h-4 fill-amber-400 text-stone-900" /> Akıllı İçe Aktar
+            </button>
+            <button
+              onClick={handleOpenAdd}
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-300 border-2 border-stone-900 text-stone-900 text-xs font-black rounded shadow-hard-sm btn-hard cursor-pointer"
+            >
+              <Plus className="w-4 h-4 stroke-[3]" /> Tek Varlık Ekle
+            </button>
+          </div>
         </div>
       )}
 
@@ -128,6 +141,12 @@ export const PortfolioList: React.FC = () => {
           setIsAddModalOpen(false);
           setSelectedSymbolForBuy('');
         }}
+      />
+
+      {/* Smart Import Modal */}
+      <SmartImportModal
+        isOpen={isSmartImportOpen}
+        onClose={() => setIsSmartImportOpen(false)}
       />
 
       {/* Sell Modal */}

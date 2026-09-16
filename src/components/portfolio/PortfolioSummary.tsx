@@ -1,11 +1,12 @@
 import React from 'react';
-import { ArrowDownRight, ArrowUpRight, Plus, ShieldCheck, WalletCards } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, Plus, ShieldCheck, WalletCards, Zap } from 'lucide-react';
 import { useCryptoStore } from '../../store/useCryptoStore';
 import { formatCurrency, formatPercentage } from '../../utils/formatters';
 import { InfoBadge } from '../common/InfoBadge';
 
 interface PortfolioSummaryProps {
   onAddClick: () => void;
+  onSmartImportClick?: () => void;
 }
 
 const ALLOCATION_PALETTE = [
@@ -17,7 +18,7 @@ const ALLOCATION_PALETTE = [
   'bg-stone-300',
 ];
 
-export const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({ onAddClick }) => {
+export const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({ onAddClick, onSmartImportClick }) => {
   const portfolio = useCryptoStore((state) => state.portfolio);
   const tickers = useCryptoStore((state) => state.tickers);
   const hideBalances = useCryptoStore((state) => state.hideBalances);
@@ -237,12 +238,25 @@ export const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({ onAddClick }
           </div>
         </div>
 
-        <button
-          onClick={onAddClick}
-          className="flex items-center gap-1 px-3 py-1.5 bg-amber-300 hover:bg-amber-400 active:scale-95 border-2 border-stone-900 text-stone-900 text-xs font-black rounded shadow-hard-sm btn-hard cursor-pointer"
-        >
-          <Plus className="w-3.5 h-3.5 stroke-[3]" /> Varlık Ekle
-        </button>
+        <div className="flex items-center gap-1.5">
+          {onSmartImportClick && (
+            <button
+              onClick={onSmartImportClick}
+              title="Binance TR veya metin ile toplu içe aktar"
+              className="flex items-center gap-1 px-2.5 py-1.5 bg-stone-100 hover:bg-stone-200 active:scale-95 border-2 border-stone-900 text-stone-900 text-xs font-black rounded shadow-hard-sm btn-hard cursor-pointer"
+            >
+              <Zap className="w-3.5 h-3.5 fill-amber-400 text-stone-900" />
+              <span>İçe Aktar</span>
+            </button>
+          )}
+
+          <button
+            onClick={onAddClick}
+            className="flex items-center gap-1 px-3 py-1.5 bg-amber-300 hover:bg-amber-400 active:scale-95 border-2 border-stone-900 text-stone-900 text-xs font-black rounded shadow-hard-sm btn-hard cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5 stroke-[3]" /> Varlık Ekle
+          </button>
+        </div>
       </div>
     </div>
   );
