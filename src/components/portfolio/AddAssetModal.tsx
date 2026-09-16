@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Plus, X, Sparkles, Search, Check } from 'lucide-react';
 import { useCryptoStore } from '../../store/useCryptoStore';
 import { fetchAllUsdtPairs } from '../../services/binanceApi';
@@ -108,9 +109,9 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({
     onClose();
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-stone-900/60 backdrop-blur-xs animate-backdrop">
-      <div className="w-full max-w-md bg-[#faf7f0] border-2 border-stone-900 rounded-t-xl sm:rounded-xl shadow-hard-lg font-mono animate-sheetUp max-h-[90dvh] flex flex-col">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-stone-900/70 backdrop-blur-xs animate-backdrop">
+      <div className="w-full max-w-md bg-[#faf7f0] border-2 border-stone-900 rounded-lg shadow-hard font-mono animate-sheetUp max-h-[88vh] flex flex-col overflow-hidden">
         {/* Modal Header (Fixed at top) */}
         <div className="flex items-center justify-between p-4 pb-3 border-b-2 border-stone-900 shrink-0 bg-[#faf7f0]">
           <div className="flex items-center gap-2">
@@ -242,6 +243,7 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

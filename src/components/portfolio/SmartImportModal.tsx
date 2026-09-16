@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, ArrowRight, Check, Trash2, HelpCircle, FileText, Zap } from 'lucide-react';
 import { useCryptoStore } from '../../store/useCryptoStore';
 import { parsePortfolioText, type ParsedAssetDraft } from '../../utils/portfolioParser';
@@ -104,9 +105,9 @@ export const SmartImportModal: React.FC<SmartImportModalProps> = ({ isOpen, onCl
     }, 900);
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-stone-900/70 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="bg-[#faf7f0] border-2 border-stone-900 rounded-lg shadow-hard max-w-lg w-full max-h-[92vh] flex flex-col overflow-hidden font-mono">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 bg-stone-900/70 backdrop-blur-xs animate-in fade-in duration-150">
+      <div className="bg-[#faf7f0] border-2 border-stone-900 rounded-lg shadow-hard max-w-lg w-full max-h-[88vh] flex flex-col overflow-hidden font-mono">
         {/* Header */}
         <div className="flex items-center justify-between p-3 border-b-2 border-stone-900 bg-amber-300">
           <div className="flex items-center gap-2">
@@ -266,6 +267,7 @@ export const SmartImportModal: React.FC<SmartImportModalProps> = ({ isOpen, onCl
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
