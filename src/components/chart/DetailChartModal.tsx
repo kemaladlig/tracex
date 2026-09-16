@@ -18,6 +18,7 @@ import type {
   UTCTimestamp,
 } from 'lightweight-charts';
 import {
+  ArrowLeft,
   X,
   ArrowUpRight,
   ArrowDownRight,
@@ -41,6 +42,17 @@ const INTERVALS = [
   { label: '1h', value: '1w' },
 ];
 
+const INTERVAL_SECONDS: Record<string, number> = {
+  '1m': 60,
+  '15m': 900,
+  '1h': 3600,
+  '4h': 14400,
+  '1d': 86400,
+  '1w': 604800,
+};
+
+const ZOOM_STORAGE_KEY = 'tracex_chart_zoom_bars';
+
 const calculateEMA = (data: { time: UTCTimestamp; close: number }[], period: number) => {
   if (data.length < period) return [];
   const k = 2 / (period + 1);
@@ -63,6 +75,8 @@ const calculateSMA = (data: { time: UTCTimestamp; close: number }[], period: num
   }
   return result;
 };
+
+type PriceLineHandle = ReturnType<ISeriesApi<'Candlestick'>['createPriceLine']>;
 
 export const DetailChartModal: React.FC = () => {
   const selectedSymbol = useCryptoStore((state) => state.selectedCoinForChart);
@@ -97,11 +111,17 @@ export const DetailChartModal: React.FC = () => {
   const chartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const areaSeriesRef = useRef<ISeriesApi<'Area'> | null>(null);
+  const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
+  const emaSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
+  const smaSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
+  const costLineRef = useRef<PriceLineHandle | null>(null);
+
   const lastCandleRef = useRef<CandlestickData<UTCTimestamp> | null>(null);
   const lastAreaPointRef = useRef<AreaData<UTCTimestamp> | null>(null);
 
   const [, startTransition] = useTransition();
 
+  // 1. Core Chart Lifecycle: ONLY rebuilds when selectedSymbol or interval changes
   useEffect(() => {
     if (!selectedSymbol || !chartContainerRef.current) return;
 
@@ -142,51 +162,108 @@ export const DetailChartModal: React.FC = () => {
 
     chartRef.current = chart;
 
+    // Track user zoom adjustments and persist visible bar span
+    chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+      if (range) {
+        const count = Math.round(range.to - range.from);
+        if (count >= 10) {
+          sessionStorage.setItem(ZOOM_STORAGE_KEY, String(count));
+        }
+      }
+    });
+
     let candleSeries: ISeriesApi<'Candlestick'> | null = null;
     let areaSeries: ISeriesApi<'Area'> | null = null;
+    let volumeSeries: ISeriesApi<'Histogram'> | null = null;
+    let emaSeries: ISeriesApi<'Line'> | null = null;
+    let smaSeries: ISeriesApi<'Line'> | null = null;
 
-    if (chartType === 'candlestick') {
-      try {
-        candleSeries = chart.addSeries(CandlestickSeries, {
-          upColor: '#16a34a',
-          downColor: '#dc2626',
-          borderVisible: true,
-          borderColor: '#1c1917',
-          wickUpColor: '#16a34a',
-          wickDownColor: '#dc2626',
-        });
-      } catch {
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-expect-error fallback
-        candleSeries = chart.addCandlestickSeries();
-      }
-      candleSeriesRef.current = candleSeries;
-    } else {
-      try {
-        areaSeries = chart.addSeries(AreaSeries, {
-          lineColor: '#1c1917',
-          topColor: 'rgba(217, 119, 6, 0.35)',
-          bottomColor: 'rgba(217, 119, 6, 0.02)',
-          lineWidth: 3,
-          crosshairMarkerVisible: true,
-          crosshairMarkerRadius: 5,
-          crosshairMarkerBorderColor: '#1c1917',
-          crosshairMarkerBackgroundColor: '#d97706',
-        });
-      } catch {
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-expect-error fallback
-        areaSeries = chart.addAreaSeries();
-      }
-      areaSeriesRef.current = areaSeries;
+    // Candlestick Series
+    try {
+      candleSeries = chart.addSeries(CandlestickSeries, {
+        upColor: '#16a34a',
+        downColor: '#dc2626',
+        borderVisible: true,
+        borderColor: '#1c1917',
+        wickUpColor: '#16a34a',
+        wickDownColor: '#dc2626',
+        visible: chartType === 'candlestick',
+      });
+    } catch {
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-expect-error fallback
+      candleSeries = chart.addCandlestickSeries({ visible: chartType === 'candlestick' });
+    }
+    candleSeriesRef.current = candleSeries;
+
+    // Area Series
+    try {
+      areaSeries = chart.addSeries(AreaSeries, {
+        lineColor: '#1c1917',
+        topColor: 'rgba(217, 119, 6, 0.35)',
+        bottomColor: 'rgba(217, 119, 6, 0.02)',
+        lineWidth: 3,
+        crosshairMarkerVisible: true,
+        crosshairMarkerRadius: 5,
+        crosshairMarkerBorderColor: '#1c1917',
+        crosshairMarkerBackgroundColor: '#d97706',
+        visible: chartType === 'area',
+      });
+    } catch {
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-expect-error fallback
+      areaSeries = chart.addAreaSeries({ visible: chartType === 'area' });
+    }
+    areaSeriesRef.current = areaSeries;
+
+    // Volume Series
+    try {
+      volumeSeries = chart.addSeries(HistogramSeries, {
+        priceFormat: { type: 'volume' },
+        priceScaleId: '',
+        visible: showVolume,
+      });
+      volumeSeries.priceScale().applyOptions({
+        scaleMargins: {
+          top: 0.82,
+          bottom: 0,
+        },
+      });
+      volumeSeriesRef.current = volumeSeries;
+    } catch (e) {
+      console.warn('Volume series fallback:', e);
     }
 
+    // EMA Series
+    try {
+      emaSeries = chart.addSeries(LineSeries, {
+        color: '#d97706',
+        lineWidth: 2,
+        title: 'EMA20',
+        crosshairMarkerVisible: false,
+        visible: showEMA,
+      });
+      emaSeriesRef.current = emaSeries;
+
+      smaSeries = chart.addSeries(LineSeries, {
+        color: '#2563eb',
+        lineWidth: 2,
+        title: 'SMA50',
+        crosshairMarkerVisible: false,
+        visible: showEMA,
+      });
+      smaSeriesRef.current = smaSeries;
+    } catch (e) {
+      console.warn('EMA series fallback:', e);
+    }
+
+    // Crosshair inspection listener
     chart.subscribeCrosshairMove((param) => {
       if (!param.time || !param.seriesData) {
         setHoveredData(null);
         return;
       }
-      const activeSeries = candleSeries || areaSeries;
+      const activeSeries = chartType === 'candlestick' ? candleSeriesRef.current : areaSeriesRef.current;
       if (activeSeries) {
         const data = param.seriesData.get(activeSeries);
         if (data && 'open' in data) {
@@ -221,6 +298,7 @@ export const DetailChartModal: React.FC = () => {
 
     resizeObserver.observe(container);
 
+    // Fetch historical klines
     fetchHistoricalKlines(selectedSymbol, interval, 120)
       .then((data) => {
         if (isCancelled) return;
@@ -230,9 +308,7 @@ export const DetailChartModal: React.FC = () => {
           return;
         }
 
-        const primarySeries = candleSeries || areaSeries;
-
-        if (chartType === 'candlestick' && candleSeries) {
+        if (candleSeries) {
           const formattedData: CandlestickData<UTCTimestamp>[] = data.map((d) => ({
             time: d.time as UTCTimestamp,
             open: d.open,
@@ -242,7 +318,9 @@ export const DetailChartModal: React.FC = () => {
           }));
           candleSeries.setData(formattedData);
           lastCandleRef.current = formattedData[formattedData.length - 1];
-        } else if (areaSeries) {
+        }
+
+        if (areaSeries) {
           const formattedArea: AreaData<UTCTimestamp>[] = data.map((d) => ({
             time: d.time as UTCTimestamp,
             value: d.close,
@@ -251,85 +329,34 @@ export const DetailChartModal: React.FC = () => {
           lastAreaPointRef.current = formattedArea[formattedArea.length - 1];
         }
 
-        // 1. Optional Volume Sub-Series
-        if (showVolume) {
-          try {
-            const volumeSeries = chart.addSeries(HistogramSeries, {
-              priceFormat: { type: 'volume' },
-              priceScaleId: '',
-            });
-            volumeSeries.priceScale().applyOptions({
-              scaleMargins: {
-                top: 0.82,
-                bottom: 0,
-              },
-            });
-            const volumeData: HistogramData<UTCTimestamp>[] = data.map((d) => ({
-              time: d.time as UTCTimestamp,
-              value: d.volume ?? 0,
-              color: d.close >= d.open ? 'rgba(22, 163, 74, 0.45)' : 'rgba(220, 38, 38, 0.45)',
-            }));
-            volumeSeries.setData(volumeData);
-          } catch (e) {
-            console.warn('Volume series fallback:', e);
-          }
+        if (volumeSeries) {
+          const volumeData: HistogramData<UTCTimestamp>[] = data.map((d) => ({
+            time: d.time as UTCTimestamp,
+            value: d.volume ?? 0,
+            color: d.close >= d.open ? 'rgba(22, 163, 74, 0.45)' : 'rgba(220, 38, 38, 0.45)',
+          }));
+          volumeSeries.setData(volumeData);
         }
 
-        // 2. Optional EMA 20 & SMA 50 Trend Lines
-        if (showEMA) {
-          try {
-            const closes = data.map((d) => ({ time: d.time as UTCTimestamp, close: d.close }));
-            const ema20 = calculateEMA(closes, 20);
-            const sma50 = calculateSMA(closes, 50);
+        const closes = data.map((d) => ({ time: d.time as UTCTimestamp, close: d.close }));
+        const ema20 = calculateEMA(closes, 20);
+        const sma50 = calculateSMA(closes, 50);
+        if (emaSeries && ema20.length > 0) emaSeries.setData(ema20 as LineData<UTCTimestamp>[]);
+        if (smaSeries && sma50.length > 0) smaSeries.setData(sma50 as LineData<UTCTimestamp>[]);
 
-            if (ema20.length > 0) {
-              const emaSeries = chart.addSeries(LineSeries, {
-                color: '#d97706',
-                lineWidth: 2,
-                title: 'EMA20',
-                crosshairMarkerVisible: false,
-              });
-              emaSeries.setData(ema20 as LineData<UTCTimestamp>[]);
-            }
-
-            if (sma50.length > 0) {
-              const smaSeries = chart.addSeries(LineSeries, {
-                color: '#2563eb',
-                lineWidth: 2,
-                title: 'SMA50',
-                crosshairMarkerVisible: false,
-              });
-              smaSeries.setData(sma50 as LineData<UTCTimestamp>[]);
-            }
-          } catch (e) {
-            console.warn('EMA series fallback:', e);
-          }
+        // Restore user zoom preference or fit content gracefully
+        const savedBarsStr = sessionStorage.getItem(ZOOM_STORAGE_KEY);
+        const savedBars = savedBarsStr ? parseFloat(savedBarsStr) : null;
+        if (savedBars && savedBars >= 10 && savedBars < data.length) {
+          const lastIndex = data.length - 1;
+          chart.timeScale().setVisibleLogicalRange({
+            from: Math.max(0, lastIndex - savedBars),
+            to: lastIndex + 2,
+          });
+        } else {
+          chart.timeScale().fitContent();
         }
 
-        // 3. Optional Portfolio Entry Cost Line
-        if (showCostLine && userAsset && primarySeries) {
-          try {
-            const convertedCost =
-              currency === 'TRY'
-                ? userAsset.buyPrice * tryRate
-                : currency === 'EUR'
-                ? userAsset.buyPrice * eurRate
-                : userAsset.buyPrice;
-
-            primarySeries.createPriceLine({
-              price: convertedCost,
-              color: '#1c1917',
-              lineWidth: 2,
-              lineStyle: LineStyle.Dashed,
-              axisLabelVisible: true,
-              title: `MALİYETİM (${formatCurrency(userAsset.buyPrice, currency, activeRate)})`,
-            });
-          } catch (e) {
-            console.warn('Cost line fallback:', e);
-          }
-        }
-
-        chart.timeScale().fitContent();
         setIsLoading(false);
       })
       .catch((err) => {
@@ -346,48 +373,159 @@ export const DetailChartModal: React.FC = () => {
       chartRef.current = null;
       candleSeriesRef.current = null;
       areaSeriesRef.current = null;
+      volumeSeriesRef.current = null;
+      emaSeriesRef.current = null;
+      smaSeriesRef.current = null;
+      costLineRef.current = null;
       lastCandleRef.current = null;
       lastAreaPointRef.current = null;
     };
-  }, [
-    selectedSymbol,
-    interval,
-    chartType,
-    showVolume,
-    showEMA,
-    showCostLine,
-    currency,
-    tryRate,
-    eurRate,
-    activeRate,
-    userAsset,
-  ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSymbol, interval]);
 
-  // Handle live WebSocket price updates on the active chart
+  // 2. Dynamic Series Visibility & Options: Toggles without tearing down the chart
+  useEffect(() => {
+    candleSeriesRef.current?.applyOptions({ visible: chartType === 'candlestick' });
+    areaSeriesRef.current?.applyOptions({ visible: chartType === 'area' });
+  }, [chartType]);
+
+  useEffect(() => {
+    volumeSeriesRef.current?.applyOptions({ visible: showVolume });
+  }, [showVolume]);
+
+  useEffect(() => {
+    emaSeriesRef.current?.applyOptions({ visible: showEMA });
+    smaSeriesRef.current?.applyOptions({ visible: showEMA });
+  }, [showEMA]);
+
+  // 3. Independent Portfolio Cost Line: Updates smoothly on currency/rate changes without resetting chart
+  useEffect(() => {
+    const activeSeries = chartType === 'candlestick' ? candleSeriesRef.current : areaSeriesRef.current;
+    if (!activeSeries) return;
+
+    if (costLineRef.current) {
+      try {
+        activeSeries.removePriceLine(costLineRef.current);
+      } catch {
+        // Series might have changed
+      }
+      costLineRef.current = null;
+    }
+
+    if (showCostLine && userAsset) {
+      try {
+        const convertedCost =
+          currency === 'TRY'
+            ? userAsset.buyPrice * tryRate
+            : currency === 'EUR'
+            ? userAsset.buyPrice * eurRate
+            : userAsset.buyPrice;
+
+        costLineRef.current = activeSeries.createPriceLine({
+          price: convertedCost,
+          color: '#1c1917',
+          lineWidth: 2,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: `MALİYETİM (${formatCurrency(userAsset.buyPrice, currency, activeRate)})`,
+        });
+      } catch (e) {
+        console.warn('Cost line update fallback:', e);
+      }
+    }
+  }, [showCostLine, userAsset, chartType, currency, tryRate, eurRate, activeRate]);
+
+  // 4. Live WebSocket Price Streaming with Bar Rollover & Smooth Flow
   useEffect(() => {
     if (!ticker) return;
     const currentPrice = ticker.price;
+    const nowSec = Math.floor(Date.now() / 1000);
+    const barSec = INTERVAL_SECONDS[interval] || 3600;
+    const currentBarTime = (Math.floor(nowSec / barSec) * barSec) as UTCTimestamp;
 
-    if (chartType === 'candlestick' && candleSeriesRef.current && lastCandleRef.current) {
+    // Candlestick series live update
+    if (candleSeriesRef.current && lastCandleRef.current) {
       const prev = lastCandleRef.current;
-      const updatedCandle: CandlestickData<UTCTimestamp> = {
-        time: prev.time,
-        open: prev.open,
-        high: Math.max(prev.high, currentPrice),
-        low: Math.min(prev.low, currentPrice),
-        close: currentPrice,
-      };
-      lastCandleRef.current = updatedCandle;
-      candleSeriesRef.current.update(updatedCandle);
-    } else if (chartType === 'area' && areaSeriesRef.current && lastAreaPointRef.current) {
-      const updatedArea: AreaData<UTCTimestamp> = {
-        time: lastAreaPointRef.current.time,
-        value: currentPrice,
-      };
-      lastAreaPointRef.current = updatedArea;
-      areaSeriesRef.current.update(updatedArea);
+      if (currentBarTime > prev.time) {
+        // Advance into new candle bar in real time
+        const newCandle: CandlestickData<UTCTimestamp> = {
+          time: currentBarTime,
+          open: currentPrice,
+          high: currentPrice,
+          low: currentPrice,
+          close: currentPrice,
+        };
+        lastCandleRef.current = newCandle;
+        candleSeriesRef.current.update(newCandle);
+      } else {
+        // Smoothly update current bar high/low/close
+        const updatedCandle: CandlestickData<UTCTimestamp> = {
+          time: prev.time,
+          open: prev.open,
+          high: Math.max(prev.high, currentPrice),
+          low: Math.min(prev.low, currentPrice),
+          close: currentPrice,
+        };
+        lastCandleRef.current = updatedCandle;
+        candleSeriesRef.current.update(updatedCandle);
+      }
     }
-  }, [ticker, chartType]);
+
+    // Area series live update
+    if (areaSeriesRef.current && lastAreaPointRef.current) {
+      const prev = lastAreaPointRef.current;
+      if (currentBarTime > prev.time) {
+        const newPoint: AreaData<UTCTimestamp> = {
+          time: currentBarTime,
+          value: currentPrice,
+        };
+        lastAreaPointRef.current = newPoint;
+        areaSeriesRef.current.update(newPoint);
+      } else {
+        const updatedArea: AreaData<UTCTimestamp> = {
+          time: prev.time,
+          value: currentPrice,
+        };
+        lastAreaPointRef.current = updatedArea;
+        areaSeriesRef.current.update(updatedArea);
+      }
+    }
+  }, [ticker, interval]);
+
+  const handleClose = () => {
+    if (window.history.state?.modal === 'chart') {
+      window.history.back();
+    } else {
+      setSelectedSymbol(null);
+    }
+  };
+
+  // Support device/browser back button (popstate) and Escape key
+  useEffect(() => {
+    if (!selectedSymbol) return;
+
+    // Push a state into browser history so hardware/browser back button closes modal
+    window.history.pushState({ modal: 'chart', symbol: selectedSymbol }, '');
+
+    const handlePopState = () => {
+      setSelectedSymbol(null);
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleClose();
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSymbol]);
 
   if (!selectedSymbol) return null;
 
@@ -398,8 +536,17 @@ export const DetailChartModal: React.FC = () => {
     <div className="fixed inset-0 z-50 flex flex-col bg-[#f4f0e6] animate-sheetUp font-mono">
       {/* Top Bar / Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b-2 border-stone-900 bg-[#ede8dd] pt-safe">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-md bg-stone-900 text-amber-300 border-2 border-stone-900 flex items-center justify-center font-black text-sm shadow-hard-sm">
+        <div className="flex items-center gap-2">
+          {/* Back Button */}
+          <button
+            onClick={handleClose}
+            title="Geri Dön"
+            className="p-1.5 rounded-md bg-white border-2 border-stone-900 hover:bg-stone-200 shadow-hard-sm btn-hard cursor-pointer shrink-0"
+          >
+            <ArrowLeft className="w-4 h-4 stroke-[3]" />
+          </button>
+
+          <div className="w-9 h-9 rounded-md bg-stone-900 text-amber-300 border-2 border-stone-900 flex items-center justify-center font-black text-sm shadow-hard-sm shrink-0">
             {base.substring(0, 3)}
           </div>
           <div>
@@ -441,7 +588,8 @@ export const DetailChartModal: React.FC = () => {
           </div>
 
           <button
-            onClick={() => setSelectedSymbol(null)}
+            onClick={handleClose}
+            title="Kapat"
             className="p-1.5 rounded-md bg-white border-2 border-stone-900 hover:bg-stone-200 shadow-hard-sm btn-hard cursor-pointer"
           >
             <X className="w-4 h-4 stroke-[3]" />

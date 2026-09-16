@@ -2,6 +2,7 @@ import React from 'react';
 import { ArrowDownRight, ArrowUpRight, Plus, ShieldCheck, WalletCards } from 'lucide-react';
 import { useCryptoStore } from '../../store/useCryptoStore';
 import { formatCurrency, formatPercentage } from '../../utils/formatters';
+import { InfoBadge } from '../common/InfoBadge';
 
 interface PortfolioSummaryProps {
   onAddClick: () => void;
@@ -72,8 +73,14 @@ export const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({ onAddClick }
             NET PORTFÖY DEĞERİ
           </span>
         </div>
-        <div className="flex items-center gap-1 text-[10px] text-stone-900 font-bold bg-stone-100 border border-stone-900 px-1.5 py-0.5 rounded shadow-hard-sm">
-          <ShieldCheck className="w-3 h-3 text-emerald-600" /> YEREL KASA
+        <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 text-[10px] text-stone-900 font-bold bg-stone-100 border border-stone-900 px-1.5 py-0.5 rounded shadow-hard-sm">
+            <ShieldCheck className="w-3 h-3 text-emerald-600" /> YEREL KASA
+          </div>
+          <InfoBadge
+            title="Cüzdan Güvenliği"
+            content="Tüm varlık kayıtlarınız ve hesaplamalar sadece cihazınızdaki yerel hafızada (LocalStorage) tutulur. Hiçbir sunucuya veri gönderilmez."
+          />
         </div>
       </div>
 
@@ -101,14 +108,19 @@ export const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({ onAddClick }
 
           {/* Realized PnL badge */}
           {realizedPnL !== 0 && (
-            <span
-              className={`text-[10px] font-bold px-1.5 py-0.5 rounded border border-stone-900 ${
-                isRealizedProfit ? 'bg-emerald-100 text-emerald-900' : 'bg-rose-100 text-rose-900'
-              }`}
-              title="Kapanan/satılan pozisyonlardan elde edilen kâr"
-            >
-              Realize: {formatCurrency(realizedPnL, currency, activeRate)}
-            </span>
+            <div className="inline-flex items-center gap-1">
+              <span
+                className={`text-[10px] font-bold px-1.5 py-0.5 rounded border border-stone-900 ${
+                  isRealizedProfit ? 'bg-emerald-100 text-emerald-900' : 'bg-rose-100 text-rose-900'
+                }`}
+              >
+                Realize: {formatCurrency(realizedPnL, currency, activeRate)}
+              </span>
+              <InfoBadge
+                title="Realize Kâr / Zarar"
+                content="Geçmişte satışı tamamlanan işlemlerden elde edilen net nakit kâr veya zararı temsil eder."
+              />
+            </div>
           )}
         </div>
       </div>

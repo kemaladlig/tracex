@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { fetchComprehensiveAnalytics } from '../../services/onChainApi';
 import { useCryptoStore } from '../../store/useCryptoStore';
+import { InfoBadge } from '../common/InfoBadge';
 
 export const AnalyticsView: React.FC = () => {
   const analyticsData = useCryptoStore((state) => state.analyticsData);
@@ -36,45 +37,135 @@ export const AnalyticsView: React.FC = () => {
   if (isLoading || !analyticsData) {
     return (
       <div className="pb-24 pt-2 px-3 font-mono max-w-2xl mx-auto animate-pulse">
-        {/* Skeleton Title */}
+        {/* Skeleton Title Bar */}
         <div className="flex items-center justify-between mb-3 border-b-2 border-stone-900 pb-2">
-          <div className="h-4 w-44 bg-stone-300 rounded" />
-          <div className="h-6 w-6 bg-stone-200 border border-stone-400 rounded" />
+          <div>
+            <div className="h-4 w-48 bg-stone-300 rounded mb-1" />
+            <div className="h-2.5 w-64 bg-stone-200 rounded" />
+          </div>
+          <div className="w-7 h-7 bg-stone-200 border border-stone-900 rounded shadow-hard-sm" />
         </div>
 
         {/* Skeleton 1: Macro Phase Card */}
-        <div className="p-4 bg-stone-800 border-2 border-stone-900 rounded-lg shadow-hard mb-3.5">
-          <div className="flex justify-between mb-3">
-            <div className="h-3.5 w-36 bg-stone-700 rounded" />
-            <div className="h-4 w-16 bg-stone-700 rounded" />
+        <div className="p-4 bg-stone-900 border-2 border-stone-900 rounded-lg shadow-hard mb-3.5">
+          <div className="flex items-center justify-between pb-2 border-b border-stone-800 mb-3">
+            <div className="h-3 w-32 bg-stone-700 rounded" />
+            <div className="h-5 w-20 bg-stone-800 border border-stone-700 rounded" />
           </div>
-          <div className="h-3 w-48 bg-stone-600 rounded mb-2" />
-          <div className="h-2.5 w-full bg-stone-700 rounded mb-1" />
-          <div className="h-2.5 w-3/4 bg-stone-700 rounded" />
-        </div>
-
-        {/* Skeleton 2: FNG 4-boxes */}
-        <div className="p-4 bg-white border-2 border-stone-900 rounded-lg shadow-hard mb-3.5">
-          <div className="h-3.5 w-40 bg-stone-200 rounded mb-3" />
-          <div className="grid grid-cols-4 gap-1.5 mb-3">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-16 bg-stone-100 border border-stone-300 rounded" />
-            ))}
+          <div className="mb-2.5">
+            <div className="h-3 w-40 bg-amber-400/40 rounded mb-2" />
+            <div className="h-2.5 w-full bg-stone-700 rounded mb-1.5" />
+            <div className="h-2.5 w-3/4 bg-stone-700 rounded" />
           </div>
-          <div className="h-14 bg-stone-50 border border-stone-200 rounded" />
+          <div className="w-full bg-stone-800 h-2 rounded border border-stone-700" />
         </div>
 
-        {/* Skeleton 3: Dominance Bar */}
+        {/* Skeleton 2: Fear & Greed Card */}
         <div className="p-4 bg-white border-2 border-stone-900 rounded-lg shadow-hard mb-3.5">
-          <div className="h-3.5 w-48 bg-stone-200 rounded mb-3" />
-          <div className="h-3.5 w-full bg-stone-200 rounded mb-2" />
-          <div className="h-10 bg-stone-100 border border-stone-200 rounded" />
+          <div className="flex items-center justify-between pb-2 border-b-2 border-stone-900/40 mb-3">
+            <div className="h-4 w-44 bg-stone-300 rounded" />
+            <div className="w-4 h-4 bg-stone-200 rounded" />
+          </div>
+          <div className="grid grid-cols-4 gap-1.5 mb-3.5">
+            <div className="p-2 bg-amber-50/70 border-2 border-stone-900 rounded shadow-hard-sm h-18" />
+            <div className="p-2 bg-stone-50 border border-stone-900 rounded h-18" />
+            <div className="p-2 bg-stone-50 border border-stone-900 rounded h-18" />
+            <div className="p-2 bg-stone-50 border border-stone-900 rounded h-18" />
+          </div>
+          <div className="mt-2 pt-2 border-t border-stone-200">
+            <div className="flex justify-between mb-1">
+              <div className="h-2.5 w-28 bg-stone-200 rounded" />
+              <div className="h-2.5 w-20 bg-stone-200 rounded" />
+            </div>
+            <div className="w-full h-16 bg-stone-50 rounded border border-stone-900/60" />
+          </div>
         </div>
 
-        {/* Skeleton 4: Long/Short & MVRV */}
+        {/* Skeleton 3: Market Dominance Card */}
         <div className="p-4 bg-white border-2 border-stone-900 rounded-lg shadow-hard mb-3.5">
-          <div className="h-3.5 w-36 bg-stone-200 rounded mb-3" />
-          <div className="h-3 w-full bg-stone-200 rounded" />
+          <div className="flex items-center justify-between pb-2 border-b-2 border-stone-900/40 mb-3">
+            <div className="h-4 w-48 bg-stone-300 rounded" />
+            <div className="h-5 w-24 bg-stone-200 border border-stone-900 rounded" />
+          </div>
+          <div className="mb-2">
+            <div className="flex justify-between mb-1.5">
+              <div className="h-2.5 w-16 bg-stone-200 rounded" />
+              <div className="h-2.5 w-16 bg-stone-200 rounded" />
+              <div className="h-2.5 w-20 bg-stone-200 rounded" />
+            </div>
+            <div className="w-full h-3.5 rounded border-2 border-stone-900 bg-stone-200 shadow-hard-sm" />
+          </div>
+          <div className="grid grid-cols-2 gap-2 mt-2.5 p-2 bg-stone-50 border border-stone-900 rounded">
+            <div className="h-8 bg-stone-200/60 rounded" />
+            <div className="h-8 bg-stone-200/60 rounded" />
+          </div>
+        </div>
+
+        {/* Skeleton 4: Long / Short & Funding Rate Card */}
+        <div className="p-4 bg-white border-2 border-stone-900 rounded-lg shadow-hard mb-3.5">
+          <div className="flex items-center justify-between pb-2 border-b-2 border-stone-900/40 mb-3">
+            <div className="h-4 w-52 bg-stone-300 rounded" />
+            <div className="h-5 w-20 bg-stone-200 border border-stone-900 rounded" />
+          </div>
+          <div className="mb-2">
+            <div className="flex justify-between mb-1">
+              <div className="h-2.5 w-20 bg-stone-200 rounded" />
+              <div className="h-2.5 w-20 bg-stone-200 rounded" />
+            </div>
+            <div className="w-full h-3 rounded border-2 border-stone-900 bg-stone-200 shadow-hard-sm" />
+          </div>
+          <div className="mt-2.5 p-2 bg-stone-50 border border-stone-900 rounded h-10" />
+        </div>
+
+        {/* Skeleton 5: MVRV Ratio Card */}
+        <div className="p-4 bg-white border-2 border-stone-900 rounded-lg shadow-hard mb-3.5">
+          <div className="flex items-center justify-between pb-2 border-b-2 border-stone-900/40 mb-3">
+            <div className="h-4 w-44 bg-stone-300 rounded" />
+            <div className="h-5 w-20 bg-stone-900 rounded" />
+          </div>
+          <div className="my-2">
+            <div className="w-full h-4 rounded border-2 border-stone-900 bg-stone-200 shadow-hard-sm" />
+            <div className="flex justify-between mt-1">
+              <div className="h-2 w-24 bg-stone-200 rounded" />
+              <div className="h-2 w-24 bg-stone-200 rounded" />
+            </div>
+          </div>
+        </div>
+
+        {/* Skeleton 6: Taker Volume & Open Interest Grid */}
+        <div className="grid grid-cols-2 gap-2.5 mb-3.5">
+          <div className="p-3 bg-white border-2 border-stone-900 rounded-lg shadow-hard h-28 flex flex-col justify-between">
+            <div className="flex justify-between">
+              <div className="h-2.5 w-20 bg-stone-200 rounded" />
+              <div className="w-3.5 h-3.5 bg-stone-200 rounded" />
+            </div>
+            <div className="h-3 w-28 bg-stone-300 rounded" />
+            <div className="w-full h-2 rounded border border-stone-900 bg-stone-200" />
+            <div className="h-3 w-16 bg-stone-200 rounded" />
+          </div>
+          <div className="p-3 bg-white border-2 border-stone-900 rounded-lg shadow-hard h-28 flex flex-col justify-between">
+            <div className="flex justify-between">
+              <div className="h-2.5 w-20 bg-stone-200 rounded" />
+              <div className="w-3.5 h-3.5 bg-stone-200 rounded" />
+            </div>
+            <div className="h-3 w-20 bg-stone-300 rounded" />
+            <div className="h-3.5 w-24 bg-stone-200 border border-stone-900 rounded" />
+          </div>
+        </div>
+
+        {/* Skeleton 7: BTC Technical Radar Card */}
+        <div className="p-4 bg-white border-2 border-stone-900 rounded-lg shadow-hard">
+          <div className="flex items-center justify-between pb-2 border-b-2 border-stone-900/40 mb-3">
+            <div className="h-4 w-44 bg-stone-300 rounded" />
+            <div className="h-5 w-16 bg-stone-200 border border-stone-900 rounded" />
+          </div>
+          <div className="mb-2">
+            <div className="w-full h-3 rounded border-2 border-stone-900 bg-stone-200 shadow-hard-sm" />
+            <div className="flex justify-between mt-1">
+              <div className="h-2 w-20 bg-stone-200 rounded" />
+              <div className="h-2 w-20 bg-stone-200 rounded" />
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -124,7 +215,7 @@ export const AnalyticsView: React.FC = () => {
         </div>
         <button
           onClick={loadData}
-          className="p-1.5 bg-stone-100 border border-stone-900 rounded shadow-hard-sm hover:bg-stone-200 active:translate-x-[1px] active:translate-y-[1px] transition-all"
+          className="p-1.5 bg-stone-100 border border-stone-900 rounded shadow-hard-sm hover:bg-stone-200 active:translate-x-[1px] active:translate-y-[1px] transition-all cursor-pointer"
           title="Verileri Güncelle"
         >
           <RefreshCw className="w-3.5 h-3.5 text-stone-900" />
@@ -191,16 +282,17 @@ export const AnalyticsView: React.FC = () => {
             <Gauge className="w-4 h-4 text-amber-600" />
             <span>KORKU & AÇGÖZLÜLÜK ENDEKSİ</span>
           </div>
-          <span className="text-[10px] font-bold text-stone-500">
-            KAYNAK: ALTERNATIVE.ME (CANLI)
-          </span>
+          <InfoBadge
+            title="Korku & Açgözlülük (Alternative.me)"
+            content="Piyasadaki aşırı korku yatırımcıların gereksiz paniklediğini (alım fırsatı), aşırı açgözlülük ise piyasanın bir düzeltmeye hazır olduğunu (satış uyarısı) gösterir."
+          />
         </div>
 
         {/* 4 Multi-period Comparison Boxes (Today, Yesterday, Last Week, Last Month) */}
         <div className="grid grid-cols-4 gap-1.5 mb-3.5">
           {/* Today */}
           <div className="p-2 bg-amber-50 border-2 border-stone-900 rounded shadow-hard-sm text-center">
-            <span className="text-[9px] font-bold text-stone-600 uppercase block">ŞU AN (BUGÜN)</span>
+            <span className="text-[9px] font-bold text-stone-600 uppercase block">ŞU AN</span>
             <div className="text-lg font-black text-stone-950 mt-0.5">{fearAndGreed.current}</div>
             <span className="text-[8px] font-black uppercase text-amber-800 block truncate">
               {fearAndGreed.classification}
@@ -306,11 +398,17 @@ export const AnalyticsView: React.FC = () => {
         <div className="flex items-center justify-between pb-2 border-b-2 border-stone-900/40 mb-3">
           <div className="flex items-center gap-1.5 text-xs font-black text-stone-900 uppercase">
             <PieChart className="w-4 h-4 text-indigo-600" />
-            <span>PAZAR HAKİMİYETİ (BTC DOMINANCE)</span>
+            <span>PAZAR HAKİMİYETİ (BTC.D)</span>
           </div>
-          <span className="text-[10px] font-black bg-indigo-50 border border-stone-900 px-1.5 py-0.5 rounded shadow-hard-sm">
-            BTC.D: %{marketDominance.btcD}
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-black bg-indigo-50 border border-stone-900 px-1.5 py-0.5 rounded shadow-hard-sm">
+              BTC.D: %{marketDominance.btcD}
+            </span>
+            <InfoBadge
+              title="Pazar Hakimiyeti (Dominance)"
+              content={marketDominance.interpretation}
+            />
+          </div>
         </div>
 
         {/* 3-Segment Stacked Bar */}
@@ -360,10 +458,6 @@ export const AnalyticsView: React.FC = () => {
             <span className="font-black text-stone-900">${marketDominance.totalVolume24hUsd}B</span>
           </div>
         </div>
-
-        <p className="text-[10px] text-stone-600 mt-2 leading-relaxed">
-          {marketDominance.interpretation}
-        </p>
       </div>
 
       {/* 4. VADELİ PİYASA LONG / SHORT DENGESİ & FONLAMA ORANI */}
@@ -374,11 +468,17 @@ export const AnalyticsView: React.FC = () => {
         <div className="flex items-center justify-between pb-2 border-b-2 border-stone-900/40 mb-3">
           <div className="flex items-center gap-1.5 text-xs font-black text-stone-900 uppercase">
             <Flame className="w-4 h-4 text-amber-600" />
-            <span>BİNANCE VADELİ: LONG / SHORT ÇEKİŞMESİ</span>
+            <span>VADELİ LONG / SHORT & FONLAMA</span>
           </div>
-          <span className="text-[10px] font-black bg-stone-100 border border-stone-900 px-1.5 py-0.5 rounded shadow-hard-sm">
-            ORAN: {longShortRatio.ratio}
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-black bg-stone-100 border border-stone-900 px-1.5 py-0.5 rounded shadow-hard-sm">
+              ORAN: {longShortRatio.ratio}
+            </span>
+            <InfoBadge
+              title="Long / Short & Fonlama"
+              content={longShortRatio.description}
+            />
+          </div>
         </div>
 
         {/* Dual Bar (Long vs Short) */}
@@ -400,12 +500,8 @@ export const AnalyticsView: React.FC = () => {
           </div>
         </div>
 
-        <p className="text-[10px] text-stone-600 mt-2 leading-relaxed">
-          {longShortRatio.description}
-        </p>
-
         {/* Funding Rate Box */}
-        <div className="mt-3 p-2.5 bg-stone-50 border border-stone-900 rounded flex items-center justify-between text-xs">
+        <div className="mt-2.5 p-2 bg-stone-50 border border-stone-900 rounded flex items-center justify-between text-xs">
           <div>
             <span className="text-[9px] text-stone-500 uppercase font-bold block">
               Fonlama Oranı (Funding Rate)
@@ -430,9 +526,15 @@ export const AnalyticsView: React.FC = () => {
             <LineChart className="w-4 h-4 text-purple-600" />
             <span>MVRV ORANI // DÖNGÜ ISITICISI</span>
           </div>
-          <span className="text-xs font-black bg-stone-900 text-amber-300 px-2 py-0.5 rounded shadow-hard-sm">
-            SKOR: {mvrvRatio.value} (CANLI)
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-black bg-stone-900 text-amber-300 px-2 py-0.5 rounded shadow-hard-sm">
+              SKOR: {mvrvRatio.value}
+            </span>
+            <InfoBadge
+              title="MVRV Oranı (Piyasa / Gerçekleşen Değer)"
+              content={mvrvRatio.interpretation}
+            />
+          </div>
         </div>
 
         {/* The Cycle Ruler Indicator */}
@@ -453,10 +555,6 @@ export const AnalyticsView: React.FC = () => {
             <span>3.7+ (Boğa Tepesi/Satış)</span>
           </div>
         </div>
-
-        <p className="text-[10px] text-stone-600 mt-2 leading-relaxed">
-          {mvrvRatio.interpretation}
-        </p>
       </div>
 
       {/* 6. GERÇEK EMİR AKIŞI (TAKER VOLUME) & AÇIK POZİSYON (OPEN INTEREST) */}
@@ -467,8 +565,14 @@ export const AnalyticsView: React.FC = () => {
         {/* Taker Buy vs Sell Volume */}
         <div className="p-3 bg-white border-2 border-stone-900 rounded-lg shadow-hard flex flex-col justify-between">
           <div>
-            <div className="flex items-center gap-1 text-[9px] text-stone-500 font-bold uppercase mb-1">
-              <BarChart3 className="w-3 h-3 text-emerald-600" /> Taker Emir Akışı
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-1 text-[9px] text-stone-500 font-bold uppercase">
+                <BarChart3 className="w-3 h-3 text-emerald-600" /> Taker Akışı
+              </div>
+              <InfoBadge
+                title="Taker Emir Akışı"
+                content="Piyasa emriyle anlık agresif işlem yapan hacim dağılımı. Taker alış baskısı anlık yükseliş gücünü gösterir."
+              />
             </div>
             <div className="text-xs font-black text-stone-900">
               %{takerVolume.buyPercent} Alış / %{takerVolume.sellPercent} Satış
@@ -481,16 +585,19 @@ export const AnalyticsView: React.FC = () => {
               {takerVolume.signal}
             </span>
           </div>
-          <p className="text-[9px] text-stone-500 mt-2 leading-tight">
-            Piyasa emriyle anlık agresif işlem yapan hacim dağılımı.
-          </p>
         </div>
 
         {/* Open Interest */}
         <div className="p-3 bg-white border-2 border-stone-900 rounded-lg shadow-hard flex flex-col justify-between">
           <div>
-            <div className="flex items-center gap-1 text-[9px] text-stone-500 font-bold uppercase mb-1">
-              <Layers className="w-3 h-3 text-indigo-600" /> Açık Pozisyon (OI)
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-1 text-[9px] text-stone-500 font-bold uppercase">
+                <Layers className="w-3 h-3 text-indigo-600" /> Açık Poz. (OI)
+              </div>
+              <InfoBadge
+                title="Açık Pozisyon (Open Interest)"
+                content={openInterest.interpretation}
+              />
             </div>
             <div className="text-xs font-black text-stone-900">
               ${openInterest.valueUsd}B USD
@@ -505,9 +612,6 @@ export const AnalyticsView: React.FC = () => {
               24S: {openInterest.change24hUsd >= 0 ? '+' : ''}${openInterest.change24hUsd}M
             </span>
           </div>
-          <p className="text-[9px] text-stone-500 mt-2 leading-tight">
-            {openInterest.interpretation}
-          </p>
         </div>
       </div>
 
@@ -519,19 +623,25 @@ export const AnalyticsView: React.FC = () => {
         <div className="flex items-center justify-between pb-2 border-b-2 border-stone-900/40 mb-3">
           <div className="flex items-center gap-1.5 text-xs font-black text-stone-900 uppercase">
             <Target className="w-4 h-4 text-rose-600" />
-            <span>BTC TEKNİK RADAR (RSI 14 & ORTALAMALAR)</span>
+            <span>BTC TEKNİK RADAR (RSI 14)</span>
           </div>
-          <span
-            className={`text-[10px] font-black border border-stone-900 px-1.5 py-0.5 rounded shadow-hard-sm ${
-              technicalIndicator.rsiStatus === 'oversold'
-                ? 'bg-emerald-200 text-emerald-950'
-                : technicalIndicator.rsiStatus === 'overbought'
-                ? 'bg-rose-200 text-rose-950'
-                : 'bg-amber-100 text-stone-950'
-            }`}
-          >
-            RSI: {technicalIndicator.rsi14}
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span
+              className={`text-[10px] font-black border border-stone-900 px-1.5 py-0.5 rounded shadow-hard-sm ${
+                technicalIndicator.rsiStatus === 'oversold'
+                  ? 'bg-emerald-200 text-emerald-950'
+                  : technicalIndicator.rsiStatus === 'overbought'
+                  ? 'bg-rose-200 text-rose-950'
+                  : 'bg-amber-100 text-stone-950'
+              }`}
+            >
+              RSI: {technicalIndicator.rsi14}
+            </span>
+            <InfoBadge
+              title="BTC Teknik Seviyeler"
+              content={`${technicalIndicator.trendLabel} (20 Günlük Basit Hareketli Ortalama: $${technicalIndicator.sma20Price.toLocaleString()}). RSI 30 altı aşırı satım, 70 üzeri aşırı alım bölgesidir.`}
+            />
+          </div>
         </div>
 
         {/* RSI Meter Bar */}
@@ -552,11 +662,6 @@ export const AnalyticsView: React.FC = () => {
             <span>100 (Aşırı Alım)</span>
           </div>
         </div>
-
-        {/* Trend summary */}
-        <p className="text-[10px] text-stone-600 mt-2 font-medium">
-          {technicalIndicator.trendLabel} (20G SMA: ${technicalIndicator.sma20Price.toLocaleString()})
-        </p>
       </div>
     </div>
   );

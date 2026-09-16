@@ -22,6 +22,7 @@ export const Header: React.FC = () => {
   const toggleHideBalances = useCryptoStore((state) => state.toggleHideBalances);
   const currency = useCryptoStore((state) => state.currency);
   const setCurrency = useCryptoStore((state) => state.setCurrency);
+  const activeTab = useCryptoStore((state) => state.activeTab);
 
   const { isInstallable, isStandalone, installApp } = usePWAInstall();
   const [showInstallGuide, setShowInstallGuide] = useState(false);
@@ -88,31 +89,28 @@ export const Header: React.FC = () => {
               <span className="text-[10px]">{getCurrencySymbol(currency)}</span>
             </button>
 
-            {/* Privacy Toggle Stamp */}
-            <button
-              onClick={toggleHideBalances}
-              title={hideBalances ? 'Bakiyeleri Göster' : 'Bakiyeleri Gizle'}
-              className={`flex items-center gap-1 px-2 py-1 rounded-md border-2 border-stone-900 text-xs font-bold shadow-hard-sm btn-hard cursor-pointer ${
-                hideBalances
-                  ? 'bg-amber-300 text-stone-900'
-                  : 'bg-white text-stone-800'
-              }`}
-            >
-              {hideBalances ? (
-                <>
+            {/* Privacy Toggle Stamp - Only displayed on Portfolio tab without text */}
+            {activeTab === 'portfolio' && (
+              <button
+                onClick={toggleHideBalances}
+                title={hideBalances ? 'Bakiyeleri Göster' : 'Bakiyeleri Gizle'}
+                className={`flex items-center justify-center p-1.5 rounded-md border-2 border-stone-900 shadow-hard-sm btn-hard cursor-pointer ${
+                  hideBalances
+                    ? 'bg-amber-300 text-stone-900'
+                    : 'bg-white text-stone-800'
+                }`}
+              >
+                {hideBalances ? (
                   <EyeOff className="w-3.5 h-3.5 stroke-[2.5]" />
-                  <span className="text-[10px]">GİZLİ</span>
-                </>
-              ) : (
-                <>
+                ) : (
                   <Eye className="w-3.5 h-3.5 stroke-[2.5]" />
-                  <span className="text-[10px]">AÇIK</span>
-                </>
-              )}
-            </button>
+                )}
+              </button>
+            )}
 
             {/* Connection Status Stamp */}
             <div
+              title={`Bağlantı Durumu: ${connectionStatus === 'connected' ? 'Canlı' : 'Kopuk'}`}
               className={`flex items-center gap-1 px-1.5 py-1 rounded-md border-2 border-stone-900 text-[10px] font-bold shadow-hard-sm ${
                 connectionStatus === 'connected'
                   ? 'bg-emerald-200 text-emerald-950'
@@ -122,7 +120,7 @@ export const Header: React.FC = () => {
               }`}
             >
               <Radio className={`w-3 h-3 ${connectionStatus === 'connected' ? 'animate-livePulse' : ''}`} />
-              <span>
+              <span className="hidden sm:inline">
                 {connectionStatus === 'connected' ? 'CANLI' : 'KOPUK'}
               </span>
             </div>

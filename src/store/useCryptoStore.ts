@@ -80,14 +80,14 @@ const DEFAULT_INITIAL_ASSETS: PortfolioAsset[] = [
 const DEFAULT_GROUPS: PortfolioGroup[] = [
   {
     id: 'group-main',
-    name: 'Ana Kasa',
+    name: 'Portföy 1',
     assets: DEFAULT_INITIAL_ASSETS,
     realizedPnL: 0,
     createdAt: Date.now() - 86400000 * 30,
   },
   {
     id: 'group-spot',
-    name: 'Spot / Al-Sat',
+    name: 'Portföy 2',
     assets: [],
     realizedPnL: 0,
     createdAt: Date.now() - 86400000 * 10,
@@ -512,20 +512,27 @@ export const useCryptoStore = create<CryptoState>()(
           state.portfolioGroups = [
             {
               id: 'group-main',
-              name: 'Ana Kasa',
+              name: 'Portföy 1',
               assets,
               realizedPnL: state.realizedPnL || 0,
               createdAt: Date.now(),
             },
             {
               id: 'group-spot',
-              name: 'Spot / Al-Sat',
+              name: 'Portföy 2',
               assets: [],
               realizedPnL: 0,
               createdAt: Date.now(),
             },
           ];
           state.activeGroupId = 'group-main';
+        } else {
+          // Normalize legacy non-generic default names if unchanged
+          state.portfolioGroups = state.portfolioGroups.map((g) => {
+            if (g.name === 'Ana Kasa') return { ...g, name: 'Portföy 1' };
+            if (g.name === 'Spot / Al-Sat') return { ...g, name: 'Portföy 2' };
+            return g;
+          });
         }
 
         // Validate active group and synchronize active state

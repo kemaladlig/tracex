@@ -64,7 +64,7 @@ export const AddWatchlistModal: React.FC<AddWatchlistModalProps> = ({ isOpen, on
         <div className="flex items-center justify-between p-4 border-b-2 border-stone-900 bg-[#ede8dd] shrink-0">
           <div>
             <h2 className="text-base font-mono font-black text-stone-900 uppercase tracking-tight">
-              Kripto Takip Listesi Ekle
+              Coin Ekle
             </h2>
             <p className="text-[11px] font-mono text-stone-600">Binance 400+ spot paritesi</p>
           </div>
@@ -90,7 +90,7 @@ export const AddWatchlistModal: React.FC<AddWatchlistModalProps> = ({ isOpen, on
             <Search className="absolute left-3 w-4 h-4 text-stone-500" />
             <input
               type="text"
-              placeholder="Coin adı veya sembolü yazın (örn: PEPE, SOL, SUI)..."
+              placeholder="Coin veya sembol ara..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               autoFocus
