@@ -546,14 +546,9 @@ export const HomeDashboardView: React.FC = () => {
             <div className={`p-1.5 rounded border border-stone-900 ${isWalletExpanded ? 'bg-amber-300 text-stone-900' : 'bg-stone-900 text-amber-300'}`}>
               <Wallet className="w-4 h-4 stroke-[2.5]" />
             </div>
-            <div className="text-left">
-              <span className="text-xs font-black text-stone-900 uppercase tracking-wider block">
-                KİŞİSEL CÜZDANIM & VARLIKLAR
-              </span>
-              <span className="text-[10px] font-bold text-stone-500">
-                {isWalletExpanded ? `${portfolio.length} varlık gösteriliyor` : 'Topluluk koruması: dokunarak açın'}
-              </span>
-            </div>
+            <span className="text-xs font-black text-stone-900 uppercase tracking-wider">
+              CÜZDAN & VARLIKLAR
+            </span>
           </div>
 
           <div className="flex items-center gap-1.5">
