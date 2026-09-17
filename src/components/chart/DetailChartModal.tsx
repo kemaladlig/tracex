@@ -517,7 +517,7 @@ export const DetailChartModal: React.FC = () => {
           lineWidth: 2,
           lineStyle: LineStyle.Dashed,
           axisLabelVisible: true,
-          title: `COST (${formatCurrency(userAsset.buyPrice, currency, activeRate)})`,
+          title: 'COST',
         });
       } catch (e) {
         console.warn('Cost line update fallback:', e);
@@ -716,13 +716,12 @@ export const DetailChartModal: React.FC = () => {
               triggerHaptic('light');
               setIsSettingsOpen(true);
             }}
-            className="px-2.5 py-1 rounded-md bg-white border-2 border-stone-900 hover:bg-stone-100 shadow-hard-sm btn-hard cursor-pointer flex items-center gap-1.5 text-xs font-black text-stone-900"
+            className="p-1.5 rounded-md bg-white border-2 border-stone-900 hover:bg-stone-100 shadow-hard-sm btn-hard cursor-pointer relative flex items-center justify-center text-stone-900"
             title="Grafik ve Gösterge Ayarları"
           >
-            <SlidersHorizontal className="w-3.5 h-3.5 stroke-[2.5]" />
-            <span>AYARLAR</span>
+            <SlidersHorizontal className="w-4 h-4 stroke-[2.5]" />
             {(showEMA || !showVolume || showCostLine || chartType !== 'candlestick') && (
-              <span className="w-2 h-2 rounded-full bg-amber-400 border border-stone-900" />
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-400 border border-stone-900" />
             )}
           </button>
 
