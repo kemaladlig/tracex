@@ -6,7 +6,6 @@ import {
   LineChart,
   Activity,
   Plus,
-  Compass,
   PieChart,
   TrendingUp,
   ArrowRightLeft,
@@ -218,27 +217,15 @@ export const HomeDashboardView: React.FC = () => {
   const btcChange = btcTicker?.changePercent24h ?? 0;
   const btcIsPositive = btcChange >= 0;
 
-  // Dynamic market atmosphere based on BTC 24h percentage change (scales with move intensity)
-  const atmosphere = useMemo(() => {
+  // Dynamic market paper wash on the Bitcoin card based on 24h percentage change
+  const cardBg = useMemo(() => {
     const absChange = Math.min(Math.abs(btcChange), 8);
-    const factor = absChange / 8; // 0.0 (neutral) to 1.0 (strong rally/drop)
+    const factor = absChange / 8; // 0.0 (neutral) to 1.0 (strong move)
 
     if (btcIsPositive) {
-      return {
-        cardBg: `rgba(240, 253, 244, ${0.45 + factor * 0.50})`,
-        chartBg: `rgba(220, 252, 231, ${0.30 + factor * 0.40})`,
-        tintColor: '#16a34a',
-        gradTopOpacity: 0.05 + factor * 0.20,
-        gradBottomOpacity: 0.01 + factor * 0.03,
-      };
+      return `rgba(240, 253, 244, ${0.50 + factor * 0.45})`; // Fresh mint-parchment
     } else {
-      return {
-        cardBg: `rgba(255, 241, 242, ${0.45 + factor * 0.50})`,
-        chartBg: `rgba(254, 226, 226, ${0.30 + factor * 0.40})`,
-        tintColor: '#dc2626',
-        gradTopOpacity: 0.05 + factor * 0.20,
-        gradBottomOpacity: 0.01 + factor * 0.03,
-      };
+      return `rgba(255, 241, 242, ${0.50 + factor * 0.45})`; // Soft rose-parchment
     }
   }, [btcChange, btcIsPositive]);
 
@@ -405,9 +392,7 @@ export const HomeDashboardView: React.FC = () => {
   }, [enrichedHoldings]);
 
   return (
-    <div className="flex-1 w-full px-4 py-3 space-y-3 font-mono">
-      {/* ========================================================================= */}
-      {/* 1. HERO COCKPIT: BİTCOİN (BTC) VE 24S BÜYÜTÜLMÜŞ CANLI SPARKLINE          */}
+    <div className="flex-1 w-full px-4 py-3 space-y-3 pb-8 font-mono">
       {/* 1. HERO COCKPIT: BITCOIN PRICE, 4H CANDLESTICK CHART & MARKET MODE */}
       <div
         onClick={() => {
@@ -415,11 +400,12 @@ export const HomeDashboardView: React.FC = () => {
           setSelectedCoinForChart('BTCUSDT');
         }}
         style={{
-          backgroundColor: atmosphere.cardBg,
+          backgroundColor: cardBg,
         }}
         className="border-2 border-stone-900 rounded-lg p-3.5 shadow-hard btn-hard cursor-pointer relative transition-colors duration-700 animate-sheetUp flex flex-col justify-between"
       >
         <div>
+          {/* Header Row: Symbol / Name on Left, Chart Navigation on Right */}
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
               <div className="w-5 h-5 rounded bg-stone-900 text-amber-300 flex items-center justify-center font-black text-[10px] border border-stone-900">
@@ -430,75 +416,56 @@ export const HomeDashboardView: React.FC = () => {
               </span>
             </div>
 
-            <div className="flex items-center gap-1.5">
-              <span
-                className={`inline-flex items-center gap-0.5 font-black px-1.5 py-0.5 rounded border border-stone-900 text-[11px] ${
-                  btcIsPositive
-                    ? 'bg-emerald-200 text-emerald-950'
-                    : 'bg-rose-200 text-rose-950'
-                }`}
-              >
-                {btcIsPositive ? (
-                  <ArrowUpRight className="w-3 h-3 stroke-[3]" />
-                ) : (
-                  <ArrowDownRight className="w-3 h-3 stroke-[3]" />
-                )}
-                {formatPercentage(btcChange)} (24s)
-              </span>
-
-              <span className="text-[10px] font-black text-stone-900 bg-amber-300 border border-stone-900 px-1.5 py-0.5 rounded-xs flex items-center gap-0.5 shadow-hard-xs">
-                <LineChart className="w-3 h-3 stroke-[2.5]" />
-                GRAFİK ➔
-              </span>
-            </div>
+            <span className="text-[10px] font-black text-stone-900 bg-amber-300 border border-stone-900 px-1.5 py-0.5 rounded-xs flex items-center gap-0.5 shadow-hard-xs">
+              <LineChart className="w-3 h-3 stroke-[2.5]" />
+              GRAFİK ➔
+            </span>
           </div>
 
-          {/* Price & Range Overview */}
-          <div className="flex items-baseline justify-between gap-2 mb-1.5">
+          {/* Price & Range Overview: Price + Percentage inline, TRY underneath */}
+          <div className="flex items-start justify-between gap-2 mb-1.5">
             <div>
-              <span className="text-3xl sm:text-4xl font-black text-stone-900 tracking-tight">
-                {formatCurrency(btcPriceUSD, 'USD', 1, 0)}
-              </span>
-              <span className="text-xs sm:text-sm font-bold text-stone-500 ml-2">
+              {/* Row 1: USD Price + Percentage Badge right next to it */}
+              <div className="flex items-center gap-2">
+                <span className="text-3xl sm:text-4xl font-black text-stone-900 tracking-tight">
+                  {formatCurrency(btcPriceUSD, 'USD', 1, 0)}
+                </span>
+                <span
+                  className={`inline-flex items-center gap-0.5 font-black px-1.5 py-0.5 rounded border border-stone-900 text-xs shadow-hard-xs ${
+                    btcIsPositive
+                      ? 'bg-emerald-200 text-emerald-950'
+                      : 'bg-rose-200 text-rose-950'
+                  }`}
+                >
+                  {btcIsPositive ? (
+                    <ArrowUpRight className="w-3.5 h-3.5 stroke-[3]" />
+                  ) : (
+                    <ArrowDownRight className="w-3.5 h-3.5 stroke-[3]" />
+                  )}
+                  {formatPercentage(btcChange)}
+                </span>
+              </div>
+
+              {/* Row 2: Approximate TRY Price directly underneath */}
+              <div className="text-xs sm:text-sm font-bold text-stone-500 mt-0.5">
                 ≈ {formatCurrency(btcPriceUSD, 'TRY', tryRate, 0)}
-              </span>
+              </div>
             </div>
 
-            <div className="text-[10px] font-bold text-stone-600 text-right leading-tight">
+            {/* Right: 24h High & Low */}
+            <div className="text-[10px] font-bold text-stone-600 text-right leading-tight mt-1">
               <div>Y: {formatCurrency(maxPrice || btcTicker?.high24h || btcPriceUSD, 'USD', 1, 0)}</div>
               <div>D: {formatCurrency(minPrice || btcTicker?.low24h || btcPriceUSD, 'USD', 1, 0)}</div>
             </div>
           </div>
 
-          {/* 4-Hour Japanese Candlestick Chart in a Spacious Square Frame */}
-          <div
-            style={{
-              backgroundColor: atmosphere.chartBg,
-            }}
-            className="w-full h-[205px] relative pointer-events-none my-2 rounded border-2 border-stone-900 p-0.5 overflow-hidden shadow-inner transition-colors duration-700"
-          >
+          {/* 4-Hour Japanese Candlestick Chart (Clean craft paper background, zero haze) */}
+          <div className="w-full h-[205px] relative pointer-events-none my-2 bg-stone-100/70 rounded border-2 border-stone-900 p-0.5 overflow-hidden shadow-inner">
             <svg
               viewBox="0 0 360 190"
               className="w-full h-full"
               preserveAspectRatio="none"
             >
-              <defs>
-                <linearGradient id="chartAtmosphere" x1="0" y1="0" x2="0" y2="1">
-                  <stop
-                    offset="0%"
-                    stopColor={atmosphere.tintColor}
-                    stopOpacity={atmosphere.gradTopOpacity}
-                  />
-                  <stop
-                    offset="100%"
-                    stopColor={atmosphere.tintColor}
-                    stopOpacity={atmosphere.gradBottomOpacity}
-                  />
-                </linearGradient>
-              </defs>
-
-              {/* Dynamic Atmospheric Radiance Rect */}
-              <rect width="360" height="190" fill="url(#chartAtmosphere)" rx="2" />
               {/* Subtle Horizontal Price Guidelines */}
               <line
                 x1="8"
@@ -996,33 +963,6 @@ export const HomeDashboardView: React.FC = () => {
             </div>
           </div>
         )}
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 4. HIZLI ERİŞİM BUTONLARI                                                 */}
-      {/* ========================================================================= */}
-      <div className="grid grid-cols-2 gap-2 pt-1 pb-4 animate-sheetUp [animation-delay:180ms]">
-        <button
-          onClick={() => {
-            triggerHaptic('medium');
-            setActiveTab('markets');
-          }}
-          className="p-2.5 bg-[#ede8dd] border-2 border-stone-900 rounded-md text-xs font-black text-stone-900 shadow-hard btn-hard flex items-center justify-center gap-2 cursor-pointer"
-        >
-          <Compass className="w-4 h-4 stroke-[2.5]" />
-          <span>TÜM PİYASALAR</span>
-        </button>
-
-        <button
-          onClick={() => {
-            triggerHaptic('medium');
-            setActiveTab('portfolio');
-          }}
-          className="p-2.5 bg-amber-300 border-2 border-stone-900 rounded-md text-xs font-black text-stone-900 shadow-hard btn-hard flex items-center justify-center gap-2 cursor-pointer"
-        >
-          <Wallet className="w-4 h-4 stroke-[2.5]" />
-          <span>DETAYLI CÜZDAN</span>
-        </button>
       </div>
 
       {/* Add Asset Modal */}
