@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   Eye,
   EyeOff,
-  Radio,
   Download,
   Smartphone,
   X,
@@ -11,9 +10,6 @@ import {
 } from 'lucide-react';
 import { useCryptoStore } from '../../store/useCryptoStore';
 import { usePWAInstall } from '../../hooks/usePWAInstall';
-import type { Currency } from '../../types/crypto';
-
-const CURRENCIES: Currency[] = ['USD', 'TRY', 'EUR'];
 
 export const Header: React.FC = () => {
   const connectionStatus = useCryptoStore((state) => state.connectionStatus);
@@ -25,17 +21,6 @@ export const Header: React.FC = () => {
 
   const { isInstallable, isStandalone, installApp } = usePWAInstall();
   const [showInstallGuide, setShowInstallGuide] = useState(false);
-
-  const cycleCurrency = () => {
-    const nextIdx = (CURRENCIES.indexOf(currency) + 1) % CURRENCIES.length;
-    setCurrency(CURRENCIES[nextIdx]);
-  };
-
-  const getCurrencySymbol = (c: Currency) => {
-    if (c === 'TRY') return '₺';
-    if (c === 'EUR') return '€';
-    return '$';
-  };
 
   const handleInstallClick = () => {
     setShowInstallGuide(true);
@@ -66,33 +51,24 @@ export const Header: React.FC = () => {
           </div>
 
           {/* Action Stamps */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
             {/* PWA Install / Home Screen Shortcut Button (Hidden when running as standalone app) */}
             {!isStandalone && (
               <button
                 onClick={handleInstallClick}
                 title="TraceX'i Ana Ekrana Ekle / İndir"
-                className="flex items-center justify-center p-1.5 rounded-md border-2 border-stone-900 bg-amber-300 hover:bg-amber-400 text-stone-900 shadow-hard-sm btn-hard cursor-pointer"
+                className="flex items-center justify-center p-1.5 rounded-md border-2 border-stone-900 bg-amber-300 hover:bg-amber-400 text-stone-900 shadow-hard-xs btn-hard cursor-pointer"
               >
                 <Download className="w-3.5 h-3.5 stroke-[3]" />
               </button>
             )}
-
-            {/* Currency Toggle Stamp - Symbol only ($ / ₺ / €) */}
-            <button
-              onClick={cycleCurrency}
-              title={`Para Birimini Değiştir (${currency})`}
-              className="flex items-center justify-center w-8 h-8 rounded-md border-2 border-stone-900 text-sm font-black bg-amber-200 hover:bg-amber-300 text-stone-900 shadow-hard-sm btn-hard cursor-pointer leading-none"
-            >
-              <span>{getCurrencySymbol(currency)}</span>
-            </button>
 
             {/* Privacy Toggle Stamp - Only displayed on Portfolio tab without text */}
             {activeTab === 'portfolio' && (
               <button
                 onClick={toggleHideBalances}
                 title={hideBalances ? 'Bakiyeleri Göster' : 'Bakiyeleri Gizle'}
-                className={`flex items-center justify-center p-1.5 rounded-md border-2 border-stone-900 shadow-hard-sm btn-hard cursor-pointer ${
+                className={`flex items-center justify-center p-1.5 rounded-md border-2 border-stone-900 shadow-hard-xs btn-hard cursor-pointer ${
                   hideBalances
                     ? 'bg-amber-300 text-stone-900'
                     : 'bg-white text-stone-800'
@@ -106,20 +82,49 @@ export const Header: React.FC = () => {
               </button>
             )}
 
-            {/* Connection Status Stamp */}
+            {/* Currency Segmented Switch - USD ($) vs TRY (₺) */}
             <div
-              title={`Bağlantı Durumu: ${connectionStatus === 'connected' ? 'Canlı' : 'Kopuk'}`}
-              className={`flex items-center gap-1 px-1.5 py-1 rounded-md border-2 border-stone-900 text-[10px] font-bold shadow-hard-sm ${
-                connectionStatus === 'connected'
-                  ? 'bg-emerald-200 text-emerald-950'
-                  : connectionStatus === 'connecting'
-                  ? 'bg-amber-200 text-amber-950'
-                  : 'bg-rose-200 text-rose-950'
-              }`}
+              className="flex items-center bg-white border-2 border-stone-900 rounded-md p-0.5 shadow-hard-xs"
+              title={`Aktif Para Birimi: ${currency === 'TRY' ? 'Türk Lirası (₺)' : 'Amerikan Doları ($)'}`}
             >
-              <Radio className={`w-3 h-3 ${connectionStatus === 'connected' ? 'animate-livePulse' : ''}`} />
-              <span className="hidden sm:inline">
-                {connectionStatus === 'connected' ? 'CANLI' : 'KOPUK'}
+              <button
+                onClick={() => setCurrency('USD')}
+                className={`px-2 py-0.5 text-xs font-black rounded-xs transition-all cursor-pointer ${
+                  currency === 'USD'
+                    ? 'bg-stone-900 text-amber-300 shadow-xs'
+                    : 'text-stone-500 hover:text-stone-900'
+                }`}
+              >
+                $
+              </button>
+              <button
+                onClick={() => setCurrency('TRY')}
+                className={`px-2 py-0.5 text-xs font-black rounded-xs transition-all cursor-pointer ${
+                  currency === 'TRY'
+                    ? 'bg-stone-900 text-amber-300 shadow-xs'
+                    : 'text-stone-500 hover:text-stone-900'
+                }`}
+              >
+                ₺
+              </button>
+            </div>
+
+            {/* Minimal Connection Status Indicator */}
+            <div
+              title={`Bağlantı: ${connectionStatus === 'connected' ? 'Canlı WebSocket Akışı' : 'Bağlantı Yok'}`}
+              className="flex items-center gap-1.5 px-2 py-1 rounded-md border-2 border-stone-900 bg-white shadow-hard-xs"
+            >
+              <span
+                className={`w-2 h-2 rounded-full border border-stone-900 shrink-0 ${
+                  connectionStatus === 'connected'
+                    ? 'bg-emerald-500 animate-pulse'
+                    : connectionStatus === 'connecting'
+                    ? 'bg-amber-400 animate-pulse'
+                    : 'bg-rose-500'
+                }`}
+              />
+              <span className="text-[10px] font-black text-stone-900 tracking-wider">
+                {connectionStatus === 'connected' ? 'CANLI' : connectionStatus === 'connecting' ? '...' : 'KOPUK'}
               </span>
             </div>
           </div>

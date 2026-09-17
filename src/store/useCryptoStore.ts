@@ -573,6 +573,10 @@ export const useCryptoStore = create<CryptoState>()(
         if (!state) return;
 
         try {
+          if ((state.currency as string) === 'EUR') {
+            state.currency = 'USD';
+          }
+
           // Auto-migration from flat portfolio to portfolioGroups
           if (!Array.isArray(state.portfolioGroups) || state.portfolioGroups.length === 0) {
             const assets = Array.isArray(state.portfolio) && state.portfolio.length > 0

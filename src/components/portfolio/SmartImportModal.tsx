@@ -24,8 +24,7 @@ export const SmartImportModal: React.FC<SmartImportModalProps> = ({ isOpen, onCl
   const bulkAddPortfolioAssets = useCryptoStore((state) => state.bulkAddPortfolioAssets);
   const currency = useCryptoStore((state) => state.currency);
   const tryRate = useCryptoStore((state) => state.tryRate);
-  const eurRate = useCryptoStore((state) => state.eurRate);
-  const activeRate = currency === 'TRY' ? tryRate : eurRate;
+  const activeRate = currency === 'TRY' ? tryRate : 1;
 
   // Whenever user pastes or edits raw text, parse it
   useEffect(() => {

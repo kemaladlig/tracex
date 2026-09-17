@@ -1,5 +1,5 @@
 export type PriceDirection = 'up' | 'down' | null;
-export type Currency = 'USD' | 'TRY' | 'EUR';
+export type Currency = 'USD' | 'TRY';
 export type TabType = 'markets' | 'analytics' | 'portfolio';
 export type ConnectionStatus = 'connected' | 'connecting' | 'disconnected';
 

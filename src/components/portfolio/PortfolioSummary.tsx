@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { ArrowDownRight, ArrowUpRight, ChevronDown, ChevronUp, Plus, ShieldCheck, WalletCards, Zap } from 'lucide-react';
 import { useCryptoStore } from '../../store/useCryptoStore';
 import { formatCurrency, formatPercentage } from '../../utils/formatters';
@@ -7,6 +7,8 @@ import { InfoBadge } from '../common/InfoBadge';
 interface PortfolioSummaryProps {
   onAddClick: () => void;
   onSmartImportClick?: () => void;
+  showDetails: boolean;
+  onToggleDetails: () => void;
 }
 
 const ALLOCATION_PALETTE = [
@@ -18,36 +20,20 @@ const ALLOCATION_PALETTE = [
   'bg-stone-300',
 ];
 
-export const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({ onAddClick, onSmartImportClick }) => {
+export const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({
+  onAddClick,
+  onSmartImportClick,
+  showDetails,
+  onToggleDetails,
+}) => {
   const portfolio = useCryptoStore((state) => state.portfolio);
   const tickers = useCryptoStore((state) => state.tickers);
   const hideBalances = useCryptoStore((state) => state.hideBalances);
   const realizedPnL = useCryptoStore((state) => state.realizedPnL);
   const currency = useCryptoStore((state) => state.currency);
   const tryRate = useCryptoStore((state) => state.tryRate);
-  const eurRate = useCryptoStore((state) => state.eurRate);
 
-  const activeRate = currency === 'TRY' ? tryRate : eurRate;
-
-  const [showDetails, setShowDetails] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('tracex-portfolio-details') === 'true';
-    } catch {
-      return false;
-    }
-  });
-
-  const toggleDetails = () => {
-    setShowDetails((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem('tracex-portfolio-details', String(next));
-      } catch {
-        // no-op
-      }
-      return next;
-    });
-  };
+  const activeRate = currency === 'TRY' ? tryRate : 1;
 
   let totalCurrentValue = 0;
   let totalCost = 0;
@@ -107,34 +93,17 @@ export const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({ onAddClick, 
 
       {/* Main Balance Display with Privacy Mode Support */}
       <div className="mb-3">
-        <div className="text-3xl font-black tracking-tight text-stone-900">
-          {hideBalances ? '••••••••' : formatCurrency(totalCurrentValue, currency, activeRate)}
-        </div>
-        <div className="flex items-center justify-between gap-2 mt-1.5 flex-wrap">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs text-stone-600 font-bold">Açık K/Z:</span>
-            {hideBalances ? (
-              <span className="text-xs font-bold bg-stone-200 border border-stone-900 px-1.5 py-0.2 rounded">
-                ••••••
-              </span>
-            ) : (
-              <span
-                className={`inline-flex items-center gap-0.5 text-xs font-black px-1.5 py-0.5 rounded border border-stone-900 ${
-                  isProfit ? 'bg-emerald-200 text-emerald-950' : 'bg-rose-200 text-rose-950'
-                }`}
-              >
-                {isProfit ? <ArrowUpRight className="w-3 h-3 stroke-[3]" /> : <ArrowDownRight className="w-3 h-3 stroke-[3]" />}
-                {formatCurrency(totalPnL, currency, activeRate)} ({formatPercentage(totalPnLPercent)})
-              </span>
-            )}
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-3xl font-black tracking-tight text-stone-900">
+            {hideBalances ? '••••••••' : formatCurrency(totalCurrentValue, currency, activeRate)}
           </div>
 
           {/* Toggle Details Button */}
           <button
             type="button"
-            onClick={toggleDetails}
-            className="inline-flex items-center gap-1 text-[10px] font-black text-stone-800 bg-stone-100 hover:bg-stone-200 active:scale-95 border border-stone-900 px-2 py-0.5 rounded shadow-hard-xs cursor-pointer transition-colors"
-            title={showDetails ? 'Özeti sadeleştir' : 'Tüm detayları ve istatistikleri aç'}
+            onClick={onToggleDetails}
+            className="inline-flex items-center gap-1 text-[10px] font-black text-stone-800 bg-stone-100 hover:bg-stone-200 active:scale-95 border border-stone-900 px-2 py-1 rounded shadow-hard-xs cursor-pointer transition-colors"
+            title={showDetails ? 'Özeti ve varlık K/Z sadeleştir' : 'Açık K/Z ve tüm analiz detaylarını göster'}
           >
             <span>{showDetails ? 'SADE GÖRÜNÜM' : 'DETAYLI ANALİZ'}</span>
             {showDetails ? (
@@ -146,26 +115,46 @@ export const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({ onAddClick, 
         </div>
       </div>
 
-      {/* Collapsible Details Section: Realized PnL, Leaders, and Allocation Ruler */}
+      {/* Collapsible Details Section: Open PnL, Realized PnL, Leaders, and Allocation Ruler */}
       {showDetails && (
         <div className="space-y-3 pt-2 border-t border-stone-200 animate-in fade-in duration-150">
-          {/* Realized PnL badge */}
-          {realizedPnL !== 0 && (
-            <div className="flex items-center gap-1.5 text-xs">
-              <span className="text-stone-500 font-bold text-[10px] uppercase">Gerçekleşen:</span>
-              <span
-                className={`text-[10px] font-bold px-1.5 py-0.5 rounded border border-stone-900 ${
-                  isRealizedProfit ? 'bg-emerald-100 text-emerald-900' : 'bg-rose-100 text-rose-900'
-                }`}
-              >
-                {formatCurrency(realizedPnL, currency, activeRate)}
-              </span>
-              <InfoBadge
-                title="Realize Kâr / Zarar"
-                content="Geçmişte satışı tamamlanan işlemlerden elde edilen net nakit kâr veya zararı temsil eder."
-              />
+          {/* Open PnL & Realized PnL Row */}
+          <div className="flex items-center justify-between gap-2 flex-wrap text-xs">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-stone-600 font-bold">Açık K/Z:</span>
+              {hideBalances ? (
+                <span className="text-xs font-bold bg-stone-200 border border-stone-900 px-1.5 py-0.2 rounded">
+                  ••••••
+                </span>
+              ) : (
+                <span
+                  className={`inline-flex items-center gap-0.5 text-xs font-black px-1.5 py-0.5 rounded border border-stone-900 ${
+                    isProfit ? 'bg-emerald-200 text-emerald-950' : 'bg-rose-200 text-rose-950'
+                  }`}
+                >
+                  {isProfit ? <ArrowUpRight className="w-3 h-3 stroke-[3]" /> : <ArrowDownRight className="w-3 h-3 stroke-[3]" />}
+                  {formatCurrency(totalPnL, currency, activeRate)} ({formatPercentage(totalPnLPercent)})
+                </span>
+              )}
             </div>
-          )}
+
+            {realizedPnL !== 0 && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-stone-500 font-bold text-[10px] uppercase">Realize:</span>
+                <span
+                  className={`text-[10px] font-bold px-1.5 py-0.5 rounded border border-stone-900 ${
+                    isRealizedProfit ? 'bg-emerald-100 text-emerald-900' : 'bg-rose-100 text-rose-900'
+                  }`}
+                >
+                  {formatCurrency(realizedPnL, currency, activeRate)}
+                </span>
+                <InfoBadge
+                  title="Realize Kâr / Zarar"
+                  content="Geçmişte satışı tamamlanan işlemlerden elde edilen net nakit kâr veya zararı temsil eder."
+                />
+              </div>
+            )}
+          </div>
 
           {/* Best & Worst Performer Badges */}
           {portfolio.length >= 2 && !hideBalances && (() => {

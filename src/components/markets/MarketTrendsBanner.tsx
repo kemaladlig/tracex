@@ -15,9 +15,8 @@ export const MarketTrendsBanner: React.FC = () => {
   const addToWatchlist = useCryptoStore((state) => state.addToWatchlist);
   const currency = useCryptoStore((state) => state.currency);
   const tryRate = useCryptoStore((state) => state.tryRate);
-  const eurRate = useCryptoStore((state) => state.eurRate);
 
-  const activeRate = currency === 'TRY' ? tryRate : eurRate;
+  const activeRate = currency === 'TRY' ? tryRate : 1;
 
   useEffect(() => {
     let isMounted = true;

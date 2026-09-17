@@ -7,6 +7,7 @@ import { cleanSymbol, formatCurrency, formatNumber, formatPercentage } from '../
 interface PortfolioItemProps {
   asset: PortfolioAsset;
   index?: number;
+  showPnL?: boolean;
   onSellClick: (asset: PortfolioAsset) => void;
   onBuyMoreClick: (symbol: string) => void;
 }
@@ -14,6 +15,7 @@ interface PortfolioItemProps {
 export const PortfolioItem: React.FC<PortfolioItemProps> = ({
   asset,
   index = 0,
+  showPnL = false,
   onSellClick,
   onBuyMoreClick,
 }) => {
@@ -23,9 +25,8 @@ export const PortfolioItem: React.FC<PortfolioItemProps> = ({
   const hideBalances = useCryptoStore((state) => state.hideBalances);
   const currency = useCryptoStore((state) => state.currency);
   const tryRate = useCryptoStore((state) => state.tryRate);
-  const eurRate = useCryptoStore((state) => state.eurRate);
 
-  const activeRate = currency === 'TRY' ? tryRate : eurRate;
+  const activeRate = currency === 'TRY' ? tryRate : 1;
 
   const currentPrice = ticker?.price ?? asset.buyPrice;
   const currentValue = asset.amount * currentPrice;
@@ -82,31 +83,33 @@ export const PortfolioItem: React.FC<PortfolioItemProps> = ({
         </div>
       </div>
 
-      {/* Middle Row: Cost & Net PnL */}
-      <div className="flex items-center justify-between py-2 border-b border-stone-200">
-        <div className="text-xs">
-          <span className="text-[10px] text-stone-500 block uppercase font-bold">Ort. Alış Maliyeti</span>
-          <span className="text-stone-900 font-bold">
-            {hideBalances ? '••••' : formatCurrency(asset.buyPrice, currency, activeRate)}
-          </span>
-        </div>
-
-        <div className="text-right text-xs">
-          <span className="text-[10px] text-stone-500 block uppercase font-bold">Açık Kâr / Zarar</span>
-          {hideBalances ? (
-            <span className="text-xs font-bold text-stone-600">••••••</span>
-          ) : (
-            <span
-              className={`inline-flex items-center gap-0.5 font-black px-1.5 py-0.2 rounded border border-stone-900 ${
-                isProfit ? 'bg-emerald-200 text-emerald-950' : 'bg-rose-200 text-rose-950'
-              }`}
-            >
-              {isProfit ? <ArrowUpRight className="w-3.5 h-3.5 stroke-[3]" /> : <ArrowDownRight className="w-3.5 h-3.5 stroke-[3]" />}
-              {formatCurrency(pnlAmount, currency, activeRate)} ({formatPercentage(pnlPercent)})
+      {/* Middle Row: Cost & Net PnL (Only displayed in Detailed View) */}
+      {showPnL && (
+        <div className="flex items-center justify-between py-2 border-b border-stone-200 animate-in fade-in duration-100">
+          <div className="text-xs">
+            <span className="text-[10px] text-stone-500 block uppercase font-bold">Ort. Alış Maliyeti</span>
+            <span className="text-stone-900 font-bold">
+              {hideBalances ? '••••' : formatCurrency(asset.buyPrice, currency, activeRate)}
             </span>
-          )}
+          </div>
+
+          <div className="text-right text-xs">
+            <span className="text-[10px] text-stone-500 block uppercase font-bold">Açık Kâr / Zarar</span>
+            {hideBalances ? (
+              <span className="text-xs font-bold text-stone-600">••••••</span>
+            ) : (
+              <span
+                className={`inline-flex items-center gap-0.5 font-black px-1.5 py-0.2 rounded border border-stone-900 ${
+                  isProfit ? 'bg-emerald-200 text-emerald-950' : 'bg-rose-200 text-rose-950'
+                }`}
+              >
+                {isProfit ? <ArrowUpRight className="w-3.5 h-3.5 stroke-[3]" /> : <ArrowDownRight className="w-3.5 h-3.5 stroke-[3]" />}
+                {formatCurrency(pnlAmount, currency, activeRate)} ({formatPercentage(pnlPercent)})
+              </span>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Bottom Action Bar: [Al +], [Sat -], [Grafik], [Sil] */}
       <div className="flex items-center justify-between pt-2">

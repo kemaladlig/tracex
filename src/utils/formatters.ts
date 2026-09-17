@@ -6,7 +6,7 @@ export const formatCurrency = (
   fiatRate: number = 1
 ): string => {
   if (value === undefined || value === null || isNaN(value)) {
-    const symbol = currency === 'TRY' ? '₺' : currency === 'EUR' ? '€' : '$';
+    const symbol = currency === 'TRY' ? '₺' : '$';
     return `${symbol}0.00`;
   }
 
@@ -17,9 +17,6 @@ export const formatCurrency = (
   if (currency === 'TRY') {
     converted = value * fiatRate;
     symbol = '₺';
-  } else if (currency === 'EUR') {
-    converted = value / fiatRate;
-    symbol = '€';
   }
 
   // Determine decimal places dynamically

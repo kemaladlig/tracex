@@ -21,6 +21,24 @@ export const PortfolioList: React.FC = () => {
   const [assetToSell, setAssetToSell] = useState<PortfolioAsset | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>('value');
 
+  const [showDetails, setShowDetails] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('tracex-portfolio-details') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleDetails = () => {
+    setShowDetails((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('tracex-portfolio-details', String(next));
+      } catch {}
+      return next;
+    });
+  };
+
   const sortedPortfolio = useMemo(() => {
     const list = [...portfolio];
     if (sortBy === 'name') {
@@ -65,6 +83,8 @@ export const PortfolioList: React.FC = () => {
         <PortfolioSummary
           onAddClick={handleOpenAdd}
           onSmartImportClick={() => setIsSmartImportOpen(true)}
+          showDetails={showDetails}
+          onToggleDetails={toggleDetails}
         />
       </div>
 
@@ -102,6 +122,7 @@ export const PortfolioList: React.FC = () => {
               key={asset.id}
               asset={asset}
               index={3 + idx}
+              showPnL={showDetails}
               onBuyMoreClick={handleBuyMore}
               onSellClick={(item) => setAssetToSell(item)}
             />

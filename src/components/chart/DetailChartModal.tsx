@@ -35,6 +35,7 @@ import { cleanSymbol, formatCurrency, formatPercentage } from '../../utils/forma
 
 const INTERVALS = [
   { label: '1dk', value: '1m' },
+  { label: '5dk', value: '5m' },
   { label: '15dk', value: '15m' },
   { label: '1s', value: '1h' },
   { label: '4s', value: '4h' },
@@ -44,6 +45,7 @@ const INTERVALS = [
 
 const INTERVAL_SECONDS: Record<string, number> = {
   '1m': 60,
+  '5m': 300,
   '15m': 900,
   '1h': 3600,
   '4h': 14400,
@@ -52,6 +54,8 @@ const INTERVAL_SECONDS: Record<string, number> = {
 };
 
 const ZOOM_STORAGE_KEY = 'tracex_chart_zoom_bars';
+const CHART_INTERVAL_KEY = 'tracex_chart_interval';
+const CHART_COST_LINE_KEY = 'tracex_chart_show_cost_line';
 
 const calculateEMA = (data: { time: UTCTimestamp; close: number }[], period: number) => {
   if (data.length < period) return [];
@@ -85,16 +89,36 @@ export const DetailChartModal: React.FC = () => {
   const portfolio = useCryptoStore((state) => state.portfolio);
   const currency = useCryptoStore((state) => state.currency);
   const tryRate = useCryptoStore((state) => state.tryRate);
-  const eurRate = useCryptoStore((state) => state.eurRate);
 
-  const activeRate = currency === 'TRY' ? tryRate : eurRate;
+  const activeRate = currency === 'TRY' ? tryRate : 1;
   const userAsset = portfolio.find((a) => a.symbol === selectedSymbol);
 
-  const [interval, setInterval] = useState<string>('1h');
+  const [interval, setInterval] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem(CHART_INTERVAL_KEY);
+      if (saved && ['1m', '5m', '15m', '1h', '4h', '1d', '1w'].includes(saved)) {
+        return saved;
+      }
+    } catch {
+      // ignore
+    }
+    return '1h';
+  });
+
   const [chartType, setChartType] = useState<'candlestick' | 'area'>('candlestick');
   const [showVolume, setShowVolume] = useState<boolean>(true);
   const [showEMA, setShowEMA] = useState<boolean>(false);
-  const [showCostLine, setShowCostLine] = useState<boolean>(true);
+  const [showCostLine, setShowCostLine] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem(CHART_COST_LINE_KEY);
+      if (saved !== null) {
+        return saved === 'true';
+      }
+    } catch {
+      // ignore
+    }
+    return false;
+  });
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -417,8 +441,6 @@ export const DetailChartModal: React.FC = () => {
         const convertedCost =
           currency === 'TRY'
             ? userAsset.buyPrice * tryRate
-            : currency === 'EUR'
-            ? userAsset.buyPrice * eurRate
             : userAsset.buyPrice;
 
         costLineRef.current = activeSeries.createPriceLine({
@@ -433,7 +455,30 @@ export const DetailChartModal: React.FC = () => {
         console.warn('Cost line update fallback:', e);
       }
     }
-  }, [showCostLine, userAsset, chartType, currency, tryRate, eurRate, activeRate]);
+  }, [showCostLine, userAsset, chartType, currency, tryRate, activeRate]);
+
+  const handleIntervalChange = (val: string) => {
+    startTransition(() => {
+      setInterval(val);
+    });
+    try {
+      localStorage.setItem(CHART_INTERVAL_KEY, val);
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleToggleCostLine = () => {
+    setShowCostLine((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(CHART_COST_LINE_KEY, String(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
 
   // 4. Live WebSocket Price Streaming with Bar Rollover & Smooth Flow
   useEffect(() => {
@@ -536,8 +581,8 @@ export const DetailChartModal: React.FC = () => {
     <div className="fixed inset-0 z-50 flex flex-col bg-[#f4f0e6] animate-sheetUp font-mono">
       {/* Top Bar / Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b-2 border-stone-900 bg-[#ede8dd] pt-safe">
-        <div className="flex items-center gap-2">
-          {/* Back Button */}
+        <div className="flex items-center gap-2.5 min-w-0">
+          {/* Back Button (Primary navigation) */}
           <button
             onClick={handleClose}
             title="Geri Dön"
@@ -549,18 +594,18 @@ export const DetailChartModal: React.FC = () => {
           <div className="w-9 h-9 rounded-md bg-stone-900 text-amber-300 border-2 border-stone-900 flex items-center justify-center font-black text-sm shadow-hard-sm shrink-0">
             {base.substring(0, 3)}
           </div>
-          <div>
-            <div className="flex items-center gap-1.5">
-              <h2 className="text-base font-black text-stone-900">{base}</h2>
-              <span className="text-[10px] text-stone-700 bg-stone-200 border border-stone-900 px-1 rounded-xs font-bold">
-                /{quote}
+          <div className="min-w-0">
+            <div className="flex items-baseline gap-1.5 truncate">
+              <h2 className="text-base font-black text-stone-900 tracking-tight">{base}</h2>
+              <span className="text-xs font-bold text-stone-500 tracking-wide">
+                // {quote}
               </span>
             </div>
-            <p className="text-[10px] text-stone-600 font-bold">BİNANCE CANLI GRAFİK</p>
+            <p className="text-[10px] text-stone-600 font-bold tracking-tight">BİNANCE CANLI GRAFİK</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {/* Chart Type Toggle Button */}
           <div className="flex items-center bg-white p-0.5 rounded border-2 border-stone-900 shadow-hard-sm">
             <button
@@ -587,10 +632,11 @@ export const DetailChartModal: React.FC = () => {
             </button>
           </div>
 
+          {/* Redundant X button hidden on mobile, visible only on desktop */}
           <button
             onClick={handleClose}
             title="Kapat"
-            className="p-1.5 rounded-md bg-white border-2 border-stone-900 hover:bg-stone-200 shadow-hard-sm btn-hard cursor-pointer"
+            className="hidden sm:flex p-1.5 rounded-md bg-white border-2 border-stone-900 hover:bg-stone-200 shadow-hard-sm btn-hard cursor-pointer"
           >
             <X className="w-4 h-4 stroke-[3]" />
           </button>
@@ -602,9 +648,32 @@ export const DetailChartModal: React.FC = () => {
         <div className="flex items-baseline justify-between mb-2">
           <div className="flex items-baseline gap-2.5">
             <span className="text-2xl font-black text-stone-900 tracking-tight">
-              {ticker ? formatCurrency(ticker.price, currency, activeRate) : '...'}
+              {hoveredData
+                ? formatCurrency(hoveredData.close, currency, activeRate)
+                : ticker
+                ? formatCurrency(ticker.price, currency, activeRate)
+                : '...'}
             </span>
-            {ticker && (
+            {hoveredData ? (
+              <span
+                className={`inline-flex items-center gap-0.5 text-xs font-black px-1.5 py-0.5 rounded border border-stone-900 ${
+                  hoveredData.close >= hoveredData.open
+                    ? 'bg-emerald-200 text-emerald-950'
+                    : 'bg-rose-200 text-rose-950'
+                }`}
+              >
+                {hoveredData.close >= hoveredData.open ? (
+                  <ArrowUpRight className="w-3 h-3 stroke-[3]" />
+                ) : (
+                  <ArrowDownRight className="w-3 h-3 stroke-[3]" />
+                )}
+                {formatPercentage(
+                  hoveredData.open > 0
+                    ? ((hoveredData.close - hoveredData.open) / hoveredData.open) * 100
+                    : 0
+                )}
+              </span>
+            ) : ticker ? (
               <span
                 className={`inline-flex items-center gap-0.5 text-xs font-black px-1.5 py-0.5 rounded border border-stone-900 ${
                   isPositive
@@ -619,57 +688,80 @@ export const DetailChartModal: React.FC = () => {
                 )}
                 {formatPercentage(ticker.changePercent24h)}
               </span>
-            )}
+            ) : null}
           </div>
+
+          {hoveredData ? (
+            <span className="text-[10px] font-black bg-amber-300 text-stone-950 px-2 py-0.5 rounded border border-stone-900 shadow-hard-xs">
+              MUM: {hoveredData.time}
+            </span>
+          ) : (
+            <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+              24S PİYASA
+            </span>
+          )}
         </div>
 
-        {/* Hovered OHLC Details Bar OR 24h Stats Bar */}
+        {/* Stable 4-card Grid: Zero layout shifts whether inspecting candle or viewing 24h stats */}
         {hoveredData ? (
-          <div className="flex items-center gap-3 text-[10px] text-stone-900 bg-white px-2.5 py-1 rounded border-2 border-stone-900 shadow-hard-sm mb-1 overflow-x-auto no-scrollbar">
-            <span className="text-stone-500 font-bold">{hoveredData.time}</span>
-            <span>
-              A:{' '}
-              <strong className="text-stone-900">
+          <div className="grid grid-cols-4 gap-1.5 text-xs">
+            <div className="bg-white border-2 border-stone-900 rounded p-1.5 shadow-hard-sm min-w-0">
+              <span className="text-[9px] text-stone-500 block font-bold uppercase truncate">Açılış</span>
+              <span className="text-stone-900 font-black text-[11px] sm:text-xs truncate block">
                 {formatCurrency(hoveredData.open, currency, activeRate)}
-              </strong>
-            </span>
-            <span>
-              Y:{' '}
-              <strong className="text-emerald-700">
+              </span>
+            </div>
+            <div className="bg-white border-2 border-stone-900 rounded p-1.5 shadow-hard-sm min-w-0">
+              <span className="text-[9px] text-emerald-700 block font-bold uppercase truncate">Yüksek</span>
+              <span className="text-emerald-700 font-black text-[11px] sm:text-xs truncate block">
                 {formatCurrency(hoveredData.high, currency, activeRate)}
-              </strong>
-            </span>
-            <span>
-              D:{' '}
-              <strong className="text-rose-700">
+              </span>
+            </div>
+            <div className="bg-white border-2 border-stone-900 rounded p-1.5 shadow-hard-sm min-w-0">
+              <span className="text-[9px] text-rose-700 block font-bold uppercase truncate">Düşük</span>
+              <span className="text-rose-700 font-black text-[11px] sm:text-xs truncate block">
                 {formatCurrency(hoveredData.low, currency, activeRate)}
-              </strong>
-            </span>
-            <span>
-              K:{' '}
-              <strong className="text-stone-900">
+              </span>
+            </div>
+            <div className="bg-white border-2 border-stone-900 rounded p-1.5 shadow-hard-sm min-w-0">
+              <span className="text-[9px] text-stone-500 block font-bold uppercase truncate">Kapanış</span>
+              <span
+                className={`font-black text-[11px] sm:text-xs truncate block ${
+                  hoveredData.close >= hoveredData.open ? 'text-emerald-700' : 'text-rose-700'
+                }`}
+              >
                 {formatCurrency(hoveredData.close, currency, activeRate)}
-              </strong>
-            </span>
+              </span>
+            </div>
           </div>
         ) : (
-          <div className="grid grid-cols-3 gap-2 text-xs">
-            <div className="bg-white border-2 border-stone-900 rounded p-1.5 shadow-hard-sm">
-              <span className="text-[9px] text-stone-500 block font-bold uppercase">24s En Yüksek</span>
-              <span className="text-stone-900 font-black">
+          <div className="grid grid-cols-4 gap-1.5 text-xs">
+            <div className="bg-white border-2 border-stone-900 rounded p-1.5 shadow-hard-sm min-w-0">
+              <span className="text-[9px] text-stone-500 block font-bold uppercase truncate">24s Yüksek</span>
+              <span className="text-stone-900 font-black text-[11px] sm:text-xs truncate block">
                 {ticker ? formatCurrency(ticker.high24h, currency, activeRate) : '--'}
               </span>
             </div>
-            <div className="bg-white border-2 border-stone-900 rounded p-1.5 shadow-hard-sm">
-              <span className="text-[9px] text-stone-500 block font-bold uppercase">24s En Düşük</span>
-              <span className="text-stone-900 font-black">
+            <div className="bg-white border-2 border-stone-900 rounded p-1.5 shadow-hard-sm min-w-0">
+              <span className="text-[9px] text-stone-500 block font-bold uppercase truncate">24s Düşük</span>
+              <span className="text-stone-900 font-black text-[11px] sm:text-xs truncate block">
                 {ticker ? formatCurrency(ticker.low24h, currency, activeRate) : '--'}
               </span>
             </div>
-            <div className="bg-white border-2 border-stone-900 rounded p-1.5 shadow-hard-sm">
-              <span className="text-[9px] text-stone-500 block font-bold uppercase">24s Hacim</span>
-              <span className="text-stone-900 font-black">
+            <div className="bg-white border-2 border-stone-900 rounded p-1.5 shadow-hard-sm min-w-0">
+              <span className="text-[9px] text-stone-500 block font-bold uppercase truncate">24s Hacim</span>
+              <span className="text-stone-900 font-black text-[11px] sm:text-xs truncate block">
                 {ticker?.quoteVolume ? `${(ticker.quoteVolume / 1_000_000).toFixed(1)}M` : '--'}
+              </span>
+            </div>
+            <div className="bg-white border-2 border-stone-900 rounded p-1.5 shadow-hard-sm min-w-0">
+              <span className="text-[9px] text-stone-500 block font-bold uppercase truncate">24s Değişim</span>
+              <span
+                className={`font-black text-[11px] sm:text-xs truncate block ${
+                  isPositive ? 'text-emerald-700' : 'text-rose-700'
+                }`}
+              >
+                {ticker ? formatPercentage(ticker.changePercent24h) : '--'}
               </span>
             </div>
           </div>
@@ -683,11 +775,7 @@ export const DetailChartModal: React.FC = () => {
           {INTERVALS.map((item) => (
             <button
               key={item.value}
-              onClick={() => {
-                startTransition(() => {
-                  setInterval(item.value);
-                });
-              }}
+              onClick={() => handleIntervalChange(item.value)}
               className={`px-2 py-0.5 rounded text-xs font-bold transition-all shrink-0 border cursor-pointer ${
                 interval === item.value
                   ? 'bg-stone-900 text-white border-stone-900 shadow-hard-sm'
@@ -730,7 +818,7 @@ export const DetailChartModal: React.FC = () => {
           {/* My Cost Line Toggle (Only if user owns this asset) */}
           {userAsset && (
             <button
-              onClick={() => setShowCostLine(!showCostLine)}
+              onClick={handleToggleCostLine}
               className={`px-1.5 py-0.5 rounded text-[10px] font-black border border-stone-900 transition flex items-center gap-0.5 cursor-pointer ${
                 showCostLine
                   ? 'bg-emerald-300 text-stone-950 shadow-hard-sm'

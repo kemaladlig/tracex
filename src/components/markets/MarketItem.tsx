@@ -47,9 +47,8 @@ export const MarketItem: React.FC<MarketItemProps> = ({
   const isFavorite = watchlist.includes(symbol);
   const currency = useCryptoStore((state) => state.currency);
   const tryRate = useCryptoStore((state) => state.tryRate);
-  const eurRate = useCryptoStore((state) => state.eurRate);
 
-  const activeRate = currency === 'TRY' ? tryRate : eurRate;
+  const activeRate = currency === 'TRY' ? tryRate : 1;
 
   const [flashClass, setFlashClass] = useState<string>('');
   const prevPriceRef = useRef<number | undefined>(ticker?.price);
