@@ -99,32 +99,34 @@ export const Header: React.FC = () => {
               </button>
             )}
 
-            {/* Enlarged Currency Segmented Switch - USD ($) vs TRY (₺) */}
-            <div
-              className="flex items-center bg-white border-2 border-stone-900 rounded-md p-0.5 shadow-hard-sm"
-              title={`Aktif Para Birimi: ${currency === 'TRY' ? 'Türk Lirası (₺)' : 'Amerikan Doları ($)'}`}
-            >
-              <button
-                onClick={() => setCurrency('USD')}
-                className={`px-3 py-1 text-sm font-black rounded-xs transition-all cursor-pointer ${
-                  currency === 'USD'
-                    ? 'bg-stone-900 text-amber-300 shadow-xs'
-                    : 'text-stone-500 hover:text-stone-900'
-                }`}
+            {/* Currency Switch - Only displayed on Markets and Portfolio tabs where list conversions are needed */}
+            {(activeTab === 'markets' || activeTab === 'portfolio') && (
+              <div
+                className="flex items-center bg-white border-2 border-stone-900 rounded-md p-0.5 shadow-hard-sm"
+                title={`Aktif Para Birimi: ${currency === 'TRY' ? 'Türk Lirası (₺)' : 'Amerikan Doları ($)'}`}
               >
-                $
-              </button>
-              <button
-                onClick={() => setCurrency('TRY')}
-                className={`px-3 py-1 text-sm font-black rounded-xs transition-all cursor-pointer ${
-                  currency === 'TRY'
-                    ? 'bg-stone-900 text-amber-300 shadow-xs'
-                    : 'text-stone-500 hover:text-stone-900'
-                }`}
-              >
-                ₺
-              </button>
-            </div>
+                <button
+                  onClick={() => setCurrency('USD')}
+                  className={`px-3 py-1 text-sm font-black rounded-xs transition-all cursor-pointer ${
+                    currency === 'USD'
+                      ? 'bg-stone-900 text-amber-300 shadow-xs'
+                      : 'text-stone-500 hover:text-stone-900'
+                  }`}
+                >
+                  $
+                </button>
+                <button
+                  onClick={() => setCurrency('TRY')}
+                  className={`px-3 py-1 text-sm font-black rounded-xs transition-all cursor-pointer ${
+                    currency === 'TRY'
+                      ? 'bg-stone-900 text-amber-300 shadow-xs'
+                      : 'text-stone-500 hover:text-stone-900'
+                  }`}
+                >
+                  ₺
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </header>

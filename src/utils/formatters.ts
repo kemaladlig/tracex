@@ -3,11 +3,12 @@ import type { Currency } from '../types/crypto';
 export const formatCurrency = (
   value: number,
   currency: Currency = 'USD',
-  fiatRate: number = 1
+  fiatRate: number = 1,
+  overrideDecimals?: number
 ): string => {
   if (value === undefined || value === null || isNaN(value)) {
     const symbol = currency === 'TRY' ? '₺' : '$';
-    return `${symbol}0.00`;
+    return `${symbol}0`;
   }
 
   // Convert value based on selected currency
@@ -19,19 +20,23 @@ export const formatCurrency = (
     symbol = '₺';
   }
 
-  // Determine decimal places dynamically
-  let decimals = 2;
-  const absVal = Math.abs(converted);
-  if (absVal === 0) {
-    decimals = 2;
-  } else if (absVal < 0.0001) {
-    decimals = 8;
-  } else if (absVal < 0.01) {
-    decimals = 6;
-  } else if (absVal < 1) {
-    decimals = 4;
-  } else {
-    decimals = 2;
+  // Determine decimal places dynamically: >= 100 has 0 decimals (clean whole numbers)
+  let decimals = overrideDecimals ?? 2;
+  if (overrideDecimals === undefined) {
+    const absVal = Math.abs(converted);
+    if (absVal >= 100) {
+      decimals = 0;
+    } else if (absVal === 0) {
+      decimals = 2;
+    } else if (absVal < 0.0001) {
+      decimals = 8;
+    } else if (absVal < 0.01) {
+      decimals = 6;
+    } else if (absVal < 1) {
+      decimals = 4;
+    } else {
+      decimals = 2;
+    }
   }
 
   const formatted = converted.toLocaleString('en-US', {

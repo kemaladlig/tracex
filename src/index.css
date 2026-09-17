@@ -59,7 +59,38 @@
 }
 
 .animate-tabEnter {
-  animation: tabEnter 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: tabEnter 0.24s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Horizontal Tab Slide Transitions for Mobile Gestures */
+@keyframes slideFromRight {
+  0% {
+    opacity: 0.3;
+    transform: translateX(36px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideFromLeft {
+  0% {
+    opacity: 0.3;
+    transform: translateX(-36px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-left {
+  animation: slideFromRight 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-right {
+  animation: slideFromLeft 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 /* 2. Modal Backdrop Fade & Sheet Slide-Up */

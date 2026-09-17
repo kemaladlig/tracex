@@ -26,41 +26,44 @@
         color: #1c1917;
         z-index: 99999;
         user-select: none;
-        padding: 16px;
+        overflow: hidden;
       }
-      .splash-card {
-        background-color: #ffffff;
-        border: 2px solid #1c1917;
-        box-shadow: 4px 4px 0px #1c1917;
-        border-radius: 12px;
-        padding: 20px 24px;
+      .splash-bg-dots {
+        position: absolute;
+        inset: 0;
+        background-image: radial-gradient(#1c1917 1px, transparent 1px);
+        background-size: 24px 24px;
+        opacity: 0.07;
+      }
+      .splash-content {
+        position: relative;
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 14px;
+        gap: 16px;
         width: 100%;
-        max-width: 280px;
+        max-width: 300px;
       }
       .splash-chart {
-        width: 160px;
-        height: 52px;
+        width: 220px;
+        height: 64px;
         overflow: visible;
       }
       .splash-line {
-        stroke-dasharray: 220;
-        stroke-dashoffset: 220;
-        animation: drawLine 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
+        stroke-dasharray: 260;
+        stroke-dashoffset: 260;
+        animation: drawLine 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
       }
       .splash-dot {
-        transform-origin: 150px 14px;
-        animation: pulseLiveDot 1.4s ease-in-out infinite alternate;
+        transform-origin: 200px 18px;
+        animation: pulseLiveDot 1.2s ease-in-out infinite alternate;
       }
       @keyframes drawLine {
-        0% { stroke-dashoffset: 220; }
+        0% { stroke-dashoffset: 260; }
         100% { stroke-dashoffset: 0; }
       }
       @keyframes pulseLiveDot {
-        0% { transform: scale(0.7); opacity: 0.4; }
+        0% { transform: scale(0.6); opacity: 0.3; }
         100% { transform: scale(1.4); opacity: 1; }
       }
       .splash-badge {
@@ -69,11 +72,12 @@
         gap: 6px;
         background-color: #fef08a;
         color: #1c1917;
-        border: 1.5px solid #1c1917;
-        padding: 2px 8px;
+        border: 2px solid #1c1917;
+        box-shadow: 2px 2px 0px #1c1917;
+        padding: 3px 10px;
         border-radius: 4px;
-        font-size: 10px;
-        font-weight: 800;
+        font-size: 11px;
+        font-weight: 900;
         letter-spacing: 0.05em;
         text-transform: uppercase;
       }
@@ -82,35 +86,30 @@
   <body class="bg-[#f4f0e6] text-stone-900 antialiased selection:bg-amber-200">
     <div id="root">
       <div id="splash-screen">
-        <div class="splash-card">
-          <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <div style="width: 22px; height: 22px; background: #1c1917; color: #f59e0b; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 12px; border: 1.5px solid #1c1917;">
-                ₿
-              </div>
-              <span style="font-weight: 900; font-size: 13px; letter-spacing: 0.08em;">TRACEX</span>
+        <div class="splash-bg-dots"></div>
+        <div class="splash-content">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 28px; height: 28px; background: #1c1917; color: #f59e0b; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 15px; border: 2px solid #1c1917; box-shadow: 2px 2px 0px #1c1917;">
+              ₿
             </div>
-            <span class="splash-badge">0MS BAŞLATILIYOR</span>
+            <span style="font-weight: 900; font-size: 18px; letter-spacing: 0.1em;">TRACEX</span>
           </div>
 
-          <!-- Animated Dynamic Bitcoin Chart Wave -->
-          <svg class="splash-chart" viewBox="0 0 160 52" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <line x1="0" y1="46" x2="160" y2="46" stroke="#e7e5e4" stroke-width="1.5" stroke-dasharray="3 3" />
+          <!-- Full Edge-to-Edge Animated Dynamic Bitcoin Chart Wave -->
+          <svg class="splash-chart" viewBox="0 0 220 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <line x1="0" y1="56" x2="220" y2="56" stroke="#d6d3d1" stroke-width="1.5" stroke-dasharray="4 4" />
             <path
               class="splash-line"
-              d="M 6 42 Q 35 48 55 30 T 105 22 T 150 14"
+              d="M 10 52 Q 50 58 75 36 T 145 28 T 200 18"
               stroke="#1c1917"
-              stroke-width="3"
+              stroke-width="3.5"
               stroke-linecap="round"
               stroke-linejoin="round"
             />
-            <circle class="splash-dot" cx="150" cy="14" r="4.5" fill="#f59e0b" stroke="#1c1917" stroke-width="2" />
+            <circle class="splash-dot" cx="200" cy="18" r="5" fill="#f59e0b" stroke="#1c1917" stroke-width="2.5" />
           </svg>
 
-          <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; font-size: 9px; font-weight: 700; color: #78716c;">
-            <span>// PİYASA MOTORU</span>
-            <span>VERİLER SENKRONİZE</span>
-          </div>
+          <span class="splash-badge">0MS // BAŞLATILIYOR</span>
         </div>
       </div>
     </div>

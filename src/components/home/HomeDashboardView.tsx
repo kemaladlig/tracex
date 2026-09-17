@@ -160,12 +160,14 @@ export const HomeDashboardView: React.FC = () => {
     return pts;
   }, [sparklineData.points, btcTicker?.price]);
 
-  // Pure SVG Sparkline Path Generator with Baseline & Live Tip
-  const { pathD, areaD, baselineY, tipPoint } = useMemo(() => {
-    const width = 160;
-    const height = 48;
+  // Pure SVG Sparkline Path Generator with Baseline, 24h High/Low & Live Tip
+  const { pathD, areaD, baselineY, tipPoint, highVal, lowVal } = useMemo(() => {
+    const width = 280;
+    const height = 74;
     const pts = liveSparklinePoints;
-    if (pts.length < 2) return { pathD: '', areaD: '', baselineY: height / 2, tipPoint: { x: width, y: height / 2 } };
+    if (pts.length < 2) {
+      return { pathD: '', areaD: '', baselineY: height / 2, tipPoint: { x: width, y: height / 2 }, highVal: 0, lowVal: 0 };
+    }
 
     const min = Math.min(...pts, sparklineData.open24h);
     const max = Math.max(...pts, sparklineData.open24h);
@@ -173,16 +175,16 @@ export const HomeDashboardView: React.FC = () => {
 
     const coords = pts.map((val, idx) => {
       const x = (idx / (pts.length - 1)) * width;
-      const y = height - ((val - min) / range) * (height - 10) - 5;
+      const y = height - ((val - min) / range) * (height - 22) - 11;
       return { x, y };
     });
 
     const path = `M ${coords.map((c) => `${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' L ')}`;
     const area = `${path} L ${width},${height} L 0,${height} Z`;
-    const baseLine = height - ((sparklineData.open24h - min) / range) * (height - 10) - 5;
+    const baseLine = height - ((sparklineData.open24h - min) / range) * (height - 22) - 11;
     const tip = coords[coords.length - 1];
 
-    return { pathD: path, areaD: area, baselineY: baseLine, tipPoint: tip };
+    return { pathD: path, areaD: area, baselineY: baseLine, tipPoint: tip, highVal: max, lowVal: min };
   }, [liveSparklinePoints, sparklineData.open24h]);
 
   // Calculate Net Portfolio Value in USD
@@ -205,9 +207,7 @@ export const HomeDashboardView: React.FC = () => {
     };
   });
 
-  const totalPnLUSD = totalUSD - totalCostUSD;
-  const totalPnLPct = totalCostUSD > 0 ? (totalPnLUSD / totalCostUSD) * 100 : 0;
-  const isPortfolioProfit = totalPnLUSD >= 0;
+
 
   // Sort holdings by valuation descending
   const sortedHoldings = useMemo(() => {
@@ -217,150 +217,151 @@ export const HomeDashboardView: React.FC = () => {
   return (
     <div className="flex-1 w-full px-4 py-3 space-y-3 font-mono">
       {/* ========================================================================= */}
-      {/* 1. MASTER COCKPIT: DUAL COMMAND CENTER (NO FILLER TEXTS)                  */}
+      {/* 1. MASTER COCKPIT: DUAL COMMAND CENTER                                    */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 animate-sheetUp">
         {/* LEFT COCKPIT: CÜZDANIM (DOĞAL İKİLİ GÖRÜNÜM: BÜYÜK ₺, KÜÇÜK $) */}
         <div
           onClick={() => {
             triggerHaptic('medium');
             setActiveTab('portfolio');
           }}
-          className="bg-white border-2 border-stone-900 rounded-lg p-3.5 shadow-hard btn-hard cursor-pointer relative transition-all"
+          className="bg-white border-2 border-stone-900 rounded-lg p-3.5 shadow-hard btn-hard cursor-pointer relative transition-all flex flex-col justify-between"
         >
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1.5 text-stone-700">
-              <Wallet className="w-4 h-4 stroke-[2.5]" />
-              <span className="text-xs font-black uppercase tracking-wider">
-                CÜZDANIM
-              </span>
-            </div>
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5 text-stone-700">
+                <Wallet className="w-4 h-4 stroke-[2.5]" />
+                <span className="text-xs font-black uppercase tracking-wider">
+                  CÜZDANIM
+                </span>
+              </div>
 
-            {/* Actions: Privacy Toggle & Currency Swap Quick Toggle */}
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  triggerHaptic('light');
-                  toggleHideBalances();
-                }}
-                title={hideBalances ? 'Bakiyeleri Göster' : 'Bakiyeleri Gizle'}
-                className={`flex items-center justify-center p-1 rounded border border-stone-900 shadow-hard-xs transition-colors cursor-pointer ${
-                  hideBalances
-                    ? 'bg-amber-300 text-stone-900'
-                    : 'bg-[#ede8dd] hover:bg-stone-200 text-stone-700'
-                }`}
-              >
-                {hideBalances ? (
-                  <EyeOff className="w-3.5 h-3.5 stroke-[2.5]" />
-                ) : (
-                  <Eye className="w-3.5 h-3.5 stroke-[2.5]" />
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={toggleWalletCurrency}
-                title="Birincil Para Birimini Değiştir (₺ / $)"
-                className="flex items-center gap-1 text-[10px] font-black px-1.5 py-1 rounded bg-[#ede8dd] border border-stone-900 hover:bg-stone-200 shadow-hard-xs transition-colors cursor-pointer"
-              >
-                <span>{walletPrimaryTRY ? '₺ > $' : '$ > ₺'}</span>
-                <ArrowRightLeft className="w-2.5 h-2.5" />
-              </button>
-            </div>
-          </div>
-
-          {/* Primary & Secondary Dual Balance */}
-          <div className="mb-2">
-            <div className="text-2xl sm:text-3xl font-black text-stone-900 tracking-tight">
-              {hideBalances
-                ? '••••••••'
-                : walletPrimaryTRY
-                ? formatCurrency(totalUSD, 'TRY', tryRate)
-                : formatCurrency(totalUSD, 'USD', 1)}
-            </div>
-            <p className="text-xs font-bold text-stone-500 mt-0.5">
-              {hideBalances
-                ? '••••••'
-                : `≈ ${
-                    walletPrimaryTRY
-                      ? formatCurrency(totalUSD, 'USD', 1)
-                      : formatCurrency(totalUSD, 'TRY', tryRate)
+              {/* Actions: Privacy Toggle & Currency Swap Quick Toggle */}
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    triggerHaptic('light');
+                    toggleHideBalances();
+                  }}
+                  title={hideBalances ? 'Bakiyeleri Göster' : 'Bakiyeleri Gizle'}
+                  className={`flex items-center justify-center p-1 rounded border border-stone-900 shadow-hard-xs transition-colors cursor-pointer ${
+                    hideBalances
+                      ? 'bg-amber-300 text-stone-900'
+                      : 'bg-[#ede8dd] hover:bg-stone-200 text-stone-700'
                   }`}
-            </p>
+                >
+                  {hideBalances ? (
+                    <EyeOff className="w-3.5 h-3.5 stroke-[2.5]" />
+                  ) : (
+                    <Eye className="w-3.5 h-3.5 stroke-[2.5]" />
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={toggleWalletCurrency}
+                  title="Birincil Para Birimini Değiştir (₺ / $)"
+                  className="flex items-center gap-1 text-[10px] font-black px-1.5 py-1 rounded bg-[#ede8dd] border border-stone-900 hover:bg-stone-200 shadow-hard-xs transition-colors cursor-pointer"
+                >
+                  <span>{walletPrimaryTRY ? '₺ > $' : '$ > ₺'}</span>
+                  <ArrowRightLeft className="w-2.5 h-2.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Primary & Secondary Clean Balances (No PnL / Cost clutter) */}
+            <div className="py-2.5">
+              <div className="text-3xl sm:text-4xl font-black text-stone-900 tracking-tight">
+                {hideBalances
+                  ? '••••••••'
+                  : walletPrimaryTRY
+                  ? formatCurrency(totalUSD, 'TRY', tryRate)
+                  : formatCurrency(totalUSD, 'USD', 1)}
+              </div>
+              <p className="text-sm font-bold text-stone-500 mt-1">
+                {hideBalances
+                  ? '••••••'
+                  : `≈ ${
+                      walletPrimaryTRY
+                        ? formatCurrency(totalUSD, 'USD', 1)
+                        : formatCurrency(totalUSD, 'TRY', tryRate)
+                    }`}
+              </p>
+            </div>
           </div>
 
-          {/* Open PnL Badge & Cost */}
-          <div className="flex items-center justify-between pt-2 border-t-2 border-stone-900/10 text-xs">
-            {hideBalances ? (
-              <span className="inline-flex items-center gap-0.5 font-black px-1.5 py-0.5 rounded border border-stone-900 text-[11px] bg-stone-100 text-stone-500">
-                •••• Açık K/Z
-              </span>
-            ) : (
-              <span
-                className={`inline-flex items-center gap-0.5 font-black px-1.5 py-0.5 rounded border border-stone-900 text-[11px] ${
-                  isPortfolioProfit
-                    ? 'bg-emerald-200 text-emerald-950'
-                    : 'bg-rose-200 text-rose-950'
-                }`}
-              >
-                {isPortfolioProfit ? (
-                  <ArrowUpRight className="w-3 h-3 stroke-[3]" />
-                ) : (
-                  <ArrowDownRight className="w-3 h-3 stroke-[3]" />
-                )}
-                {formatPercentage(totalPnLPct)} Açık K/Z
-              </span>
-            )}
-
-            <span className="text-[10px] text-stone-500 font-bold uppercase truncate">
-              Maliyet: {hideBalances ? '••••••' : walletPrimaryTRY ? formatCurrency(totalCostUSD, 'TRY', tryRate) : formatCurrency(totalCostUSD, 'USD', 1)}
-            </span>
+          <div className="pt-2.5 border-t-2 border-stone-900/10 flex items-center justify-between text-[11px] text-stone-500 font-bold">
+            <span>{portfolio.length} Varlık Kayıtlı</span>
+            <span className="text-stone-900 font-black">CÜZDAN DETAYI ➔</span>
           </div>
         </div>
 
-        {/* RIGHT COCKPIT: BİTCOİN (BTC) (DOĞAL İKİLİ GÖRÜNÜM: BÜYÜK $, KÜÇÜK ₺ + GERÇEK SPARKLINE) */}
+        {/* RIGHT COCKPIT: BİTCOİN (BTC) (BÜYÜTÜLMÜŞ DETAYLI 24S CANLI SPARKLINE) */}
         <div
           onClick={() => {
             triggerHaptic('medium');
             setSelectedCoinForChart('BTCUSDT');
           }}
-          className="bg-[#faf7f0] border-2 border-stone-900 rounded-lg p-3.5 shadow-hard btn-hard cursor-pointer relative transition-all"
+          className="bg-[#faf7f0] border-2 border-stone-900 rounded-lg p-3.5 shadow-hard btn-hard cursor-pointer relative transition-all flex flex-col justify-between"
         >
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1.5">
-              <div className="w-5 h-5 rounded bg-stone-900 text-amber-300 flex items-center justify-center font-black text-[10px] border border-stone-900">
-                ₿
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5">
+                <div className="w-5 h-5 rounded bg-stone-900 text-amber-300 flex items-center justify-center font-black text-[10px] border border-stone-900">
+                  ₿
+                </div>
+                <span className="text-xs font-black text-stone-900 uppercase tracking-wider">
+                  BITCOIN (BTC)
+                </span>
               </div>
-              <span className="text-xs font-black text-stone-900 uppercase tracking-wider">
-                BITCOIN (BTC)
-              </span>
+
+              <div className="flex items-center gap-1.5">
+                <span
+                  className={`inline-flex items-center gap-0.5 font-black px-1.5 py-0.5 rounded border border-stone-900 text-[11px] ${
+                    btcIsPositive
+                      ? 'bg-emerald-200 text-emerald-950'
+                      : 'bg-rose-200 text-rose-950'
+                  }`}
+                >
+                  {btcIsPositive ? (
+                    <ArrowUpRight className="w-3 h-3 stroke-[3]" />
+                  ) : (
+                    <ArrowDownRight className="w-3 h-3 stroke-[3]" />
+                  )}
+                  {formatPercentage(btcChange)}
+                </span>
+
+                <span className="text-[10px] font-black text-stone-900 bg-amber-300 border border-stone-900 px-1.5 py-0.5 rounded-xs flex items-center gap-0.5 shadow-hard-xs">
+                  <LineChart className="w-3 h-3 stroke-[2.5]" />
+                  GRAFİK ➔
+                </span>
+              </div>
             </div>
 
-            <span className="text-[10px] font-black text-stone-900 bg-amber-300 border border-stone-900 px-1.5 py-0.5 rounded-xs flex items-center gap-1 shadow-hard-xs">
-              <LineChart className="w-3 h-3 stroke-[2.5]" />
-              GRAFİK ➔
-            </span>
-          </div>
-
-          {/* Price & Real Binance Sparkline Row */}
-          <div className="flex items-end justify-between gap-2 mb-2">
-            <div>
-              {/* Primary USD (Crypto market standard) */}
-              <div className="text-2xl sm:text-3xl font-black text-stone-900 tracking-tight">
-                {formatCurrency(btcPriceUSD, 'USD', 1)}
+            {/* Price & Range Overview */}
+            <div className="flex items-baseline justify-between gap-2 mb-1.5">
+              <div>
+                <span className="text-2xl sm:text-3xl font-black text-stone-900 tracking-tight">
+                  {formatCurrency(btcPriceUSD, 'USD', 1)}
+                </span>
+                <span className="text-xs font-bold text-stone-500 ml-2">
+                  ≈ {formatCurrency(btcPriceUSD, 'TRY', tryRate)}
+                </span>
               </div>
-              {/* Secondary TRY (Local value reference) */}
-              <p className="text-xs font-bold text-stone-500 mt-0.5">
-                ≈ {formatCurrency(btcPriceUSD, 'TRY', tryRate)}
-              </p>
+
+              <div className="text-[10px] font-bold text-stone-600 text-right leading-tight">
+                <div>Y: {formatCurrency(highVal || btcTicker?.high24h || btcPriceUSD, 'USD', 1)}</div>
+                <div>D: {formatCurrency(lowVal || btcTicker?.low24h || btcPriceUSD, 'USD', 1)}</div>
+              </div>
             </div>
 
-            {/* 100% Real Live Binance 24h Sparkline */}
-            <div className="w-[140px] h-[46px] shrink-0 relative pointer-events-none">
+            {/* 100% Real Live Binance 24h Enlarged & Detailed Sparkline */}
+            <div className="w-full h-[74px] relative pointer-events-none my-1 bg-stone-900/5 rounded border border-stone-900/10 p-1">
               <svg
-                viewBox="0 0 160 48"
+                viewBox="0 0 280 74"
                 className="w-full h-full overflow-visible"
                 preserveAspectRatio="none"
               >
@@ -369,7 +370,7 @@ export const HomeDashboardView: React.FC = () => {
                     <stop
                       offset="0%"
                       stopColor={btcIsPositive ? '#16a34a' : '#dc2626'}
-                      stopOpacity="0.25"
+                      stopOpacity="0.30"
                     />
                     <stop
                       offset="100%"
@@ -383,11 +384,11 @@ export const HomeDashboardView: React.FC = () => {
                 <line
                   x1="0"
                   y1={baselineY}
-                  x2="160"
+                  x2="280"
                   y2={baselineY}
                   stroke="#1c1917"
                   strokeWidth="1"
-                  strokeDasharray="2,2"
+                  strokeDasharray="3 3"
                   strokeOpacity="0.25"
                 />
 
@@ -412,15 +413,15 @@ export const HomeDashboardView: React.FC = () => {
                     <circle
                       cx={tipPoint.x}
                       cy={tipPoint.y}
-                      r="2.5"
+                      r="3.5"
                       fill={btcIsPositive ? '#16a34a' : '#dc2626'}
                       stroke="#1c1917"
-                      strokeWidth="1"
+                      strokeWidth="1.5"
                     />
                     <circle
                       cx={tipPoint.x}
                       cy={tipPoint.y}
-                      r="5"
+                      r="7"
                       fill={btcIsPositive ? '#16a34a' : '#dc2626'}
                       opacity="0.3"
                       className="animate-ping"
@@ -431,26 +432,13 @@ export const HomeDashboardView: React.FC = () => {
             </div>
           </div>
 
-          {/* 24h Change & Range */}
-          <div className="flex items-center justify-between pt-2 border-t-2 border-stone-900/10 text-xs">
-            <span
-              className={`inline-flex items-center gap-0.5 font-black px-1.5 py-0.5 rounded border border-stone-900 text-[11px] ${
-                btcIsPositive
-                  ? 'bg-emerald-200 text-emerald-950'
-                  : 'bg-rose-200 text-rose-950'
-              }`}
-            >
-              {btcIsPositive ? (
-                <ArrowUpRight className="w-3 h-3 stroke-[3]" />
-              ) : (
-                <ArrowDownRight className="w-3 h-3 stroke-[3]" />
-              )}
-              {formatPercentage(btcChange)} (24s)
+          <div className="flex items-center justify-between text-[10px] text-stone-500 font-bold uppercase pt-1">
+            <span>-24S ÖNCE</span>
+            <span className="flex items-center gap-1 text-stone-800 font-black">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              CANLI BINANCE VERİSİ
             </span>
-
-            <span className="text-[10px] text-stone-600 font-bold uppercase truncate">
-              {btcTicker ? `D: ${formatCurrency(btcTicker.low24h, 'USD', 1)} // Y: ${formatCurrency(btcTicker.high24h, 'USD', 1)}` : '--'}
-            </span>
+            <span>ŞİMDİ</span>
           </div>
         </div>
       </div>
@@ -463,7 +451,7 @@ export const HomeDashboardView: React.FC = () => {
           triggerHaptic('light');
           setActiveTab('analytics');
         }}
-        className="grid grid-cols-3 gap-2 text-stone-900 cursor-pointer"
+        className="grid grid-cols-3 gap-2 text-stone-900 cursor-pointer animate-sheetUp [animation-delay:60ms]"
         title="Tüm Analizleri Aç"
       >
         <div className="bg-white border-2 border-stone-900 rounded-md p-2 shadow-hard-xs hover:bg-stone-50 transition-colors">
@@ -510,7 +498,7 @@ export const HomeDashboardView: React.FC = () => {
       {/* ========================================================================= */}
       {/* 3. PORTFÖY VARLIKLARI: DOĞAL İKİLİ GÖRÜNÜM (TL EDERİ + DOLAR FİYATI)     */}
       {/* ========================================================================= */}
-      <div className="bg-white border-2 border-stone-900 rounded-lg shadow-hard overflow-hidden">
+      <div className="bg-white border-2 border-stone-900 rounded-lg shadow-hard overflow-hidden animate-sheetUp [animation-delay:120ms]">
         {/* Section Header */}
         <div className="flex items-center justify-between px-3 py-2 border-b-2 border-stone-900 bg-[#ede8dd]">
           <div className="flex items-center gap-1.5">
@@ -632,7 +620,7 @@ export const HomeDashboardView: React.FC = () => {
       {/* ========================================================================= */}
       {/* 4. HIZLI ERİŞİM BUTONLARI                                                 */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-2 gap-2 pt-1 pb-4">
+      <div className="grid grid-cols-2 gap-2 pt-1 pb-4 animate-sheetUp [animation-delay:180ms]">
         <button
           onClick={() => {
             triggerHaptic('medium');

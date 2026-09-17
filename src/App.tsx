@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useRef } from 'react';
+import React, { Suspense, lazy, useRef, useState, useEffect } from 'react';
 import { useCryptoStore } from './store/useCryptoStore';
 import { useBinanceWebSocket } from './hooks/useBinanceWebSocket';
 import { useSwipeNavigation } from './hooks/useSwipeNavigation';
@@ -18,6 +18,10 @@ const DetailChartModal = lazy(() =>
   import('./components/chart/DetailChartModal').then((m) => ({ default: m.DetailChartModal }))
 );
 
+import type { TabType } from './types/crypto';
+
+const TABS: TabType[] = ['home', 'markets', 'analytics', 'portfolio'];
+
 export const App: React.FC = () => {
   // Activate continuous single combined WebSocket stream with 120ms batching & visibility pause
   useBinanceWebSocket();
@@ -30,6 +34,18 @@ export const App: React.FC = () => {
   useSwipeNavigation(mainContainerRef);
 
   const activeTab = useCryptoStore((state) => state.activeTab);
+  const prevTabRef = useRef<TabType>(activeTab);
+  const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('left');
+
+  useEffect(() => {
+    const prevIdx = TABS.indexOf(prevTabRef.current);
+    const currIdx = TABS.indexOf(activeTab);
+    if (currIdx !== prevIdx) {
+      setSlideDirection(currIdx >= prevIdx ? 'left' : 'right');
+      prevTabRef.current = activeTab;
+    }
+  }, [activeTab]);
+
   const selectedCoinForChart = useCryptoStore((state) => state.selectedCoinForChart);
   const setAnalyticsData = useCryptoStore((state) => state.setAnalyticsData);
 
@@ -59,7 +75,12 @@ export const App: React.FC = () => {
           ref={mainContainerRef}
           className="flex-1 w-full max-w-lg mx-auto flex flex-col min-h-[calc(100vh-130px)] touch-pan-y"
         >
-          <div key={activeTab} className="animate-tabEnter w-full flex flex-col flex-1">
+          <div
+            key={activeTab}
+            className={`w-full flex flex-col flex-1 ${
+              slideDirection === 'left' ? 'animate-slide-left' : 'animate-slide-right'
+            }`}
+          >
             {activeTab === 'home' && <HomeDashboardView />}
             {activeTab === 'markets' && <MarketList />}
             {activeTab === 'analytics' && <AnalyticsView />}
