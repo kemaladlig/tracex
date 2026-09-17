@@ -12,6 +12,9 @@ import {
   ArrowRightLeft,
   Eye,
   EyeOff,
+  ChevronDown,
+  ChevronUp,
+  ShieldCheck,
 } from 'lucide-react';
 import { useCryptoStore } from '../../store/useCryptoStore';
 import { formatCurrency, formatPercentage, cleanSymbol } from '../../utils/formatters';
@@ -39,6 +42,8 @@ export const HomeDashboardView: React.FC = () => {
   const setSelectedCoinForChart = useCryptoStore((state) => state.setSelectedCoinForChart);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  // Default wallet collapsible state: collapsed by default for public privacy
+  const [isWalletExpanded, setIsWalletExpanded] = useState<boolean>(false);
   // Default wallet currency preference: User wants TRY (₺) 95% of the time, can flip on tap
   const [walletPrimaryTRY, setWalletPrimaryTRY] = useState<boolean>(() => {
     const saved = localStorage.getItem('tracex_home_wallet_pref');
@@ -217,229 +222,147 @@ export const HomeDashboardView: React.FC = () => {
   return (
     <div className="flex-1 w-full px-4 py-3 space-y-3 font-mono">
       {/* ========================================================================= */}
-      {/* 1. MASTER COCKPIT: DUAL COMMAND CENTER                                    */}
+      {/* 1. HERO COCKPIT: BİTCOİN (BTC) VE 24S BÜYÜTÜLMÜŞ CANLI SPARKLINE          */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 animate-sheetUp">
-        {/* LEFT COCKPIT: CÜZDANIM (DOĞAL İKİLİ GÖRÜNÜM: BÜYÜK ₺, KÜÇÜK $) */}
-        <div
-          onClick={() => {
-            triggerHaptic('medium');
-            setActiveTab('portfolio');
-          }}
-          className="bg-white border-2 border-stone-900 rounded-lg p-3.5 shadow-hard btn-hard cursor-pointer relative transition-all flex flex-col justify-between"
-        >
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-1.5 text-stone-700">
-                <Wallet className="w-4 h-4 stroke-[2.5]" />
-                <span className="text-xs font-black uppercase tracking-wider">
-                  CÜZDANIM
-                </span>
+      <div
+        onClick={() => {
+          triggerHaptic('medium');
+          setSelectedCoinForChart('BTCUSDT');
+        }}
+        className="bg-[#faf7f0] border-2 border-stone-900 rounded-lg p-3.5 shadow-hard btn-hard cursor-pointer relative transition-all animate-sheetUp flex flex-col justify-between"
+      >
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1.5">
+              <div className="w-5 h-5 rounded bg-stone-900 text-amber-300 flex items-center justify-center font-black text-[10px] border border-stone-900">
+                ₿
               </div>
-
-              {/* Actions: Privacy Toggle & Currency Swap Quick Toggle */}
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    triggerHaptic('light');
-                    toggleHideBalances();
-                  }}
-                  title={hideBalances ? 'Bakiyeleri Göster' : 'Bakiyeleri Gizle'}
-                  className={`flex items-center justify-center p-1 rounded border border-stone-900 shadow-hard-xs transition-colors cursor-pointer ${
-                    hideBalances
-                      ? 'bg-amber-300 text-stone-900'
-                      : 'bg-[#ede8dd] hover:bg-stone-200 text-stone-700'
-                  }`}
-                >
-                  {hideBalances ? (
-                    <EyeOff className="w-3.5 h-3.5 stroke-[2.5]" />
-                  ) : (
-                    <Eye className="w-3.5 h-3.5 stroke-[2.5]" />
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={toggleWalletCurrency}
-                  title="Birincil Para Birimini Değiştir (₺ / $)"
-                  className="flex items-center gap-1 text-[10px] font-black px-1.5 py-1 rounded bg-[#ede8dd] border border-stone-900 hover:bg-stone-200 shadow-hard-xs transition-colors cursor-pointer"
-                >
-                  <span>{walletPrimaryTRY ? '₺ > $' : '$ > ₺'}</span>
-                  <ArrowRightLeft className="w-2.5 h-2.5" />
-                </button>
-              </div>
+              <span className="text-xs font-black text-stone-900 uppercase tracking-wider">
+                BITCOIN (BTC)
+              </span>
             </div>
 
-            {/* Primary & Secondary Clean Balances (No PnL / Cost clutter) */}
-            <div className="py-2.5">
-              <div className="text-3xl sm:text-4xl font-black text-stone-900 tracking-tight">
-                {hideBalances
-                  ? '••••••••'
-                  : walletPrimaryTRY
-                  ? formatCurrency(totalUSD, 'TRY', tryRate)
-                  : formatCurrency(totalUSD, 'USD', 1)}
-              </div>
-              <p className="text-sm font-bold text-stone-500 mt-1">
-                {hideBalances
-                  ? '••••••'
-                  : `≈ ${
-                      walletPrimaryTRY
-                        ? formatCurrency(totalUSD, 'USD', 1)
-                        : formatCurrency(totalUSD, 'TRY', tryRate)
-                    }`}
-              </p>
+            <div className="flex items-center gap-1.5">
+              <span
+                className={`inline-flex items-center gap-0.5 font-black px-1.5 py-0.5 rounded border border-stone-900 text-[11px] ${
+                  btcIsPositive
+                    ? 'bg-emerald-200 text-emerald-950'
+                    : 'bg-rose-200 text-rose-950'
+                }`}
+              >
+                {btcIsPositive ? (
+                  <ArrowUpRight className="w-3 h-3 stroke-[3]" />
+                ) : (
+                  <ArrowDownRight className="w-3 h-3 stroke-[3]" />
+                )}
+                {formatPercentage(btcChange)} (24s)
+              </span>
+
+              <span className="text-[10px] font-black text-stone-900 bg-amber-300 border border-stone-900 px-1.5 py-0.5 rounded-xs flex items-center gap-0.5 shadow-hard-xs">
+                <LineChart className="w-3 h-3 stroke-[2.5]" />
+                GRAFİK ➔
+              </span>
             </div>
           </div>
 
-          <div className="pt-2.5 border-t-2 border-stone-900/10 flex items-center justify-between text-[11px] text-stone-500 font-bold">
-            <span>{portfolio.length} Varlık Kayıtlı</span>
-            <span className="text-stone-900 font-black">CÜZDAN DETAYI ➔</span>
+          {/* Price & Range Overview */}
+          <div className="flex items-baseline justify-between gap-2 mb-1.5">
+            <div>
+              <span className="text-3xl sm:text-4xl font-black text-stone-900 tracking-tight">
+                {formatCurrency(btcPriceUSD, 'USD', 1)}
+              </span>
+              <span className="text-xs sm:text-sm font-bold text-stone-500 ml-2">
+                ≈ {formatCurrency(btcPriceUSD, 'TRY', tryRate)}
+              </span>
+            </div>
+
+            <div className="text-[10px] font-bold text-stone-600 text-right leading-tight">
+              <div>Y: {formatCurrency(highVal || btcTicker?.high24h || btcPriceUSD, 'USD', 1)}</div>
+              <div>D: {formatCurrency(lowVal || btcTicker?.low24h || btcPriceUSD, 'USD', 1)}</div>
+            </div>
+          </div>
+
+          {/* 100% Real Live Binance 24h Enlarged & Detailed Sparkline */}
+          <div className="w-full h-[76px] relative pointer-events-none my-1 bg-stone-900/5 rounded border border-stone-900/10 p-1">
+            <svg
+              viewBox="0 0 280 74"
+              className="w-full h-full overflow-visible"
+              preserveAspectRatio="none"
+            >
+              <defs>
+                <linearGradient id="btcGradReal" x1="0" y1="0" x2="0" y2="1">
+                  <stop
+                    offset="0%"
+                    stopColor={btcIsPositive ? '#16a34a' : '#dc2626'}
+                    stopOpacity="0.30"
+                  />
+                  <stop
+                    offset="100%"
+                    stopColor={btcIsPositive ? '#16a34a' : '#dc2626'}
+                    stopOpacity="0.0"
+                  />
+                </linearGradient>
+              </defs>
+
+              {/* 24h Baseline */}
+              <line
+                x1="0"
+                y1={baselineY}
+                x2="280"
+                y2={baselineY}
+                stroke="#1c1917"
+                strokeWidth="1"
+                strokeDasharray="3 3"
+                strokeOpacity="0.25"
+              />
+
+              {/* Shaded Area */}
+              {areaD && <path d={areaD} fill="url(#btcGradReal)" />}
+
+              {/* Real Trend Line */}
+              {pathD && (
+                <path
+                  d={pathD}
+                  fill="none"
+                  stroke={btcIsPositive ? '#16a34a' : '#dc2626'}
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              )}
+
+              {/* Real-time Pulsing Dot on Current Live Price */}
+              {tipPoint && (
+                <>
+                  <circle
+                    cx={tipPoint.x}
+                    cy={tipPoint.y}
+                    r="3.5"
+                    fill={btcIsPositive ? '#16a34a' : '#dc2626'}
+                    stroke="#1c1917"
+                    strokeWidth="1.5"
+                  />
+                  <circle
+                    cx={tipPoint.x}
+                    cy={tipPoint.y}
+                    r="7"
+                    fill={btcIsPositive ? '#16a34a' : '#dc2626'}
+                    opacity="0.3"
+                    className="animate-ping"
+                  />
+                </>
+              )}
+            </svg>
           </div>
         </div>
 
-        {/* RIGHT COCKPIT: BİTCOİN (BTC) (BÜYÜTÜLMÜŞ DETAYLI 24S CANLI SPARKLINE) */}
-        <div
-          onClick={() => {
-            triggerHaptic('medium');
-            setSelectedCoinForChart('BTCUSDT');
-          }}
-          className="bg-[#faf7f0] border-2 border-stone-900 rounded-lg p-3.5 shadow-hard btn-hard cursor-pointer relative transition-all flex flex-col justify-between"
-        >
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-1.5">
-                <div className="w-5 h-5 rounded bg-stone-900 text-amber-300 flex items-center justify-center font-black text-[10px] border border-stone-900">
-                  ₿
-                </div>
-                <span className="text-xs font-black text-stone-900 uppercase tracking-wider">
-                  BITCOIN (BTC)
-                </span>
-              </div>
-
-              <div className="flex items-center gap-1.5">
-                <span
-                  className={`inline-flex items-center gap-0.5 font-black px-1.5 py-0.5 rounded border border-stone-900 text-[11px] ${
-                    btcIsPositive
-                      ? 'bg-emerald-200 text-emerald-950'
-                      : 'bg-rose-200 text-rose-950'
-                  }`}
-                >
-                  {btcIsPositive ? (
-                    <ArrowUpRight className="w-3 h-3 stroke-[3]" />
-                  ) : (
-                    <ArrowDownRight className="w-3 h-3 stroke-[3]" />
-                  )}
-                  {formatPercentage(btcChange)}
-                </span>
-
-                <span className="text-[10px] font-black text-stone-900 bg-amber-300 border border-stone-900 px-1.5 py-0.5 rounded-xs flex items-center gap-0.5 shadow-hard-xs">
-                  <LineChart className="w-3 h-3 stroke-[2.5]" />
-                  GRAFİK ➔
-                </span>
-              </div>
-            </div>
-
-            {/* Price & Range Overview */}
-            <div className="flex items-baseline justify-between gap-2 mb-1.5">
-              <div>
-                <span className="text-2xl sm:text-3xl font-black text-stone-900 tracking-tight">
-                  {formatCurrency(btcPriceUSD, 'USD', 1)}
-                </span>
-                <span className="text-xs font-bold text-stone-500 ml-2">
-                  ≈ {formatCurrency(btcPriceUSD, 'TRY', tryRate)}
-                </span>
-              </div>
-
-              <div className="text-[10px] font-bold text-stone-600 text-right leading-tight">
-                <div>Y: {formatCurrency(highVal || btcTicker?.high24h || btcPriceUSD, 'USD', 1)}</div>
-                <div>D: {formatCurrency(lowVal || btcTicker?.low24h || btcPriceUSD, 'USD', 1)}</div>
-              </div>
-            </div>
-
-            {/* 100% Real Live Binance 24h Enlarged & Detailed Sparkline */}
-            <div className="w-full h-[74px] relative pointer-events-none my-1 bg-stone-900/5 rounded border border-stone-900/10 p-1">
-              <svg
-                viewBox="0 0 280 74"
-                className="w-full h-full overflow-visible"
-                preserveAspectRatio="none"
-              >
-                <defs>
-                  <linearGradient id="btcGradReal" x1="0" y1="0" x2="0" y2="1">
-                    <stop
-                      offset="0%"
-                      stopColor={btcIsPositive ? '#16a34a' : '#dc2626'}
-                      stopOpacity="0.30"
-                    />
-                    <stop
-                      offset="100%"
-                      stopColor={btcIsPositive ? '#16a34a' : '#dc2626'}
-                      stopOpacity="0.0"
-                    />
-                  </linearGradient>
-                </defs>
-
-                {/* 24h Baseline (Dotted Line indicating start of 24h period) */}
-                <line
-                  x1="0"
-                  y1={baselineY}
-                  x2="280"
-                  y2={baselineY}
-                  stroke="#1c1917"
-                  strokeWidth="1"
-                  strokeDasharray="3 3"
-                  strokeOpacity="0.25"
-                />
-
-                {/* Shaded Area */}
-                {areaD && <path d={areaD} fill="url(#btcGradReal)" />}
-
-                {/* Real Trend Line */}
-                {pathD && (
-                  <path
-                    d={pathD}
-                    fill="none"
-                    stroke={btcIsPositive ? '#16a34a' : '#dc2626'}
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                )}
-
-                {/* Real-time Pulsing Dot on Current Live Price */}
-                {tipPoint && (
-                  <>
-                    <circle
-                      cx={tipPoint.x}
-                      cy={tipPoint.y}
-                      r="3.5"
-                      fill={btcIsPositive ? '#16a34a' : '#dc2626'}
-                      stroke="#1c1917"
-                      strokeWidth="1.5"
-                    />
-                    <circle
-                      cx={tipPoint.x}
-                      cy={tipPoint.y}
-                      r="7"
-                      fill={btcIsPositive ? '#16a34a' : '#dc2626'}
-                      opacity="0.3"
-                      className="animate-ping"
-                    />
-                  </>
-                )}
-              </svg>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between text-[10px] text-stone-500 font-bold uppercase pt-1">
-            <span>-24S ÖNCE</span>
-            <span className="flex items-center gap-1 text-stone-800 font-black">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              CANLI BINANCE VERİSİ
-            </span>
-            <span>ŞİMDİ</span>
-          </div>
+        <div className="flex items-center justify-between text-[10px] text-stone-500 font-bold uppercase pt-1">
+          <span>-24S ÖNCE</span>
+          <span className="flex items-center gap-1 text-stone-800 font-black">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            CANLI BINANCE VERİSİ
+          </span>
+          <span>ŞİMDİ</span>
         </div>
       </div>
 
@@ -496,123 +419,243 @@ export const HomeDashboardView: React.FC = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 3. PORTFÖY VARLIKLARI: DOĞAL İKİLİ GÖRÜNÜM (TL EDERİ + DOLAR FİYATI)     */}
+      {/* 3. KİŞİSEL CÜZDAN & VARLIKLAR (TOPLULUK KORUMASI / AKORDİYON KASA)         */}
       {/* ========================================================================= */}
-      <div className="bg-white border-2 border-stone-900 rounded-lg shadow-hard overflow-hidden animate-sheetUp [animation-delay:120ms]">
-        {/* Section Header */}
-        <div className="flex items-center justify-between px-3 py-2 border-b-2 border-stone-900 bg-[#ede8dd]">
-          <div className="flex items-center gap-1.5">
-            <TrendingUp className="w-4 h-4 stroke-[2.5]" />
-            <span className="text-xs font-black uppercase tracking-wider">
-              VARLIKLARIM ({sortedHoldings.length})
-            </span>
+      <div className="space-y-2.5 animate-sheetUp [animation-delay:120ms]">
+        {/* Accordion Privacy Trigger Bar */}
+        <button
+          type="button"
+          onClick={() => {
+            triggerHaptic('medium');
+            setIsWalletExpanded((prev) => !prev);
+          }}
+          className="w-full bg-white border-2 border-stone-900 rounded-lg p-3 shadow-hard btn-hard cursor-pointer flex items-center justify-between transition-all"
+        >
+          <div className="flex items-center gap-2.5">
+            <div className={`p-1.5 rounded border border-stone-900 ${isWalletExpanded ? 'bg-amber-300 text-stone-900' : 'bg-stone-900 text-amber-300'}`}>
+              <Wallet className="w-4 h-4 stroke-[2.5]" />
+            </div>
+            <div className="text-left">
+              <span className="text-xs font-black text-stone-900 uppercase tracking-wider block">
+                KİŞİSEL CÜZDANIM & VARLIKLAR
+              </span>
+              <span className="text-[10px] font-bold text-stone-500">
+                {isWalletExpanded ? `${portfolio.length} varlık gösteriliyor` : 'Topluluk koruması: dokunarak açın'}
+              </span>
+            </div>
           </div>
 
           <div className="flex items-center gap-1.5">
-            <button
+            <span className="text-[10px] font-black px-2 py-0.5 rounded bg-[#ede8dd] border border-stone-900 text-stone-800">
+              {isWalletExpanded ? 'GİZLE ▴' : 'GÖSTER ▾'}
+            </span>
+            {isWalletExpanded ? (
+              <ChevronUp className="w-4 h-4 stroke-[2.5] text-stone-800" />
+            ) : (
+              <ChevronDown className="w-4 h-4 stroke-[2.5] text-stone-800" />
+            )}
+          </div>
+        </button>
+
+        {/* Collapsible Content: Cüzdanım Kartı + Varlıklarım Listesi */}
+        {isWalletExpanded && (
+          <div className="space-y-3 animate-sheetUp">
+            {/* CÜZDANIM KARTI */}
+            <div
               onClick={() => {
                 triggerHaptic('medium');
-                setIsAddModalOpen(true);
-              }}
-              className="p-1 px-2 rounded bg-amber-300 border border-stone-900 hover:bg-amber-400 text-stone-900 text-[10px] font-black shadow-hard-xs btn-hard flex items-center gap-0.5 cursor-pointer"
-            >
-              <Plus className="w-3 h-3 stroke-[3]" />
-              <span>EKLE</span>
-            </button>
-
-            <button
-              onClick={() => {
-                triggerHaptic('light');
                 setActiveTab('portfolio');
               }}
-              className="p-1 px-2 rounded bg-white border border-stone-900 hover:bg-stone-200 text-stone-900 text-[10px] font-black shadow-hard-xs btn-hard cursor-pointer"
+              className="bg-white border-2 border-stone-900 rounded-lg p-3.5 shadow-hard btn-hard cursor-pointer relative transition-all flex flex-col justify-between"
             >
-              TÜMÜ ➔
-            </button>
-          </div>
-        </div>
-
-        {/* Assets List */}
-        {sortedHoldings.length === 0 ? (
-          <div className="p-6 text-center">
-            <p className="text-xs font-bold text-stone-500 mb-2">
-              Henüz portföyünüze varlık eklemediniz.
-            </p>
-            <button
-              onClick={() => setIsAddModalOpen(true)}
-              className="px-3 py-1.5 bg-amber-300 border-2 border-stone-900 rounded text-xs font-black shadow-hard-sm btn-hard cursor-pointer"
-            >
-              + İlk Varlığını Ekle
-            </button>
-          </div>
-        ) : (
-          <div className="divide-y-2 divide-stone-900/10">
-            {sortedHoldings.slice(0, 5).map((item) => {
-              const { base } = cleanSymbol(item.symbol);
-              const assetAllocationPercent =
-                totalUSD > 0 ? (item.valUSD / totalUSD) * 100 : 0;
-
-              return (
-                <div
-                  key={item.id}
-                  onClick={() => {
-                    triggerHaptic('light');
-                    setSelectedCoinForChart(item.symbol);
-                  }}
-                  className="px-3.5 py-2.5 hover:bg-stone-50 cursor-pointer flex items-center justify-between transition-colors group"
-                >
-                  {/* Left: Avatar, Name & Coin USD Unit Price */}
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-8 h-8 rounded-md bg-stone-900 text-amber-300 border-2 border-stone-900 flex items-center justify-center font-black text-xs shadow-hard-xs shrink-0">
-                      {base.substring(0, 3)}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-baseline gap-1.5">
-                        <span className="text-xs font-black text-stone-900 truncate">
-                          {base}
-                        </span>
-                        {/* Coin USD Price (Crypto Standard) */}
-                        <span className="text-[10px] font-bold text-stone-500">
-                          {formatCurrency(item.livePriceUSD, 'USD', 1)}
-                        </span>
-                      </div>
-                      <div className="text-[11px] font-bold text-stone-600 truncate">
-                        {hideBalances ? '••••' : item.amount} {base}
-                      </div>
-                    </div>
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-1.5 text-stone-700">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600 stroke-[2.5]" />
+                    <span className="text-xs font-black uppercase tracking-wider">
+                      NET PORTFÖY DEĞERİ
+                    </span>
                   </div>
 
-                  {/* Right: Holding Total Value (Primary ₺ TL, Subtitle $ USD) */}
-                  <div className="text-right shrink-0">
-                    <div className="text-xs font-black text-stone-900">
-                      {hideBalances
-                        ? '••••••'
-                        : walletPrimaryTRY
-                        ? formatCurrency(item.valUSD, 'TRY', tryRate)
-                        : formatCurrency(item.valUSD, 'USD', 1)}
-                    </div>
-                    <div className="flex items-center justify-end gap-1.5 mt-0.5">
-                      <span className="text-[10px] font-bold text-stone-500">
-                        {hideBalances
-                          ? '••'
-                          : walletPrimaryTRY
-                          ? `≈ ${formatCurrency(item.valUSD, 'USD', 1)}`
-                          : `≈ ${formatCurrency(item.valUSD, 'TRY', tryRate)}`}
-                      </span>
-                      <div className="w-10 h-1.5 bg-stone-200 border border-stone-900 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-stone-900"
-                          style={{ width: `${Math.min(100, Math.max(3, assetAllocationPercent))}%` }}
-                        />
-                      </div>
-                      <span className="text-[10px] font-bold text-stone-600 min-w-[26px] text-right">
-                        %{assetAllocationPercent.toFixed(0)}
-                      </span>
-                    </div>
+                  {/* Actions: Privacy Toggle & Currency Swap Quick Toggle */}
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        triggerHaptic('light');
+                        toggleHideBalances();
+                      }}
+                      title={hideBalances ? 'Bakiyeleri Göster' : 'Bakiyeleri Gizle'}
+                      className={`flex items-center justify-center p-1 rounded border border-stone-900 shadow-hard-xs transition-colors cursor-pointer ${
+                        hideBalances
+                          ? 'bg-amber-300 text-stone-900'
+                          : 'bg-[#ede8dd] hover:bg-stone-200 text-stone-700'
+                      }`}
+                    >
+                      {hideBalances ? (
+                        <EyeOff className="w-3.5 h-3.5 stroke-[2.5]" />
+                      ) : (
+                        <Eye className="w-3.5 h-3.5 stroke-[2.5]" />
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={toggleWalletCurrency}
+                      title="Birincil Para Birimini Değiştir (₺ / $)"
+                      className="flex items-center gap-1 text-[10px] font-black px-1.5 py-1 rounded bg-[#ede8dd] border border-stone-900 hover:bg-stone-200 shadow-hard-xs transition-colors cursor-pointer"
+                    >
+                      <span>{walletPrimaryTRY ? '₺ > $' : '$ > ₺'}</span>
+                      <ArrowRightLeft className="w-2.5 h-2.5" />
+                    </button>
                   </div>
                 </div>
-              );
-            })}
+
+                {/* Primary & Secondary Clean Balances */}
+                <div className="py-2.5">
+                  <div className="text-3xl sm:text-4xl font-black text-stone-900 tracking-tight">
+                    {hideBalances
+                      ? '••••••••'
+                      : walletPrimaryTRY
+                      ? formatCurrency(totalUSD, 'TRY', tryRate)
+                      : formatCurrency(totalUSD, 'USD', 1)}
+                  </div>
+                  <p className="text-sm font-bold text-stone-500 mt-1">
+                    {hideBalances
+                      ? '••••••'
+                      : `≈ ${
+                          walletPrimaryTRY
+                            ? formatCurrency(totalUSD, 'USD', 1)
+                            : formatCurrency(totalUSD, 'TRY', tryRate)
+                        }`}
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-2.5 border-t-2 border-stone-900/10 flex items-center justify-between text-[11px] text-stone-500 font-bold">
+                <span>{portfolio.length} Varlık Kayıtlı</span>
+                <span className="text-stone-900 font-black">CÜZDAN DETAYI ➔</span>
+              </div>
+            </div>
+
+            {/* VARLIKLARIM (TOP 5 LİSTE) */}
+            <div className="bg-white border-2 border-stone-900 rounded-lg shadow-hard overflow-hidden">
+              <div className="flex items-center justify-between px-3 py-2 border-b-2 border-stone-900 bg-[#ede8dd]">
+                <div className="flex items-center gap-1.5">
+                  <TrendingUp className="w-4 h-4 stroke-[2.5]" />
+                  <span className="text-xs font-black uppercase tracking-wider">
+                    VARLIKLARIM ({sortedHoldings.length})
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => {
+                      triggerHaptic('medium');
+                      setIsAddModalOpen(true);
+                    }}
+                    className="p-1 px-2 rounded bg-amber-300 border border-stone-900 hover:bg-amber-400 text-stone-900 text-[10px] font-black shadow-hard-xs btn-hard flex items-center gap-0.5 cursor-pointer"
+                  >
+                    <Plus className="w-3 h-3 stroke-[3]" />
+                    <span>EKLE</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      triggerHaptic('light');
+                      setActiveTab('portfolio');
+                    }}
+                    className="p-1 px-2 rounded bg-white border border-stone-900 hover:bg-stone-200 text-stone-900 text-[10px] font-black shadow-hard-xs btn-hard cursor-pointer"
+                  >
+                    TÜMÜ ➔
+                  </button>
+                </div>
+              </div>
+
+              {/* Assets List Content */}
+              {sortedHoldings.length === 0 ? (
+                <div className="p-6 text-center">
+                  <p className="text-xs font-bold text-stone-500 mb-2">
+                    Henüz portföyünüze varlık eklemediniz.
+                  </p>
+                  <button
+                    onClick={() => setIsAddModalOpen(true)}
+                    className="px-3 py-1.5 bg-amber-300 border-2 border-stone-900 rounded text-xs font-black shadow-hard-sm btn-hard cursor-pointer"
+                  >
+                    + İlk Varlığını Ekle
+                  </button>
+                </div>
+              ) : (
+                <div className="divide-y-2 divide-stone-900/10">
+                  {sortedHoldings.slice(0, 5).map((item) => {
+                    const { base } = cleanSymbol(item.symbol);
+                    const assetAllocationPercent =
+                      totalUSD > 0 ? (item.valUSD / totalUSD) * 100 : 0;
+
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() => {
+                          triggerHaptic('light');
+                          setSelectedCoinForChart(item.symbol);
+                        }}
+                        className="px-3.5 py-2.5 hover:bg-stone-50 cursor-pointer flex items-center justify-between transition-colors group"
+                      >
+                        {/* Left: Avatar, Name & Coin USD Unit Price */}
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-8 h-8 rounded-md bg-stone-900 text-amber-300 border-2 border-stone-900 flex items-center justify-center font-black text-xs shadow-hard-xs shrink-0">
+                            {base.substring(0, 3)}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-baseline gap-1.5">
+                              <span className="text-xs font-black text-stone-900 truncate">
+                                {base}
+                              </span>
+                              <span className="text-[10px] font-bold text-stone-500">
+                                {formatCurrency(item.livePriceUSD, 'USD', 1)}
+                              </span>
+                            </div>
+                            <div className="text-[11px] font-bold text-stone-600 truncate">
+                              {hideBalances ? '••••' : item.amount} {base}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Right: Holding Total Value */}
+                        <div className="text-right shrink-0">
+                          <div className="text-xs font-black text-stone-900">
+                            {hideBalances
+                              ? '••••••'
+                              : walletPrimaryTRY
+                              ? formatCurrency(item.valUSD, 'TRY', tryRate)
+                              : formatCurrency(item.valUSD, 'USD', 1)}
+                          </div>
+                          <div className="flex items-center justify-end gap-1.5 mt-0.5">
+                            <span className="text-[10px] font-bold text-stone-500">
+                              {hideBalances
+                                ? '••'
+                                : walletPrimaryTRY
+                                ? `≈ ${formatCurrency(item.valUSD, 'USD', 1)}`
+                                : `≈ ${formatCurrency(item.valUSD, 'TRY', tryRate)}`}
+                            </span>
+                            <div className="w-10 h-1.5 bg-stone-200 border border-stone-900 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-stone-900"
+                                style={{ width: `${Math.min(100, Math.max(3, assetAllocationPercent))}%` }}
+                              />
+                            </div>
+                            <span className="text-[10px] font-bold text-stone-600 min-w-[26px] text-right">
+                              %{assetAllocationPercent.toFixed(0)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
