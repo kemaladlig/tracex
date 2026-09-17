@@ -20,13 +20,11 @@ export const formatCurrency = (
     symbol = '₺';
   }
 
-  // Determine decimal places dynamically: >= 100 has 0 decimals (clean whole numbers)
+  // Determine decimal places dynamically: standard 2 decimals for values >= 1
   let decimals = overrideDecimals ?? 2;
   if (overrideDecimals === undefined) {
     const absVal = Math.abs(converted);
-    if (absVal >= 100) {
-      decimals = 0;
-    } else if (absVal === 0) {
+    if (absVal === 0) {
       decimals = 2;
     } else if (absVal < 0.0001) {
       decimals = 8;

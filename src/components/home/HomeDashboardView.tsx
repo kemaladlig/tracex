@@ -26,11 +26,34 @@ interface FngState {
   classification: string;
 }
 
-interface CachedSparkline {
-  points: number[];
-  open24h: number;
-  timestamp: number;
+interface Candle {
+  time: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
 }
+
+const DEFAULT_4H_CANDLES: Candle[] = [
+  { time: 1, open: 93800, high: 94400, low: 93500, close: 94200 },
+  { time: 2, open: 94200, high: 94800, low: 94000, close: 94650 },
+  { time: 3, open: 94650, high: 95100, low: 94300, close: 94900 },
+  { time: 4, open: 94900, high: 95300, low: 94600, close: 94800 },
+  { time: 5, open: 94800, high: 95500, low: 94700, close: 95350 },
+  { time: 6, open: 95350, high: 95800, low: 95100, close: 95600 },
+  { time: 7, open: 95600, high: 96200, low: 95400, close: 95900 },
+  { time: 8, open: 95900, high: 96400, low: 95700, close: 96100 },
+  { time: 9, open: 96100, high: 96600, low: 95800, close: 95950 },
+  { time: 10, open: 95950, high: 96300, low: 95500, close: 95800 },
+  { time: 11, open: 95800, high: 96500, low: 95700, close: 96400 },
+  { time: 12, open: 96400, high: 96900, low: 96200, close: 96750 },
+  { time: 13, open: 96750, high: 97200, low: 96500, close: 96600 },
+  { time: 14, open: 96600, high: 97000, low: 96300, close: 96850 },
+  { time: 15, open: 96850, high: 97400, low: 96700, close: 97100 },
+  { time: 16, open: 97100, high: 97600, low: 96900, close: 97350 },
+  { time: 17, open: 97350, high: 97800, low: 97100, close: 97500 },
+  { time: 18, open: 97500, high: 98100, low: 97300, close: 97800 },
+];
 
 export const HomeDashboardView: React.FC = () => {
   const portfolio = useCryptoStore((state) => state.portfolio);
@@ -50,25 +73,21 @@ export const HomeDashboardView: React.FC = () => {
     return saved !== null ? saved === 'true' : true;
   });
 
-  // 100% Real Binance 24h Sparkline (Read from cache or initialize with smooth data)
-  const [sparklineData, setSparklineData] = useState<CachedSparkline>(() => {
+  // 4-Hour Candlestick Data for BTC (Read from cache or initialize with default)
+  const [candles4h, setCandles4h] = useState<Candle[]>(() => {
     try {
-      const raw = localStorage.getItem('tracex_btc_24h_sparkline');
+      const raw = localStorage.getItem('tracex_btc_4h_candles');
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed?.points) && parsed.points.length > 5) {
+        if (Array.isArray(parsed) && parsed.length > 5) {
           return parsed;
         }
       }
     } catch {}
-    return {
-      points: [94200, 94600, 94900, 94500, 95100, 95400, 95200, 95800, 96100, 96450],
-      open24h: 94200,
-      timestamp: Date.now(),
-    };
+    return DEFAULT_4H_CANDLES;
   });
 
-  // 0ms Instant Macro Sentiment from LocalStorage
+  // Macro Sentiment from LocalStorage
   const [fngData, setFngData] = useState<FngState>(() => {
     try {
       const raw = localStorage.getItem('tracex_macro_fng');
@@ -96,22 +115,22 @@ export const HomeDashboardView: React.FC = () => {
     return 58.4;
   });
 
-  // Fetch 100% Real 24h Hourly Klines for BTC from Binance Public API
+  // Fetch 18 candles of 4-hour Klines for BTC from Binance Public API
   useEffect(() => {
-    fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1h&limit=24')
+    fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=4h&limit=18')
       .then((res) => res.json())
       .then((data: [number, string, string, string, string][]) => {
         if (Array.isArray(data) && data.length > 0) {
-          const open24h = parseFloat(data[0][1]);
-          const closes = data.map((d) => parseFloat(d[4]));
-          const payload: CachedSparkline = {
-            points: closes,
-            open24h,
-            timestamp: Date.now(),
-          };
-          setSparklineData(payload);
+          const parsed: Candle[] = data.map((d) => ({
+            time: d[0],
+            open: parseFloat(d[1]),
+            high: parseFloat(d[2]),
+            low: parseFloat(d[3]),
+            close: parseFloat(d[4]),
+          }));
+          setCandles4h(parsed);
           try {
-            localStorage.setItem('tracex_btc_24h_sparkline', JSON.stringify(payload));
+            localStorage.setItem('tracex_btc_4h_candles', JSON.stringify(parsed));
           } catch {}
         }
       })
@@ -156,41 +175,86 @@ export const HomeDashboardView: React.FC = () => {
   const btcChange = btcTicker?.changePercent24h ?? 0;
   const btcIsPositive = btcChange >= 0;
 
-  // Real-time sparkline: combine the 24 hourly points with the live WebSocket price as the 25th point!
-  const liveSparklinePoints = useMemo(() => {
-    const pts = [...sparklineData.points];
-    if (btcTicker?.price) {
-      pts[pts.length - 1] = btcTicker.price;
+  // Real-time candle updates: sync last candle's close, high, and low with WebSocket price
+  const liveCandles = useMemo(() => {
+    if (!candles4h.length) return [];
+    const copy = [...candles4h];
+    const lastIdx = copy.length - 1;
+    const currentPrice = btcTicker?.price;
+    if (currentPrice && copy[lastIdx]) {
+      const last = { ...copy[lastIdx] };
+      last.close = currentPrice;
+      if (currentPrice > last.high) last.high = currentPrice;
+      if (currentPrice < last.low) last.low = currentPrice;
+      copy[lastIdx] = last;
     }
-    return pts;
-  }, [sparklineData.points, btcTicker?.price]);
+    return copy;
+  }, [candles4h, btcTicker?.price]);
 
-  // Pure SVG Sparkline Path Generator with Baseline, 24h High/Low & Live Tip
-  const { pathD, areaD, baselineY, tipPoint, highVal, lowVal } = useMemo(() => {
-    const width = 280;
-    const height = 74;
-    const pts = liveSparklinePoints;
-    if (pts.length < 2) {
-      return { pathD: '', areaD: '', baselineY: height / 2, tipPoint: { x: width, y: height / 2 }, highVal: 0, lowVal: 0 };
+  // Geometric Candlestick SVG Calculations
+  const { candleElements, minPrice, maxPrice, currentPriceY } = useMemo(() => {
+    const width = 320;
+    const height = 120;
+    const padTop = 10;
+    const padBottom = 12;
+    const padLeft = 8;
+    const padRight = 50;
+
+    if (liveCandles.length === 0) {
+      return { candleElements: [], minPrice: 0, maxPrice: 0, currentPriceY: height / 2 };
     }
 
-    const min = Math.min(...pts, sparklineData.open24h);
-    const max = Math.max(...pts, sparklineData.open24h);
-    const range = max - min || 1;
+    let min = Math.min(...liveCandles.map((c) => c.low));
+    let max = Math.max(...liveCandles.map((c) => c.high));
+    if (min === max) {
+      min -= 100;
+      max += 100;
+    }
+    const buffer = (max - min) * 0.05;
+    const effMin = min - buffer;
+    const effMax = max + buffer;
+    const effRange = effMax - effMin;
 
-    const coords = pts.map((val, idx) => {
-      const x = (idx / (pts.length - 1)) * width;
-      const y = height - ((val - min) / range) * (height - 22) - 11;
-      return { x, y };
+    const chartWidth = width - padLeft - padRight;
+    const chartHeight = height - padTop - padBottom;
+    const step = chartWidth / liveCandles.length;
+    const candleWidth = Math.max(step * 0.62, 5);
+
+    const getY = (val: number) => padTop + ((effMax - val) / effRange) * chartHeight;
+
+    const elements = liveCandles.map((c, i) => {
+      const cx = padLeft + (i + 0.5) * step;
+      const yHigh = getY(c.high);
+      const yLow = getY(c.low);
+      const yOpen = getY(c.open);
+      const yClose = getY(c.close);
+      const isBull = c.close >= c.open;
+      const top = Math.min(yOpen, yClose);
+      const h = Math.max(Math.abs(yClose - yOpen), 2.5);
+
+      return {
+        key: c.time || i,
+        cx,
+        yHigh,
+        yLow,
+        xRect: cx - candleWidth / 2,
+        yRect: top,
+        width: candleWidth,
+        height: h,
+        isBull,
+      };
     });
 
-    const path = `M ${coords.map((c) => `${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' L ')}`;
-    const area = `${path} L ${width},${height} L 0,${height} Z`;
-    const baseLine = height - ((sparklineData.open24h - min) / range) * (height - 22) - 11;
-    const tip = coords[coords.length - 1];
+    const lastClose = liveCandles[liveCandles.length - 1].close;
+    const curY = getY(lastClose);
 
-    return { pathD: path, areaD: area, baselineY: baseLine, tipPoint: tip, highVal: max, lowVal: min };
-  }, [liveSparklinePoints, sparklineData.open24h]);
+    return {
+      candleElements: elements,
+      minPrice: min,
+      maxPrice: max,
+      currentPriceY: curY,
+    };
+  }, [liveCandles]);
 
   // Calculate Net Portfolio Value in USD
   let totalUSD = 0;
@@ -269,100 +333,147 @@ export const HomeDashboardView: React.FC = () => {
           <div className="flex items-baseline justify-between gap-2 mb-1.5">
             <div>
               <span className="text-3xl sm:text-4xl font-black text-stone-900 tracking-tight">
-                {formatCurrency(btcPriceUSD, 'USD', 1)}
+                {formatCurrency(btcPriceUSD, 'USD', 1, 0)}
               </span>
               <span className="text-xs sm:text-sm font-bold text-stone-500 ml-2">
-                ≈ {formatCurrency(btcPriceUSD, 'TRY', tryRate)}
+                ≈ {formatCurrency(btcPriceUSD, 'TRY', tryRate, 0)}
               </span>
             </div>
 
             <div className="text-[10px] font-bold text-stone-600 text-right leading-tight">
-              <div>Y: {formatCurrency(highVal || btcTicker?.high24h || btcPriceUSD, 'USD', 1)}</div>
-              <div>D: {formatCurrency(lowVal || btcTicker?.low24h || btcPriceUSD, 'USD', 1)}</div>
+              <div>Y: {formatCurrency(maxPrice || btcTicker?.high24h || btcPriceUSD, 'USD', 1, 0)}</div>
+              <div>D: {formatCurrency(minPrice || btcTicker?.low24h || btcPriceUSD, 'USD', 1, 0)}</div>
             </div>
           </div>
 
-          {/* 100% Real Live Binance 24h Enlarged & Detailed Sparkline */}
-          <div className="w-full h-[76px] relative pointer-events-none my-1 bg-stone-900/5 rounded border border-stone-900/10 p-1">
+          {/* 4-Hour Japanese Candlestick Chart in a More Square & Prominent Frame */}
+          <div className="w-full h-[126px] relative pointer-events-none my-2 bg-stone-100/60 rounded border-2 border-stone-900 p-1 overflow-hidden shadow-inner">
             <svg
-              viewBox="0 0 280 74"
-              className="w-full h-full overflow-visible"
+              viewBox="0 0 320 120"
+              className="w-full h-full"
               preserveAspectRatio="none"
             >
-              <defs>
-                <linearGradient id="btcGradReal" x1="0" y1="0" x2="0" y2="1">
-                  <stop
-                    offset="0%"
-                    stopColor={btcIsPositive ? '#16a34a' : '#dc2626'}
-                    stopOpacity="0.30"
-                  />
-                  <stop
-                    offset="100%"
-                    stopColor={btcIsPositive ? '#16a34a' : '#dc2626'}
-                    stopOpacity="0.0"
-                  />
-                </linearGradient>
-              </defs>
-
-              {/* 24h Baseline */}
+              {/* Subtle Horizontal Price Guidelines */}
               <line
-                x1="0"
-                y1={baselineY}
-                x2="280"
-                y2={baselineY}
+                x1="8"
+                y1="10"
+                x2="270"
+                y2="10"
                 stroke="#1c1917"
                 strokeWidth="1"
                 strokeDasharray="3 3"
-                strokeOpacity="0.25"
+                strokeOpacity="0.15"
+              />
+              <line
+                x1="8"
+                y1="59"
+                x2="270"
+                y2="59"
+                stroke="#1c1917"
+                strokeWidth="1"
+                strokeDasharray="3 3"
+                strokeOpacity="0.12"
+              />
+              <line
+                x1="8"
+                y1="108"
+                x2="270"
+                y2="108"
+                stroke="#1c1917"
+                strokeWidth="1"
+                strokeDasharray="3 3"
+                strokeOpacity="0.15"
               />
 
-              {/* Shaded Area */}
-              {areaD && <path d={areaD} fill="url(#btcGradReal)" />}
+              {/* Price Scale Text on the Right Axis */}
+              <text
+                x="274"
+                y="13"
+                fill="#57534e"
+                fontSize="8"
+                fontWeight="bold"
+                fontFamily="monospace"
+              >
+                ${Math.round(maxPrice).toLocaleString()}
+              </text>
+              <text
+                x="274"
+                y="110"
+                fill="#57534e"
+                fontSize="8"
+                fontWeight="bold"
+                fontFamily="monospace"
+              >
+                ${Math.round(minPrice).toLocaleString()}
+              </text>
 
-              {/* Real Trend Line */}
-              {pathD && (
-                <path
-                  d={pathD}
-                  fill="none"
-                  stroke={btcIsPositive ? '#16a34a' : '#dc2626'}
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              )}
+              {/* Live Price Horizontal Guideline */}
+              <line
+                x1="8"
+                y1={currentPriceY}
+                x2="268"
+                y2={currentPriceY}
+                stroke="#1c1917"
+                strokeWidth="1"
+                strokeDasharray="2 2"
+                strokeOpacity="0.35"
+              />
 
-              {/* Real-time Pulsing Dot on Current Live Price */}
-              {tipPoint && (
-                <>
-                  <circle
-                    cx={tipPoint.x}
-                    cy={tipPoint.y}
-                    r="3.5"
-                    fill={btcIsPositive ? '#16a34a' : '#dc2626'}
+              {/* Live Price Stamp on Right Axis */}
+              <rect
+                x="271"
+                y={Math.max(2, Math.min(106, currentPriceY - 7))}
+                width="46"
+                height="14"
+                rx="2"
+                fill="#1c1917"
+              />
+              <text
+                x="294"
+                y={Math.max(2, Math.min(106, currentPriceY - 7)) + 10}
+                textAnchor="middle"
+                fill="#fbbf24"
+                fontSize="8"
+                fontWeight="900"
+                fontFamily="monospace"
+              >
+                ${Math.round(btcPriceUSD).toLocaleString()}
+              </text>
+
+              {/* Candlesticks: Wicks & Bodies */}
+              {candleElements.map((el) => (
+                <g key={el.key}>
+                  {/* Candle Wick (High to Low) */}
+                  <line
+                    x1={el.cx}
+                    y1={el.yHigh}
+                    x2={el.cx}
+                    y2={el.yLow}
                     stroke="#1c1917"
                     strokeWidth="1.5"
+                    strokeLinecap="round"
                   />
-                  <circle
-                    cx={tipPoint.x}
-                    cy={tipPoint.y}
-                    r="7"
-                    fill={btcIsPositive ? '#16a34a' : '#dc2626'}
-                    opacity="0.3"
-                    className="animate-ping"
+                  {/* Candle Body (Open to Close) */}
+                  <rect
+                    x={el.xRect}
+                    y={el.yRect}
+                    width={el.width}
+                    height={el.height}
+                    fill={el.isBull ? '#16a34a' : '#dc2626'}
+                    stroke="#1c1917"
+                    strokeWidth="1.5"
+                    rx="1"
                   />
-                </>
-              )}
+                </g>
+              ))}
             </svg>
           </div>
         </div>
 
-        <div className="flex items-center justify-between text-[10px] text-stone-500 font-bold uppercase pt-1">
-          <span>-24S ÖNCE</span>
-          <span className="flex items-center gap-1 text-stone-800 font-black">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            CANLI BINANCE VERİSİ
-          </span>
-          <span>ŞİMDİ</span>
+        {/* Clean Technical Footer - Zero Marketing Slogans */}
+        <div className="flex items-center justify-between text-[10px] text-stone-600 font-bold uppercase pt-0.5">
+          <span>4S MUM // 18 PERİYOT</span>
+          <span>BTC / USDT</span>
         </div>
       </div>
 
@@ -518,16 +629,16 @@ export const HomeDashboardView: React.FC = () => {
                     {hideBalances
                       ? '••••••••'
                       : walletPrimaryTRY
-                      ? formatCurrency(totalUSD, 'TRY', tryRate)
-                      : formatCurrency(totalUSD, 'USD', 1)}
+                      ? formatCurrency(totalUSD, 'TRY', tryRate, 0)
+                      : formatCurrency(totalUSD, 'USD', 1, 0)}
                   </div>
                   <p className="text-sm font-bold text-stone-500 mt-1">
                     {hideBalances
                       ? '••••••'
                       : `≈ ${
                           walletPrimaryTRY
-                            ? formatCurrency(totalUSD, 'USD', 1)
-                            : formatCurrency(totalUSD, 'TRY', tryRate)
+                            ? formatCurrency(totalUSD, 'USD', 1, 0)
+                            : formatCurrency(totalUSD, 'TRY', tryRate, 0)
                         }`}
                   </p>
                 </div>
