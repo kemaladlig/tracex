@@ -517,7 +517,7 @@ export const DetailChartModal: React.FC = () => {
           lineWidth: 2,
           lineStyle: LineStyle.Dashed,
           axisLabelVisible: true,
-          title: `MALİYETİM (${formatCurrency(userAsset.buyPrice, currency, activeRate)})`,
+          title: `COST (${formatCurrency(userAsset.buyPrice, currency, activeRate)})`,
         });
       } catch (e) {
         console.warn('Cost line update fallback:', e);
@@ -905,7 +905,7 @@ export const DetailChartModal: React.FC = () => {
           )}
           {showCostLine && userAsset && (
             <span className="text-[9px] font-black bg-emerald-200 text-emerald-950 px-1 py-0.5 rounded border border-stone-900/60 shadow-hard-xs">
-              MALİYET
+              COST
             </span>
           )}
         </div>
@@ -1099,7 +1099,7 @@ export const DetailChartModal: React.FC = () => {
                     <div className="flex items-center gap-2.5">
                       <Tag className="w-4 h-4 text-emerald-600 shrink-0" />
                       <div>
-                        <div className="text-xs font-black text-stone-900">CÜZDAN ALIŞ MALİYETİM</div>
+                        <div className="text-xs font-black text-stone-900">CÜZDAN MALİYETİ (COST)</div>
                         <div className="text-[9px] text-stone-500">
                           {formatCurrency(userAsset.buyPrice, currency, activeRate)} seviyesinde referans çizgisi
                         </div>
