@@ -145,7 +145,6 @@ export const HomeDashboardView: React.FC = () => {
   // BTC Live Focus Data
   const btcTicker = tickers['BTCUSDT'];
   const btcPriceUSD = btcTicker?.price ?? 96500;
-  const btcPriceTRY = btcPriceUSD * tryRate;
   const btcChange = btcTicker?.changePercent24h ?? 0;
   const btcIsPositive = btcChange >= 0;
 
@@ -183,7 +182,7 @@ export const HomeDashboardView: React.FC = () => {
     return { pathD: path, areaD: area, baselineY: baseLine, tipPoint: tip };
   }, [liveSparklinePoints, sparklineData.open24h]);
 
-  // Calculate Net Portfolio Value in USD and TRY
+  // Calculate Net Portfolio Value in USD
   let totalUSD = 0;
   let totalCostUSD = 0;
 
@@ -197,14 +196,12 @@ export const HomeDashboardView: React.FC = () => {
       ...asset,
       livePriceUSD,
       valUSD,
-      valTRY: valUSD * tryRate,
+      costUSD,
       pnlUSD: valUSD - costUSD,
       pnlPct: costUSD > 0 ? ((valUSD - costUSD) / costUSD) * 100 : 0,
     };
   });
 
-  const totalTRY = totalUSD * tryRate;
-  const totalCostTRY = totalCostUSD * tryRate;
   const totalPnLUSD = totalUSD - totalCostUSD;
   const totalPnLPct = totalCostUSD > 0 ? (totalPnLUSD / totalCostUSD) * 100 : 0;
   const isPortfolioProfit = totalPnLUSD >= 0;
@@ -253,14 +250,14 @@ export const HomeDashboardView: React.FC = () => {
               {hideBalances
                 ? '••••••••'
                 : walletPrimaryTRY
-                ? formatCurrency(totalTRY, 'TRY', tryRate)
+                ? formatCurrency(totalUSD, 'TRY', tryRate)
                 : formatCurrency(totalUSD, 'USD', 1)}
             </div>
             {!hideBalances && (
               <p className="text-xs font-bold text-stone-500 mt-0.5">
                 ≈ {walletPrimaryTRY
                   ? formatCurrency(totalUSD, 'USD', 1)
-                  : formatCurrency(totalTRY, 'TRY', tryRate)}
+                  : formatCurrency(totalUSD, 'TRY', tryRate)}
               </p>
             )}
           </div>
@@ -284,7 +281,7 @@ export const HomeDashboardView: React.FC = () => {
               </span>
 
               <span className="text-[10px] text-stone-500 font-bold uppercase truncate">
-                Maliyet: {walletPrimaryTRY ? formatCurrency(totalCostTRY, 'TRY', tryRate) : formatCurrency(totalCostUSD, 'USD', 1)}
+                Maliyet: {walletPrimaryTRY ? formatCurrency(totalCostUSD, 'TRY', tryRate) : formatCurrency(totalCostUSD, 'USD', 1)}
               </span>
             </div>
           )}
@@ -323,7 +320,7 @@ export const HomeDashboardView: React.FC = () => {
               </div>
               {/* Secondary TRY (Local value reference) */}
               <p className="text-xs font-bold text-stone-500 mt-0.5">
-                ≈ {formatCurrency(btcPriceTRY, 'TRY', tryRate)}
+                ≈ {formatCurrency(btcPriceUSD, 'TRY', tryRate)}
               </p>
             </div>
 
@@ -570,7 +567,7 @@ export const HomeDashboardView: React.FC = () => {
                       {hideBalances
                         ? '••••••'
                         : walletPrimaryTRY
-                        ? formatCurrency(item.valTRY, 'TRY', tryRate)
+                        ? formatCurrency(item.valUSD, 'TRY', tryRate)
                         : formatCurrency(item.valUSD, 'USD', 1)}
                     </div>
                     <div className="flex items-center justify-end gap-1.5 mt-0.5">
@@ -579,7 +576,7 @@ export const HomeDashboardView: React.FC = () => {
                           ? '••'
                           : walletPrimaryTRY
                           ? `≈ ${formatCurrency(item.valUSD, 'USD', 1)}`
-                          : `≈ ${formatCurrency(item.valTRY, 'TRY', tryRate)}`}
+                          : `≈ ${formatCurrency(item.valUSD, 'TRY', tryRate)}`}
                       </span>
                       <div className="w-10 h-1.5 bg-stone-200 border border-stone-900 rounded-full overflow-hidden">
                         <div

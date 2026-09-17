@@ -11,8 +11,8 @@ export const BottomNav: React.FC = () => {
   const navItems: { id: TabType; label: string; icon: React.FC<{ className?: string }> }[] = [
     { id: 'home', label: 'ÖZET', icon: LayoutDashboard },
     { id: 'markets', label: 'PİYASA', icon: Newspaper },
-    { id: 'portfolio', label: 'CÜZDAN', icon: Wallet },
     { id: 'analytics', label: 'ANALİZ', icon: Compass },
+    { id: 'portfolio', label: 'CÜZDAN', icon: Wallet },
   ];
 
   return (
