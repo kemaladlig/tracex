@@ -80,8 +80,8 @@ export const Header: React.FC = () => {
               </button>
             )}
 
-            {/* Privacy Toggle Stamp - Only displayed on Portfolio tab without text */}
-            {activeTab === 'portfolio' && (
+            {/* Privacy Toggle Stamp - Displayed on Portfolio and Home tabs */}
+            {(activeTab === 'portfolio' || activeTab === 'home') && (
               <button
                 onClick={toggleHideBalances}
                 title={hideBalances ? 'Bakiyeleri Göster' : 'Bakiyeleri Gizle'}

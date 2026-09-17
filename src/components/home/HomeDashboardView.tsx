@@ -10,6 +10,8 @@ import {
   PieChart,
   TrendingUp,
   ArrowRightLeft,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { useCryptoStore } from '../../store/useCryptoStore';
 import { formatCurrency, formatPercentage, cleanSymbol } from '../../utils/formatters';
@@ -32,6 +34,7 @@ export const HomeDashboardView: React.FC = () => {
   const tickers = useCryptoStore((state) => state.tickers);
   const tryRate = useCryptoStore((state) => state.tryRate);
   const hideBalances = useCryptoStore((state) => state.hideBalances);
+  const toggleHideBalances = useCryptoStore((state) => state.toggleHideBalances);
   const setActiveTab = useCryptoStore((state) => state.setActiveTab);
   const setSelectedCoinForChart = useCryptoStore((state) => state.setSelectedCoinForChart);
 
@@ -233,15 +236,39 @@ export const HomeDashboardView: React.FC = () => {
               </span>
             </div>
 
-            {/* Currency Swap Quick Toggle */}
-            <button
-              onClick={toggleWalletCurrency}
-              title="Birincil Para Birimini Değiştir (₺ / $)"
-              className="flex items-center gap-1 text-[10px] font-black px-1.5 py-0.5 rounded bg-[#ede8dd] border border-stone-900 hover:bg-stone-200 transition-colors"
-            >
-              <span>{walletPrimaryTRY ? '₺ > $' : '$ > ₺'}</span>
-              <ArrowRightLeft className="w-2.5 h-2.5" />
-            </button>
+            {/* Actions: Privacy Toggle & Currency Swap Quick Toggle */}
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  triggerHaptic('light');
+                  toggleHideBalances();
+                }}
+                title={hideBalances ? 'Bakiyeleri Göster' : 'Bakiyeleri Gizle'}
+                className={`flex items-center justify-center p-1 rounded border border-stone-900 shadow-hard-xs transition-colors cursor-pointer ${
+                  hideBalances
+                    ? 'bg-amber-300 text-stone-900'
+                    : 'bg-[#ede8dd] hover:bg-stone-200 text-stone-700'
+                }`}
+              >
+                {hideBalances ? (
+                  <EyeOff className="w-3.5 h-3.5 stroke-[2.5]" />
+                ) : (
+                  <Eye className="w-3.5 h-3.5 stroke-[2.5]" />
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={toggleWalletCurrency}
+                title="Birincil Para Birimini Değiştir (₺ / $)"
+                className="flex items-center gap-1 text-[10px] font-black px-1.5 py-1 rounded bg-[#ede8dd] border border-stone-900 hover:bg-stone-200 shadow-hard-xs transition-colors cursor-pointer"
+              >
+                <span>{walletPrimaryTRY ? '₺ > $' : '$ > ₺'}</span>
+                <ArrowRightLeft className="w-2.5 h-2.5" />
+              </button>
+            </div>
           </div>
 
           {/* Primary & Secondary Dual Balance */}
@@ -253,18 +280,24 @@ export const HomeDashboardView: React.FC = () => {
                 ? formatCurrency(totalUSD, 'TRY', tryRate)
                 : formatCurrency(totalUSD, 'USD', 1)}
             </div>
-            {!hideBalances && (
-              <p className="text-xs font-bold text-stone-500 mt-0.5">
-                ≈ {walletPrimaryTRY
-                  ? formatCurrency(totalUSD, 'USD', 1)
-                  : formatCurrency(totalUSD, 'TRY', tryRate)}
-              </p>
-            )}
+            <p className="text-xs font-bold text-stone-500 mt-0.5">
+              {hideBalances
+                ? '••••••'
+                : `≈ ${
+                    walletPrimaryTRY
+                      ? formatCurrency(totalUSD, 'USD', 1)
+                      : formatCurrency(totalUSD, 'TRY', tryRate)
+                  }`}
+            </p>
           </div>
 
           {/* Open PnL Badge & Cost */}
-          {!hideBalances && (
-            <div className="flex items-center justify-between pt-2 border-t-2 border-stone-900/10 text-xs">
+          <div className="flex items-center justify-between pt-2 border-t-2 border-stone-900/10 text-xs">
+            {hideBalances ? (
+              <span className="inline-flex items-center gap-0.5 font-black px-1.5 py-0.5 rounded border border-stone-900 text-[11px] bg-stone-100 text-stone-500">
+                •••• Açık K/Z
+              </span>
+            ) : (
               <span
                 className={`inline-flex items-center gap-0.5 font-black px-1.5 py-0.5 rounded border border-stone-900 text-[11px] ${
                   isPortfolioProfit
@@ -279,12 +312,12 @@ export const HomeDashboardView: React.FC = () => {
                 )}
                 {formatPercentage(totalPnLPct)} Açık K/Z
               </span>
+            )}
 
-              <span className="text-[10px] text-stone-500 font-bold uppercase truncate">
-                Maliyet: {walletPrimaryTRY ? formatCurrency(totalCostUSD, 'TRY', tryRate) : formatCurrency(totalCostUSD, 'USD', 1)}
-              </span>
-            </div>
-          )}
+            <span className="text-[10px] text-stone-500 font-bold uppercase truncate">
+              Maliyet: {hideBalances ? '••••••' : walletPrimaryTRY ? formatCurrency(totalCostUSD, 'TRY', tryRate) : formatCurrency(totalCostUSD, 'USD', 1)}
+            </span>
+          </div>
         </div>
 
         {/* RIGHT COCKPIT: BİTCOİN (BTC) (DOĞAL İKİLİ GÖRÜNÜM: BÜYÜK $, KÜÇÜK ₺ + GERÇEK SPARKLINE) */}
