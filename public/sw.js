@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tracex-v4-shell';
+const CACHE_NAME = 'tracex-v5-fast-shell';
 const STATIC_ASSETS = ['/icon.png', '/manifest.json'];
 
 self.addEventListener('install', (event) => {
@@ -40,24 +40,32 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 2. Navigation / HTML requests MUST ALWAYS BE Network-First
-  // Prevents the dreaded white screen caused by stale index.html pointing to obsolete hashed script bundles
+  // 2. Navigation / HTML requests: STALE-WHILE-REVALIDATE for 0ms instant startup
+  // Returns cached shell immediately from local disk (0ms launch delay), updates cache in background
   if (
     event.request.mode === 'navigate' ||
     (event.request.method === 'GET' && event.request.headers.get('accept')?.includes('text/html'))
   ) {
     event.respondWith(
-      fetch(event.request)
-        .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            const copy = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-          }
-          return networkResponse;
-        })
-        .catch(() => {
-          return caches.match(event.request).then((cached) => cached || caches.match('/'));
-        })
+      caches.match(event.request).then((cachedResponse) => {
+        const backgroundFetch = fetch(event.request)
+          .then((networkResponse) => {
+            if (networkResponse && networkResponse.status === 200) {
+              const copy = networkResponse.clone();
+              caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+            }
+            return networkResponse;
+          })
+          .catch(() => cachedResponse);
+
+        // If shell is in cache, deliver immediately for 0ms launch
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+
+        // First launch fallback
+        return backgroundFetch;
+      })
     );
     return;
   }

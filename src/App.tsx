@@ -1,6 +1,8 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useRef } from 'react';
 import { useCryptoStore } from './store/useCryptoStore';
 import { useBinanceWebSocket } from './hooks/useBinanceWebSocket';
+import { useSwipeNavigation } from './hooks/useSwipeNavigation';
+import { useDynamicPwaTitle } from './hooks/useDynamicPwaTitle';
 import { Header } from './components/common/Header';
 import { BottomNav } from './components/common/BottomNav';
 import { OfflineBanner } from './components/common/OfflineBanner';
@@ -19,6 +21,13 @@ const DetailChartModal = lazy(() =>
 export const App: React.FC = () => {
   // Activate continuous single combined WebSocket stream with 120ms batching & visibility pause
   useBinanceWebSocket();
+
+  // Activate dynamic live BTC price title and PWA Badging
+  useDynamicPwaTitle();
+
+  const mainContainerRef = useRef<HTMLElement | null>(null);
+  // Activate smooth horizontal swipe gestures between tabs
+  useSwipeNavigation(mainContainerRef);
 
   const activeTab = useCryptoStore((state) => state.activeTab);
   const selectedCoinForChart = useCryptoStore((state) => state.selectedCoinForChart);
@@ -44,9 +53,12 @@ export const App: React.FC = () => {
       {/* Network Disconnection / Reconnection Banner */}
       <OfflineBanner />
 
-      {/* Main Content View with Pull-to-Refresh */}
+      {/* Main Content View with Pull-to-Refresh & Swipe Navigation */}
       <PullToRefresh onRefresh={handlePullRefresh}>
-        <main className="flex-1 w-full max-w-lg mx-auto flex flex-col min-h-[calc(100vh-130px)]">
+        <main
+          ref={mainContainerRef}
+          className="flex-1 w-full max-w-lg mx-auto flex flex-col min-h-[calc(100vh-130px)] touch-pan-y"
+        >
           <div key={activeTab} className="animate-tabEnter w-full flex flex-col flex-1">
             {activeTab === 'home' && <HomeDashboardView />}
             {activeTab === 'markets' && <MarketList />}
