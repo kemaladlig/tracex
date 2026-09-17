@@ -218,6 +218,30 @@ export const HomeDashboardView: React.FC = () => {
   const btcChange = btcTicker?.changePercent24h ?? 0;
   const btcIsPositive = btcChange >= 0;
 
+  // Dynamic market atmosphere based on BTC 24h percentage change (scales with move intensity)
+  const atmosphere = useMemo(() => {
+    const absChange = Math.min(Math.abs(btcChange), 8);
+    const factor = absChange / 8; // 0.0 (neutral) to 1.0 (strong rally/drop)
+
+    if (btcIsPositive) {
+      return {
+        cardBg: `rgba(240, 253, 244, ${0.45 + factor * 0.50})`,
+        chartBg: `rgba(220, 252, 231, ${0.30 + factor * 0.40})`,
+        tintColor: '#16a34a',
+        gradTopOpacity: 0.05 + factor * 0.20,
+        gradBottomOpacity: 0.01 + factor * 0.03,
+      };
+    } else {
+      return {
+        cardBg: `rgba(255, 241, 242, ${0.45 + factor * 0.50})`,
+        chartBg: `rgba(254, 226, 226, ${0.30 + factor * 0.40})`,
+        tintColor: '#dc2626',
+        gradTopOpacity: 0.05 + factor * 0.20,
+        gradBottomOpacity: 0.01 + factor * 0.03,
+      };
+    }
+  }, [btcChange, btcIsPositive]);
+
   // Real-time candle updates: sync last candle's close, high, and low with WebSocket price
   const liveCandles = useMemo(() => {
     if (!candles4h.length) return [];
@@ -263,7 +287,6 @@ export const HomeDashboardView: React.FC = () => {
   // Geometric Calculations for All 3 Chart Modes (360x190 Viewport)
   const {
     candleElements,
-    volumeBars,
     minPrice,
     maxPrice,
     currentPriceY,
@@ -278,7 +301,6 @@ export const HomeDashboardView: React.FC = () => {
     if (liveCandles.length === 0) {
       return {
         candleElements: [],
-        volumeBars: [],
         minPrice: 0,
         maxPrice: 0,
         currentPriceY: height / 2,
@@ -302,19 +324,16 @@ export const HomeDashboardView: React.FC = () => {
     const chartHeight = height - padTop - padBottom;
     const step = chartWidth / liveCandles.length;
 
-    // Volume calculations
+    // Volume calculations for volume-weighted candles
     const volumes = liveCandles.map((c) => c.volume || 3000);
     const minVol = Math.min(...volumes);
     const maxVol = Math.max(...volumes);
     const volRange = maxVol - minVol || 1;
 
     const isVolMode = chartMode === 'volume';
-    // In volume mode, candles sit in upper 128px, leaving bottom 30px for volume bars
-    const effectiveChartHeight = isVolMode ? 128 : chartHeight;
+    const getY = (val: number) => padTop + ((effMax - val) / effRange) * chartHeight;
 
-    const getY = (val: number) => padTop + ((effMax - val) / effRange) * effectiveChartHeight;
-
-    // 1, 2, 3: Candlestick Elements (Width modulated by volume in volume mode)
+    // Candlestick Elements (In volume mode: body width scales dynamically with volume)
     const elements = activeDataset.map((c, i) => {
       const cx = padLeft + (i + 0.5) * step;
       const yHigh = getY(c.high);
@@ -326,10 +345,12 @@ export const HomeDashboardView: React.FC = () => {
       const h = Math.max(Math.abs(yClose - yOpen), 2.5);
 
       const rawVol = c.volume || 3000;
-      const normVol = (rawVol - minVol) / volRange;
+      const normVol = volRange > 0 ? (rawVol - minVol) / volRange : 0.5;
+      // In volume mode: thin sticks for low volume (1.6px), thick chunky blocks for high volume (5.5px)
+      // Normal / Trend mode: uniform 3.8px width
       const cWidth = isVolMode
-        ? Math.max(step * 0.45 + normVol * (step * 0.50), 2.6)
-        : Math.max(step * 0.65, 3.6);
+        ? Math.max(1.6 + normVol * 3.8, 1.6)
+        : Math.max(step * 0.65, 3.8);
 
       return {
         key: c.time || i,
@@ -345,35 +366,11 @@ export const HomeDashboardView: React.FC = () => {
       };
     });
 
-    // Volume histogram bars for volume mode
-    const volBars = liveCandles.map((c, i) => {
-      const cx = padLeft + (i + 0.5) * step;
-      const rawVol = c.volume || 3000;
-      const normVol = (rawVol - minVol) / volRange;
-      const barH = Math.max(normVol * 24 + 3, 3);
-      const bottomY = height - padBottom;
-      const barY = bottomY - barH;
-      const isBull = c.close >= c.open;
-      const barW = Math.max(step * 0.72, 2.6);
-
-      return {
-        key: c.time || i,
-        cx,
-        x: cx - barW / 2,
-        y: barY,
-        width: barW,
-        height: barH,
-        isBull,
-        volume: rawVol,
-      };
-    });
-
     const lastClose = liveCandles[liveCandles.length - 1].close;
     const curY = getY(lastClose);
 
     return {
       candleElements: elements,
-      volumeBars: volBars,
       minPrice: min,
       maxPrice: max,
       currentPriceY: curY,
@@ -411,13 +408,16 @@ export const HomeDashboardView: React.FC = () => {
     <div className="flex-1 w-full px-4 py-3 space-y-3 font-mono">
       {/* ========================================================================= */}
       {/* 1. HERO COCKPIT: BİTCOİN (BTC) VE 24S BÜYÜTÜLMÜŞ CANLI SPARKLINE          */}
-      {/* ========================================================================= */}
+      {/* 1. HERO COCKPIT: BITCOIN PRICE, 4H CANDLESTICK CHART & MARKET MODE */}
       <div
         onClick={() => {
           triggerHaptic('medium');
           setSelectedCoinForChart('BTCUSDT');
         }}
-        className="bg-[#faf7f0] border-2 border-stone-900 rounded-lg p-3.5 shadow-hard btn-hard cursor-pointer relative transition-all animate-sheetUp flex flex-col justify-between"
+        style={{
+          backgroundColor: atmosphere.cardBg,
+        }}
+        className="border-2 border-stone-900 rounded-lg p-3.5 shadow-hard btn-hard cursor-pointer relative transition-colors duration-700 animate-sheetUp flex flex-col justify-between"
       >
         <div>
           <div className="flex items-center justify-between mb-2">
@@ -471,12 +471,34 @@ export const HomeDashboardView: React.FC = () => {
           </div>
 
           {/* 4-Hour Japanese Candlestick Chart in a Spacious Square Frame */}
-          <div className="w-full h-[205px] relative pointer-events-none my-2 bg-stone-100/60 rounded border-2 border-stone-900 p-0.5 overflow-hidden shadow-inner">
+          <div
+            style={{
+              backgroundColor: atmosphere.chartBg,
+            }}
+            className="w-full h-[205px] relative pointer-events-none my-2 rounded border-2 border-stone-900 p-0.5 overflow-hidden shadow-inner transition-colors duration-700"
+          >
             <svg
               viewBox="0 0 360 190"
               className="w-full h-full"
               preserveAspectRatio="none"
             >
+              <defs>
+                <linearGradient id="chartAtmosphere" x1="0" y1="0" x2="0" y2="1">
+                  <stop
+                    offset="0%"
+                    stopColor={atmosphere.tintColor}
+                    stopOpacity={atmosphere.gradTopOpacity}
+                  />
+                  <stop
+                    offset="100%"
+                    stopColor={atmosphere.tintColor}
+                    stopOpacity={atmosphere.gradBottomOpacity}
+                  />
+                </linearGradient>
+              </defs>
+
+              {/* Dynamic Atmospheric Radiance Rect */}
+              <rect width="360" height="190" fill="url(#chartAtmosphere)" rx="2" />
               {/* Subtle Horizontal Price Guidelines */}
               <line
                 x1="8"
@@ -593,49 +615,6 @@ export const HomeDashboardView: React.FC = () => {
               >
                 ${Math.round(btcPriceUSD).toLocaleString()}
               </text>
-
-              {/* MODE 3: HACİM AĞIRLIKLI VE HACİM HİSTOGRAMI (VOLUME-WEIGHTED) */}
-              {chartMode === 'volume' && (
-                <>
-                  {/* Subtle Separator for Bottom Volume Section */}
-                  <line
-                    x1="8"
-                    y1="145"
-                    x2="294"
-                    y2="145"
-                    stroke="#1c1917"
-                    strokeWidth="1"
-                    strokeDasharray="2 2"
-                    strokeOpacity="0.2"
-                  />
-                  <text
-                    x="12"
-                    y="153"
-                    fill="#78716c"
-                    fontSize="6.5"
-                    fontWeight="bold"
-                    fontFamily="monospace"
-                  >
-                    HACİM AKIŞI
-                  </text>
-
-                  {/* Base Volume Histogram Bars */}
-                  {volumeBars.map((vb) => (
-                    <rect
-                      key={vb.key}
-                      x={vb.x}
-                      y={vb.y}
-                      width={vb.width}
-                      height={vb.height}
-                      fill={vb.isBull ? '#16a34a' : '#dc2626'}
-                      fillOpacity="0.45"
-                      stroke="#1c1917"
-                      strokeWidth="0.75"
-                      rx="0.5"
-                    />
-                  ))}
-                </>
-              )}
 
               {/* CANDLESTICKS (Classic, Heikin-Ashi, or Volume-Modulated) */}
               {candleElements.map((el) => (
