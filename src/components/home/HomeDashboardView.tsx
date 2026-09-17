@@ -205,14 +205,14 @@ export const HomeDashboardView: React.FC = () => {
     return copy;
   }, [candles4h, btcTicker?.price]);
 
-  // Geometric Candlestick SVG Calculations (Spacious 340x180 Viewport)
+  // Geometric Candlestick SVG Calculations (Expanded 360x190 Viewport with Dedicated Right Price Rail)
   const { candleElements, minPrice, maxPrice, currentPriceY } = useMemo(() => {
-    const width = 340;
-    const height = 180;
+    const width = 360;
+    const height = 190;
     const padTop = 14;
     const padBottom = 16;
-    const padLeft = 6;
-    const padRight = 54;
+    const padLeft = 8;
+    const padRight = 64; // Dedicated clear rail for price labels, eliminating any overlap
 
     if (liveCandles.length === 0) {
       return { candleElements: [], minPrice: 0, maxPrice: 0, currentPriceY: height / 2 };
@@ -361,17 +361,17 @@ export const HomeDashboardView: React.FC = () => {
           </div>
 
           {/* 4-Hour Japanese Candlestick Chart in a Spacious Square Frame */}
-          <div className="w-full h-[195px] relative pointer-events-none my-2 bg-stone-100/60 rounded border-2 border-stone-900 p-1 overflow-hidden shadow-inner">
+          <div className="w-full h-[205px] relative pointer-events-none my-2 bg-stone-100/60 rounded border-2 border-stone-900 p-0.5 overflow-hidden shadow-inner">
             <svg
-              viewBox="0 0 340 180"
+              viewBox="0 0 360 190"
               className="w-full h-full"
               preserveAspectRatio="none"
             >
               {/* Subtle Horizontal Price Guidelines */}
               <line
-                x1="6"
+                x1="8"
                 y1="14"
-                x2="280"
+                x2="294"
                 y2="14"
                 stroke="#1c1917"
                 strokeWidth="1"
@@ -379,49 +379,49 @@ export const HomeDashboardView: React.FC = () => {
                 strokeOpacity="0.14"
               />
               <line
-                x1="6"
-                y1="51.5"
-                x2="280"
-                y2="51.5"
+                x1="8"
+                y1="54"
+                x2="294"
+                y2="54"
                 stroke="#1c1917"
                 strokeWidth="1"
                 strokeDasharray="3 3"
                 strokeOpacity="0.08"
               />
               <line
-                x1="6"
-                y1="89"
-                x2="280"
-                y2="89"
+                x1="8"
+                y1="95"
+                x2="294"
+                y2="95"
                 stroke="#1c1917"
                 strokeWidth="1"
                 strokeDasharray="3 3"
                 strokeOpacity="0.12"
               />
               <line
-                x1="6"
-                y1="126.5"
-                x2="280"
-                y2="126.5"
+                x1="8"
+                y1="135"
+                x2="294"
+                y2="135"
                 stroke="#1c1917"
                 strokeWidth="1"
                 strokeDasharray="3 3"
                 strokeOpacity="0.08"
               />
               <line
-                x1="6"
-                y1="164"
-                x2="280"
-                y2="164"
+                x1="8"
+                y1="174"
+                x2="294"
+                y2="174"
                 stroke="#1c1917"
                 strokeWidth="1"
                 strokeDasharray="3 3"
                 strokeOpacity="0.14"
               />
 
-              {/* Price Scale Text on the Right Axis */}
+              {/* Price Scale Text on Dedicated Right Rail (No Overlap with Candles) */}
               <text
-                x="284"
+                x="300"
                 y="17"
                 fill="#57534e"
                 fontSize="8"
@@ -431,8 +431,8 @@ export const HomeDashboardView: React.FC = () => {
                 ${Math.round(maxPrice).toLocaleString()}
               </text>
               <text
-                x="284"
-                y="92"
+                x="300"
+                y="98"
                 fill="#78716c"
                 fontSize="7.5"
                 fontWeight="bold"
@@ -441,8 +441,8 @@ export const HomeDashboardView: React.FC = () => {
                 ${Math.round((maxPrice + minPrice) / 2).toLocaleString()}
               </text>
               <text
-                x="284"
-                y="167"
+                x="300"
+                y="177"
                 fill="#57534e"
                 fontSize="8"
                 fontWeight="bold"
@@ -451,11 +451,11 @@ export const HomeDashboardView: React.FC = () => {
                 ${Math.round(minPrice).toLocaleString()}
               </text>
 
-              {/* Live Price Horizontal Guideline */}
+              {/* Live Price Horizontal Guideline Across Candles */}
               <line
-                x1="6"
+                x1="8"
                 y1={currentPriceY}
-                x2="280"
+                x2="294"
                 y2={currentPriceY}
                 stroke="#1c1917"
                 strokeWidth="1"
@@ -463,18 +463,18 @@ export const HomeDashboardView: React.FC = () => {
                 strokeOpacity="0.38"
               />
 
-              {/* Live Price Stamp on Right Axis */}
+              {/* Live Price Stamp on Right Axis Rail (Clear Gap, Never Overlaps 32nd Candle) */}
               <rect
-                x="281"
-                y={Math.max(2, Math.min(162, currentPriceY - 8))}
-                width="56"
+                x="298"
+                y={Math.max(2, Math.min(172, currentPriceY - 8))}
+                width="58"
                 height="16"
                 rx="2"
                 fill="#1c1917"
               />
               <text
-                x="309"
-                y={Math.max(2, Math.min(162, currentPriceY - 8)) + 11.5}
+                x="327"
+                y={Math.max(2, Math.min(172, currentPriceY - 8)) + 11.5}
                 textAnchor="middle"
                 fill="#fbbf24"
                 fontSize="8.5"
@@ -597,7 +597,7 @@ export const HomeDashboardView: React.FC = () => {
 
           <div className="flex items-center gap-1.5">
             <span className="text-[10px] font-black px-2 py-0.5 rounded bg-[#ede8dd] border border-stone-900 text-stone-800">
-              {isWalletExpanded ? 'GİZLE ▴' : 'GÖSTER ▾'}
+              {isWalletExpanded ? 'GİZLE' : 'GÖSTER'}
             </span>
             {isWalletExpanded ? (
               <ChevronUp className="w-4 h-4 stroke-[2.5] text-stone-800" />
