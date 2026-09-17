@@ -34,6 +34,8 @@ interface Candle {
   close: number;
 }
 
+export type ChartMode = 'candle' | 'heikin' | 'stepped';
+
 const DEFAULT_4H_CANDLES: Candle[] = [
   { time: 1, open: 92800, high: 93400, low: 92500, close: 93200 },
   { time: 2, open: 93200, high: 93900, low: 93000, close: 93700 },
@@ -85,6 +87,15 @@ export const HomeDashboardView: React.FC = () => {
   const [walletPrimaryTRY, setWalletPrimaryTRY] = useState<boolean>(() => {
     const saved = localStorage.getItem('tracex_home_wallet_pref');
     return saved !== null ? saved === 'true' : true;
+  });
+
+  // 3-Mode Chart Style Preference: 'candle' (Klasik) | 'heikin' (Trend) | 'stepped' (Basamak)
+  const [chartMode, setChartMode] = useState<ChartMode>(() => {
+    const saved = localStorage.getItem('tracex_home_chart_mode');
+    if (saved === 'candle' || saved === 'heikin' || saved === 'stepped') {
+      return saved;
+    }
+    return 'candle';
   });
 
   // 4-Hour Candlestick Data for BTC (Read from cache or initialize with default)
@@ -205,8 +216,44 @@ export const HomeDashboardView: React.FC = () => {
     return copy;
   }, [candles4h, btcTicker?.price]);
 
-  // Geometric Candlestick SVG Calculations (Expanded 360x190 Viewport with Dedicated Right Price Rail)
-  const { candleElements, minPrice, maxPrice, currentPriceY } = useMemo(() => {
+  // 1. Heikin-Ashi Trend-Smoothed Candlestick Pipeline
+  const heikinCandles = useMemo(() => {
+    if (!liveCandles.length) return [];
+    const ha: Candle[] = [];
+    for (let i = 0; i < liveCandles.length; i++) {
+      const curr = liveCandles[i];
+      const haClose = (curr.open + curr.high + curr.low + curr.close) / 4;
+      let haOpen: number;
+      if (i === 0) {
+        haOpen = (curr.open + curr.close) / 2;
+      } else {
+        haOpen = (ha[i - 1].open + ha[i - 1].close) / 2;
+      }
+      const haHigh = Math.max(curr.high, haOpen, haClose);
+      const haLow = Math.min(curr.low, haOpen, haClose);
+      ha.push({
+        time: curr.time,
+        open: haOpen,
+        high: haHigh,
+        low: haLow,
+        close: haClose,
+      });
+    }
+    return ha;
+  }, [liveCandles]);
+
+  // Geometric Calculations for All 3 Chart Modes (360x190 Viewport)
+  const {
+    candleElements,
+    minPrice,
+    maxPrice,
+    currentPriceY,
+    baselineY,
+    avgPrice,
+    steppedPathD,
+    steppedAreaD,
+    steppedPoints,
+  } = useMemo(() => {
     const width = 360;
     const height = 190;
     const padTop = 14;
@@ -215,11 +262,23 @@ export const HomeDashboardView: React.FC = () => {
     const padRight = 64; // Dedicated clear rail for price labels, eliminating any overlap
 
     if (liveCandles.length === 0) {
-      return { candleElements: [], minPrice: 0, maxPrice: 0, currentPriceY: height / 2 };
+      return {
+        candleElements: [],
+        minPrice: 0,
+        maxPrice: 0,
+        currentPriceY: height / 2,
+        baselineY: height / 2,
+        avgPrice: 0,
+        steppedPathD: '',
+        steppedAreaD: '',
+        steppedPoints: [],
+      };
     }
 
-    let min = Math.min(...liveCandles.map((c) => c.low));
-    let max = Math.max(...liveCandles.map((c) => c.high));
+    const activeDataset = chartMode === 'heikin' ? heikinCandles : liveCandles;
+
+    let min = Math.min(...activeDataset.map((c) => c.low));
+    let max = Math.max(...activeDataset.map((c) => c.high));
     if (min === max) {
       min -= 100;
       max += 100;
@@ -236,7 +295,8 @@ export const HomeDashboardView: React.FC = () => {
 
     const getY = (val: number) => padTop + ((effMax - val) / effRange) * chartHeight;
 
-    const elements = liveCandles.map((c, i) => {
+    // 1 & 2: Candlestick & Heikin-Ashi Elements
+    const elements = activeDataset.map((c, i) => {
       const cx = padLeft + (i + 0.5) * step;
       const yHigh = getY(c.high);
       const yLow = getY(c.low);
@@ -262,13 +322,44 @@ export const HomeDashboardView: React.FC = () => {
     const lastClose = liveCandles[liveCandles.length - 1].close;
     const curY = getY(lastClose);
 
+    // 3: Stepped-Area Baseline Calculations
+    const sum = liveCandles.reduce((acc, c) => acc + c.close, 0);
+    const mean = sum / liveCandles.length;
+    const bLineY = getY(mean);
+
+    // Build the stepped staircase coordinates
+    let stepPath = '';
+    const points: { x: number; y: number; price: number }[] = [];
+
+    liveCandles.forEach((c, i) => {
+      const x1 = padLeft + i * step;
+      const x2 = padLeft + (i + 1) * step;
+      const y = getY(c.close);
+      points.push({ x: (x1 + x2) / 2, y, price: c.close });
+
+      if (i === 0) {
+        stepPath += `M ${x1.toFixed(1)},${y.toFixed(1)} H ${x2.toFixed(1)}`;
+      } else {
+        stepPath += ` V ${y.toFixed(1)} H ${x2.toFixed(1)}`;
+      }
+    });
+
+    const bottomY = height - padBottom;
+    const startX = padLeft;
+    const stepArea = `${stepPath} V ${bottomY.toFixed(1)} H ${startX.toFixed(1)} Z`;
+
     return {
       candleElements: elements,
       minPrice: min,
       maxPrice: max,
       currentPriceY: curY,
+      baselineY: bLineY,
+      avgPrice: mean,
+      steppedPathD: stepPath,
+      steppedAreaD: stepArea,
+      steppedPoints: points,
     };
-  }, [liveCandles]);
+  }, [liveCandles, heikinCandles, chartMode]);
 
   // Calculate Net Portfolio Value in USD
   let totalUSD = 0;
@@ -484,40 +575,166 @@ export const HomeDashboardView: React.FC = () => {
                 ${Math.round(btcPriceUSD).toLocaleString()}
               </text>
 
-              {/* Candlesticks: Wicks & Bodies */}
-              {candleElements.map((el) => (
-                <g key={el.key}>
-                  {/* Candle Wick (High to Low) */}
+              {/* MODE 3: KADEMELİ BASAMAK (STEPPED-AREA) */}
+              {chartMode === 'stepped' && (
+                <>
+                  <defs>
+                    <linearGradient id="steppedGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop
+                        offset="0%"
+                        stopColor={btcIsPositive ? '#16a34a' : '#dc2626'}
+                        stopOpacity="0.32"
+                      />
+                      <stop
+                        offset="100%"
+                        stopColor={btcIsPositive ? '#16a34a' : '#dc2626'}
+                        stopOpacity="0.02"
+                      />
+                    </linearGradient>
+                  </defs>
+
+                  {/* Shaded Area Below Steps */}
+                  <path d={steppedAreaD} fill="url(#steppedGrad)" />
+
+                  {/* 5-Day Period Mean Baseline */}
                   <line
-                    x1={el.cx}
-                    y1={el.yHigh}
-                    x2={el.cx}
-                    y2={el.yLow}
+                    x1="8"
+                    y1={baselineY}
+                    x2="294"
+                    y2={baselineY}
                     stroke="#1c1917"
                     strokeWidth="1.5"
-                    strokeLinecap="round"
+                    strokeDasharray="4 4"
+                    strokeOpacity="0.38"
                   />
-                  {/* Candle Body (Open to Close) */}
-                  <rect
-                    x={el.xRect}
-                    y={el.yRect}
-                    width={el.width}
-                    height={el.height}
-                    fill={el.isBull ? '#16a34a' : '#dc2626'}
-                    stroke="#1c1917"
-                    strokeWidth="1.5"
-                    rx="1"
+                  {/* Baseline Stamp */}
+                  <text
+                    x="12"
+                    y={baselineY - 4}
+                    fill="#78716c"
+                    fontSize="7.5"
+                    fontWeight="bold"
+                    fontFamily="monospace"
+                  >
+                    ORTALAMA: ${Math.round(avgPrice).toLocaleString()}
+                  </text>
+
+                  {/* Bold Stepped Staircase Line */}
+                  <path
+                    d={steppedPathD}
+                    fill="none"
+                    stroke={btcIsPositive ? '#16a34a' : '#dc2626'}
+                    strokeWidth="2.8"
+                    strokeLinecap="square"
+                    strokeLinejoin="miter"
                   />
-                </g>
-              ))}
+
+                  {/* Step Level Dots on Key Breaks */}
+                  {steppedPoints.map((pt, idx) => (
+                    <circle
+                      key={idx}
+                      cx={pt.x}
+                      cy={pt.y}
+                      r="2"
+                      fill="#1c1917"
+                      stroke="#ffffff"
+                      strokeWidth="1"
+                    />
+                  ))}
+                </>
+              )}
+
+              {/* MODES 1 & 2: CANDLESTICK & HEIKIN-ASHI */}
+              {(chartMode === 'candle' || chartMode === 'heikin') &&
+                candleElements.map((el) => (
+                  <g key={el.key}>
+                    {/* Candle Wick (High to Low) */}
+                    <line
+                      x1={el.cx}
+                      y1={el.yHigh}
+                      x2={el.cx}
+                      y2={el.yLow}
+                      stroke="#1c1917"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                    />
+                    {/* Candle Body (Open to Close) */}
+                    <rect
+                      x={el.xRect}
+                      y={el.yRect}
+                      width={el.width}
+                      height={el.height}
+                      fill={el.isBull ? '#16a34a' : '#dc2626'}
+                      stroke="#1c1917"
+                      strokeWidth="1.5"
+                      rx="1"
+                    />
+                  </g>
+                ))}
             </svg>
           </div>
         </div>
 
-        {/* Clean Technical Footer - Zero Marketing Slogans */}
-        <div className="flex items-center justify-between text-[10px] text-stone-600 font-bold uppercase pt-0.5">
-          <span>4S MUM // 32 PERİYOT</span>
-          <span>BTC / USDT</span>
+        {/* Footer: Dynamic Mode Label & 3-Mode Tactile Toggle Switch */}
+        <div className="flex items-center justify-between pt-1 border-t border-stone-900/10 gap-2">
+          <span className="text-[10px] text-stone-600 font-bold uppercase truncate">
+            {chartMode === 'candle' && '4S KLASİK MUM // 32 PERİYOT'}
+            {chartMode === 'heikin' && '4S HEIKIN-ASHI // TREND AKIŞI'}
+            {chartMode === 'stepped' && '4S KADEMELİ BASAMAK // BASELINE'}
+          </span>
+
+          <div className="flex items-center bg-stone-200/90 p-0.5 rounded border border-stone-900 shadow-hard-xs shrink-0">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                triggerHaptic('light');
+                setChartMode('candle');
+                localStorage.setItem('tracex_home_chart_mode', 'candle');
+              }}
+              className={`px-2 py-0.5 text-[9px] font-black rounded transition-all cursor-pointer ${
+                chartMode === 'candle'
+                  ? 'bg-amber-300 text-stone-900 border border-stone-900 shadow-hard-xs'
+                  : 'text-stone-700 hover:text-stone-900'
+              }`}
+            >
+              MUM
+            </button>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                triggerHaptic('light');
+                setChartMode('heikin');
+                localStorage.setItem('tracex_home_chart_mode', 'heikin');
+              }}
+              className={`px-2 py-0.5 text-[9px] font-black rounded transition-all cursor-pointer ${
+                chartMode === 'heikin'
+                  ? 'bg-amber-300 text-stone-900 border border-stone-900 shadow-hard-xs'
+                  : 'text-stone-700 hover:text-stone-900'
+              }`}
+            >
+              TREND
+            </button>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                triggerHaptic('light');
+                setChartMode('stepped');
+                localStorage.setItem('tracex_home_chart_mode', 'stepped');
+              }}
+              className={`px-2 py-0.5 text-[9px] font-black rounded transition-all cursor-pointer ${
+                chartMode === 'stepped'
+                  ? 'bg-amber-300 text-stone-900 border border-stone-900 shadow-hard-xs'
+                  : 'text-stone-700 hover:text-stone-900'
+              }`}
+            >
+              BASAMAK
+            </button>
+          </div>
         </div>
       </div>
 
