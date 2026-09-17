@@ -35,24 +35,38 @@ interface Candle {
 }
 
 const DEFAULT_4H_CANDLES: Candle[] = [
-  { time: 1, open: 93800, high: 94400, low: 93500, close: 94200 },
-  { time: 2, open: 94200, high: 94800, low: 94000, close: 94650 },
-  { time: 3, open: 94650, high: 95100, low: 94300, close: 94900 },
-  { time: 4, open: 94900, high: 95300, low: 94600, close: 94800 },
-  { time: 5, open: 94800, high: 95500, low: 94700, close: 95350 },
-  { time: 6, open: 95350, high: 95800, low: 95100, close: 95600 },
-  { time: 7, open: 95600, high: 96200, low: 95400, close: 95900 },
-  { time: 8, open: 95900, high: 96400, low: 95700, close: 96100 },
-  { time: 9, open: 96100, high: 96600, low: 95800, close: 95950 },
-  { time: 10, open: 95950, high: 96300, low: 95500, close: 95800 },
-  { time: 11, open: 95800, high: 96500, low: 95700, close: 96400 },
-  { time: 12, open: 96400, high: 96900, low: 96200, close: 96750 },
-  { time: 13, open: 96750, high: 97200, low: 96500, close: 96600 },
-  { time: 14, open: 96600, high: 97000, low: 96300, close: 96850 },
-  { time: 15, open: 96850, high: 97400, low: 96700, close: 97100 },
-  { time: 16, open: 97100, high: 97600, low: 96900, close: 97350 },
-  { time: 17, open: 97350, high: 97800, low: 97100, close: 97500 },
-  { time: 18, open: 97500, high: 98100, low: 97300, close: 97800 },
+  { time: 1, open: 92800, high: 93400, low: 92500, close: 93200 },
+  { time: 2, open: 93200, high: 93900, low: 93000, close: 93700 },
+  { time: 3, open: 93700, high: 94200, low: 93400, close: 93600 },
+  { time: 4, open: 93600, high: 94100, low: 93200, close: 93950 },
+  { time: 5, open: 93950, high: 94600, low: 93800, close: 94400 },
+  { time: 6, open: 94400, high: 94900, low: 94100, close: 94300 },
+  { time: 7, open: 94300, high: 95200, low: 94200, close: 95050 },
+  { time: 8, open: 95050, high: 95600, low: 94800, close: 95400 },
+  { time: 9, open: 95400, high: 95800, low: 94900, close: 95100 },
+  { time: 10, open: 95100, high: 95700, low: 94850, close: 95550 },
+  { time: 11, open: 95550, high: 96100, low: 95300, close: 95900 },
+  { time: 12, open: 95900, high: 96400, low: 95600, close: 96250 },
+  { time: 13, open: 96250, high: 96800, low: 96000, close: 96500 },
+  { time: 14, open: 96500, high: 96950, low: 96200, close: 96400 },
+  { time: 15, open: 96400, high: 97100, low: 96300, close: 96950 },
+  { time: 16, open: 96950, high: 97500, low: 96700, close: 97200 },
+  { time: 17, open: 97200, high: 97600, low: 96900, close: 97100 },
+  { time: 18, open: 97100, high: 97400, low: 96600, close: 96800 },
+  { time: 19, open: 96800, high: 97300, low: 96500, close: 97150 },
+  { time: 20, open: 97150, high: 97700, low: 96900, close: 97450 },
+  { time: 21, open: 97450, high: 97900, low: 97200, close: 97600 },
+  { time: 22, open: 97600, high: 98100, low: 97400, close: 97850 },
+  { time: 23, open: 97850, high: 98400, low: 97600, close: 98100 },
+  { time: 24, open: 98100, high: 98600, low: 97800, close: 98000 },
+  { time: 25, open: 98000, high: 98300, low: 97400, close: 97650 },
+  { time: 26, open: 97650, high: 97950, low: 97100, close: 97300 },
+  { time: 27, open: 97300, high: 97800, low: 96900, close: 97550 },
+  { time: 28, open: 97550, high: 98200, low: 97400, close: 98000 },
+  { time: 29, open: 98000, high: 98500, low: 97700, close: 98350 },
+  { time: 30, open: 98350, high: 98800, low: 98100, close: 98500 },
+  { time: 31, open: 98500, high: 99100, low: 98300, close: 98850 },
+  { time: 32, open: 98850, high: 99400, low: 98600, close: 99100 },
 ];
 
 export const HomeDashboardView: React.FC = () => {
@@ -115,9 +129,9 @@ export const HomeDashboardView: React.FC = () => {
     return 58.4;
   });
 
-  // Fetch 18 candles of 4-hour Klines for BTC from Binance Public API
+  // Fetch 32 candles of 4-hour Klines for BTC from Binance Public API (~5.3 days range)
   useEffect(() => {
-    fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=4h&limit=18')
+    fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=4h&limit=32')
       .then((res) => res.json())
       .then((data: [number, string, string, string, string][]) => {
         if (Array.isArray(data) && data.length > 0) {
@@ -191,14 +205,14 @@ export const HomeDashboardView: React.FC = () => {
     return copy;
   }, [candles4h, btcTicker?.price]);
 
-  // Geometric Candlestick SVG Calculations
+  // Geometric Candlestick SVG Calculations (Spacious 340x180 Viewport)
   const { candleElements, minPrice, maxPrice, currentPriceY } = useMemo(() => {
-    const width = 320;
-    const height = 120;
-    const padTop = 10;
-    const padBottom = 12;
-    const padLeft = 8;
-    const padRight = 50;
+    const width = 340;
+    const height = 180;
+    const padTop = 14;
+    const padBottom = 16;
+    const padLeft = 6;
+    const padRight = 54;
 
     if (liveCandles.length === 0) {
       return { candleElements: [], minPrice: 0, maxPrice: 0, currentPriceY: height / 2 };
@@ -210,7 +224,7 @@ export const HomeDashboardView: React.FC = () => {
       min -= 100;
       max += 100;
     }
-    const buffer = (max - min) * 0.05;
+    const buffer = (max - min) * 0.04;
     const effMin = min - buffer;
     const effMax = max + buffer;
     const effRange = effMax - effMin;
@@ -218,7 +232,7 @@ export const HomeDashboardView: React.FC = () => {
     const chartWidth = width - padLeft - padRight;
     const chartHeight = height - padTop - padBottom;
     const step = chartWidth / liveCandles.length;
-    const candleWidth = Math.max(step * 0.62, 5);
+    const candleWidth = Math.max(step * 0.65, 4.5);
 
     const getY = (val: number) => padTop + ((effMax - val) / effRange) * chartHeight;
 
@@ -346,49 +360,69 @@ export const HomeDashboardView: React.FC = () => {
             </div>
           </div>
 
-          {/* 4-Hour Japanese Candlestick Chart in a More Square & Prominent Frame */}
-          <div className="w-full h-[126px] relative pointer-events-none my-2 bg-stone-100/60 rounded border-2 border-stone-900 p-1 overflow-hidden shadow-inner">
+          {/* 4-Hour Japanese Candlestick Chart in a Spacious Square Frame */}
+          <div className="w-full h-[195px] relative pointer-events-none my-2 bg-stone-100/60 rounded border-2 border-stone-900 p-1 overflow-hidden shadow-inner">
             <svg
-              viewBox="0 0 320 120"
+              viewBox="0 0 340 180"
               className="w-full h-full"
               preserveAspectRatio="none"
             >
               {/* Subtle Horizontal Price Guidelines */}
               <line
-                x1="8"
-                y1="10"
-                x2="270"
-                y2="10"
+                x1="6"
+                y1="14"
+                x2="280"
+                y2="14"
                 stroke="#1c1917"
                 strokeWidth="1"
                 strokeDasharray="3 3"
-                strokeOpacity="0.15"
+                strokeOpacity="0.14"
               />
               <line
-                x1="8"
-                y1="59"
-                x2="270"
-                y2="59"
+                x1="6"
+                y1="51.5"
+                x2="280"
+                y2="51.5"
+                stroke="#1c1917"
+                strokeWidth="1"
+                strokeDasharray="3 3"
+                strokeOpacity="0.08"
+              />
+              <line
+                x1="6"
+                y1="89"
+                x2="280"
+                y2="89"
                 stroke="#1c1917"
                 strokeWidth="1"
                 strokeDasharray="3 3"
                 strokeOpacity="0.12"
               />
               <line
-                x1="8"
-                y1="108"
-                x2="270"
-                y2="108"
+                x1="6"
+                y1="126.5"
+                x2="280"
+                y2="126.5"
                 stroke="#1c1917"
                 strokeWidth="1"
                 strokeDasharray="3 3"
-                strokeOpacity="0.15"
+                strokeOpacity="0.08"
+              />
+              <line
+                x1="6"
+                y1="164"
+                x2="280"
+                y2="164"
+                stroke="#1c1917"
+                strokeWidth="1"
+                strokeDasharray="3 3"
+                strokeOpacity="0.14"
               />
 
               {/* Price Scale Text on the Right Axis */}
               <text
-                x="274"
-                y="13"
+                x="284"
+                y="17"
                 fill="#57534e"
                 fontSize="8"
                 fontWeight="bold"
@@ -397,8 +431,18 @@ export const HomeDashboardView: React.FC = () => {
                 ${Math.round(maxPrice).toLocaleString()}
               </text>
               <text
-                x="274"
-                y="110"
+                x="284"
+                y="92"
+                fill="#78716c"
+                fontSize="7.5"
+                fontWeight="bold"
+                fontFamily="monospace"
+              >
+                ${Math.round((maxPrice + minPrice) / 2).toLocaleString()}
+              </text>
+              <text
+                x="284"
+                y="167"
                 fill="#57534e"
                 fontSize="8"
                 fontWeight="bold"
@@ -409,31 +453,31 @@ export const HomeDashboardView: React.FC = () => {
 
               {/* Live Price Horizontal Guideline */}
               <line
-                x1="8"
+                x1="6"
                 y1={currentPriceY}
-                x2="268"
+                x2="280"
                 y2={currentPriceY}
                 stroke="#1c1917"
                 strokeWidth="1"
                 strokeDasharray="2 2"
-                strokeOpacity="0.35"
+                strokeOpacity="0.38"
               />
 
               {/* Live Price Stamp on Right Axis */}
               <rect
-                x="271"
-                y={Math.max(2, Math.min(106, currentPriceY - 7))}
-                width="46"
-                height="14"
+                x="281"
+                y={Math.max(2, Math.min(162, currentPriceY - 8))}
+                width="56"
+                height="16"
                 rx="2"
                 fill="#1c1917"
               />
               <text
-                x="294"
-                y={Math.max(2, Math.min(106, currentPriceY - 7)) + 10}
+                x="309"
+                y={Math.max(2, Math.min(162, currentPriceY - 8)) + 11.5}
                 textAnchor="middle"
                 fill="#fbbf24"
-                fontSize="8"
+                fontSize="8.5"
                 fontWeight="900"
                 fontFamily="monospace"
               >
@@ -472,7 +516,7 @@ export const HomeDashboardView: React.FC = () => {
 
         {/* Clean Technical Footer - Zero Marketing Slogans */}
         <div className="flex items-center justify-between text-[10px] text-stone-600 font-bold uppercase pt-0.5">
-          <span>4S MUM // 18 PERİYOT</span>
+          <span>4S MUM // 32 PERİYOT</span>
           <span>BTC / USDT</span>
         </div>
       </div>
