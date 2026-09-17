@@ -16,6 +16,9 @@ import type {
   HistogramData,
   LineData,
   UTCTimestamp,
+  Time,
+  WhitespaceData,
+  CustomSeriesOptions,
 } from 'lightweight-charts';
 import {
   ArrowLeft,
@@ -29,13 +32,15 @@ import {
   Activity,
   Tag,
   SlidersHorizontal,
+  CandlestickChart,
 } from 'lucide-react';
 import { useCryptoStore } from '../../store/useCryptoStore';
 import { fetchHistoricalKlines } from '../../services/binanceApi';
 import { cleanSymbol, formatCurrency, formatPercentage } from '../../utils/formatters';
 import { triggerHaptic } from '../../utils/haptics';
+import { VolumeCandleSeriesView, type VolumeCandleData } from './volumeCandleSeries';
 
-export type ModalChartType = 'candlestick' | 'heikin' | 'area';
+export type ModalChartType = 'candlestick' | 'heikin' | 'volume' | 'area';
 
 const INTERVALS = [
   { label: '1dk', value: '1m' },
@@ -112,6 +117,7 @@ const calculateHeikinAshi = (
 };
 
 type PriceLineHandle = ReturnType<ISeriesApi<'Candlestick'>['createPriceLine']>;
+type CustomVolumeSeriesApi = ISeriesApi<'Custom', Time, VolumeCandleData | WhitespaceData<Time>, CustomSeriesOptions>;
 
 export const DetailChartModal: React.FC = () => {
   const selectedSymbol = useCryptoStore((state) => state.selectedCoinForChart);
@@ -139,7 +145,7 @@ export const DetailChartModal: React.FC = () => {
   const [chartType, setChartType] = useState<ModalChartType>(() => {
     try {
       const saved = localStorage.getItem('tracex_chart_type');
-      if (saved === 'candlestick' || saved === 'heikin' || saved === 'area') {
+      if (saved === 'candlestick' || saved === 'heikin' || saved === 'volume' || saved === 'area') {
         return saved;
       }
     } catch {
@@ -147,6 +153,9 @@ export const DetailChartModal: React.FC = () => {
     }
     return 'candlestick';
   });
+
+  const chartTypeRef = useRef<ModalChartType>(chartType);
+  chartTypeRef.current = chartType;
 
   const [showVolume, setShowVolume] = useState<boolean>(true);
   const [showEMA, setShowEMA] = useState<boolean>(false);
@@ -174,16 +183,21 @@ export const DetailChartModal: React.FC = () => {
     time: string;
   } | null>(null);
 
+  interface CandleItem extends CandlestickData<UTCTimestamp> {
+    volume?: number;
+  }
+
   const chartContainerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const areaSeriesRef = useRef<ISeriesApi<'Area'> | null>(null);
+  const volumeCandleSeriesRef = useRef<CustomVolumeSeriesApi | null>(null);
   const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
   const emaSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const smaSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const costLineRef = useRef<PriceLineHandle | null>(null);
 
-  const rawCandlesRef = useRef<CandlestickData<UTCTimestamp>[]>([]);
+  const rawCandlesRef = useRef<CandleItem[]>([]);
   const lastCandleRef = useRef<CandlestickData<UTCTimestamp> | null>(null);
   const lastAreaPointRef = useRef<AreaData<UTCTimestamp> | null>(null);
 
@@ -241,6 +255,7 @@ export const DetailChartModal: React.FC = () => {
     });
 
     let candleSeries: ISeriesApi<'Candlestick'> | null = null;
+    let volumeCandleSeries: CustomVolumeSeriesApi | null = null;
     let areaSeries: ISeriesApi<'Area'> | null = null;
     let volumeSeries: ISeriesApi<'Histogram'> | null = null;
     let emaSeries: ISeriesApi<'Line'> | null = null;
@@ -265,6 +280,18 @@ export const DetailChartModal: React.FC = () => {
       });
     }
     candleSeriesRef.current = candleSeries;
+
+    // Volume-Weighted Candlestick Series (Equivolume - candle thickness proportional to trading volume)
+    try {
+      volumeCandleSeries = chart.addCustomSeries(new VolumeCandleSeriesView(), {
+        visible: chartType === 'volume',
+        priceLineVisible: false,
+        lastValueVisible: true,
+      });
+      volumeCandleSeriesRef.current = volumeCandleSeries;
+    } catch (e) {
+      console.warn('Volume candle series init fallback:', e);
+    }
 
     // Area Series
     try {
@@ -333,12 +360,18 @@ export const DetailChartModal: React.FC = () => {
         setHoveredData(null);
         return;
       }
-      const activeSeries = chartType === 'area' ? areaSeriesRef.current : candleSeriesRef.current;
-      if (activeSeries) {
-        const data = param.seriesData.get(activeSeries);
-        if (data && 'open' in data) {
-          const candle = data as CandlestickData<UTCTimestamp>;
-          const date = new Date(Number(candle.time) * 1000);
+      const data =
+        chartTypeRef.current === 'volume' && volumeCandleSeriesRef.current
+          ? param.seriesData.get(volumeCandleSeriesRef.current)
+          : chartTypeRef.current === 'area' && areaSeriesRef.current
+          ? param.seriesData.get(areaSeriesRef.current)
+          : candleSeriesRef.current
+          ? param.seriesData.get(candleSeriesRef.current)
+          : undefined;
+
+      if (data && 'open' in data) {
+        const candle = data as CandlestickData<UTCTimestamp>;
+        const date = new Date(Number(candle.time) * 1000);
           setHoveredData({
             open: candle.open,
             high: candle.high,
@@ -357,7 +390,6 @@ export const DetailChartModal: React.FC = () => {
             time: date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           });
         }
-      }
     });
 
     const resizeObserver = new ResizeObserver((entries) => {
@@ -378,15 +410,17 @@ export const DetailChartModal: React.FC = () => {
           return;
         }
 
+        const formattedData: CandleItem[] = data.map((d) => ({
+          time: d.time as UTCTimestamp,
+          open: d.open,
+          high: d.high,
+          low: d.low,
+          close: d.close,
+          volume: d.volume ?? 1,
+        }));
+        rawCandlesRef.current = formattedData;
+
         if (candleSeries) {
-          const formattedData: CandlestickData<UTCTimestamp>[] = data.map((d) => ({
-            time: d.time as UTCTimestamp,
-            open: d.open,
-            high: d.high,
-            low: d.low,
-            close: d.close,
-          }));
-          rawCandlesRef.current = formattedData;
           if (chartType === 'heikin') {
             const ha = calculateHeikinAshi(formattedData);
             candleSeries.setData(ha);
@@ -395,6 +429,10 @@ export const DetailChartModal: React.FC = () => {
             candleSeries.setData(formattedData);
             lastCandleRef.current = formattedData[formattedData.length - 1];
           }
+        }
+
+        if (volumeCandleSeries) {
+          volumeCandleSeries.setData(formattedData as VolumeCandleData[]);
         }
 
         if (areaSeries) {
@@ -449,6 +487,7 @@ export const DetailChartModal: React.FC = () => {
       chart.remove();
       chartRef.current = null;
       candleSeriesRef.current = null;
+      volumeCandleSeriesRef.current = null;
       areaSeriesRef.current = null;
       volumeSeriesRef.current = null;
       emaSeriesRef.current = null;
@@ -464,9 +503,18 @@ export const DetailChartModal: React.FC = () => {
   useEffect(() => {
     if (chartType === 'area') {
       candleSeriesRef.current?.applyOptions({ visible: false });
+      volumeCandleSeriesRef.current?.applyOptions({ visible: false });
       areaSeriesRef.current?.applyOptions({ visible: true });
+    } else if (chartType === 'volume') {
+      candleSeriesRef.current?.applyOptions({ visible: false });
+      areaSeriesRef.current?.applyOptions({ visible: false });
+      volumeCandleSeriesRef.current?.applyOptions({ visible: true });
+      if (rawCandlesRef.current.length > 0 && volumeCandleSeriesRef.current) {
+        volumeCandleSeriesRef.current.setData(rawCandlesRef.current as VolumeCandleData[]);
+      }
     } else {
       areaSeriesRef.current?.applyOptions({ visible: false });
+      volumeCandleSeriesRef.current?.applyOptions({ visible: false });
       candleSeriesRef.current?.applyOptions({ visible: true });
       if (rawCandlesRef.current.length > 0 && candleSeriesRef.current) {
         if (chartType === 'heikin') {
@@ -492,12 +540,19 @@ export const DetailChartModal: React.FC = () => {
 
   // 3. Independent Portfolio Cost Line: Updates smoothly on currency/rate changes without resetting chart
   useEffect(() => {
-    const activeSeries = chartType === 'area' ? areaSeriesRef.current : candleSeriesRef.current;
+    const activeSeries =
+      chartType === 'volume'
+        ? volumeCandleSeriesRef.current
+        : chartType === 'area'
+        ? areaSeriesRef.current
+        : candleSeriesRef.current;
     if (!activeSeries) return;
 
     if (costLineRef.current) {
       try {
-        activeSeries.removePriceLine(costLineRef.current);
+        candleSeriesRef.current?.removePriceLine(costLineRef.current);
+        areaSeriesRef.current?.removePriceLine(costLineRef.current);
+        volumeCandleSeriesRef.current?.removePriceLine(costLineRef.current);
       } catch {
         // Series might have changed
       }
@@ -639,6 +694,19 @@ export const DetailChartModal: React.FC = () => {
         lastAreaPointRef.current = updatedArea;
         areaSeriesRef.current.update(updatedArea);
       }
+    }
+
+    // Volume candle series live update
+    if (volumeCandleSeriesRef.current && rawCandlesRef.current.length > 0) {
+      const last = rawCandlesRef.current[rawCandlesRef.current.length - 1];
+      volumeCandleSeriesRef.current.update({
+        time: last.time,
+        open: last.open,
+        high: last.high,
+        low: last.low,
+        close: currentPrice,
+        volume: last.volume ?? 1,
+      });
     }
   }, [ticker, interval]);
 
@@ -890,11 +958,17 @@ export const DetailChartModal: React.FC = () => {
           title="Ayarları ve Göstergeleri Düzenle"
         >
           <span className="text-[9px] font-black bg-stone-200 text-stone-900 px-1.5 py-0.5 rounded border border-stone-900/60 shadow-hard-xs uppercase">
-            {chartType === 'heikin' ? 'HEIKIN' : chartType === 'area' ? 'ALAN' : 'MUM'}
+            {chartType === 'heikin'
+              ? 'HEIKIN'
+              : chartType === 'volume'
+              ? 'HACİM MUM'
+              : chartType === 'area'
+              ? 'ALAN'
+              : 'MUM'}
           </span>
           {showVolume && (
             <span className="text-[9px] font-black bg-amber-200 text-amber-950 px-1 py-0.5 rounded border border-stone-900/60 shadow-hard-xs">
-              VOL
+              VOL BAR
             </span>
           )}
           {showEMA && (
@@ -970,7 +1044,7 @@ export const DetailChartModal: React.FC = () => {
               <span className="text-[10px] font-black text-stone-500 uppercase tracking-wider block mb-1.5">
                 // GRAFİK TİPİ
               </span>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <button
                   onClick={() => {
                     triggerHaptic('light');
@@ -1003,6 +1077,23 @@ export const DetailChartModal: React.FC = () => {
                   <Activity className="w-4 h-4 mb-1" />
                   <div className="text-[11px] font-black uppercase">HEIKIN-ASHI</div>
                   <div className="text-[9px] text-stone-600">Trend akışı</div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    triggerHaptic('light');
+                    setChartType('volume');
+                    localStorage.setItem('tracex_chart_type', 'volume');
+                  }}
+                  className={`p-2 rounded border-2 border-stone-900 text-left transition cursor-pointer ${
+                    chartType === 'volume'
+                      ? 'bg-amber-300 text-stone-950 shadow-hard-sm'
+                      : 'bg-white text-stone-700 hover:bg-stone-100'
+                  }`}
+                >
+                  <CandlestickChart className="w-4 h-4 mb-1" />
+                  <div className="text-[11px] font-black uppercase">HACİM MUMU</div>
+                  <div className="text-[9px] text-stone-600">Hacim kalınlığı</div>
                 </button>
 
                 <button
@@ -1041,8 +1132,8 @@ export const DetailChartModal: React.FC = () => {
                   <div className="flex items-center gap-2.5">
                     <Layers className="w-4 h-4 text-stone-700 shrink-0" />
                     <div>
-                      <div className="text-xs font-black text-stone-900">İŞLEM HACMİ (VOL)</div>
-                      <div className="text-[9px] text-stone-500">Alt panelde yeşil/kırmızı hacim barları</div>
+                      <div className="text-xs font-black text-stone-900">İŞLEM HACMİ (VOL BARLARI)</div>
+                      <div className="text-[9px] text-stone-500">Alt panelde yeşil/kırmızı hacim histogramı</div>
                     </div>
                   </div>
                   <div
