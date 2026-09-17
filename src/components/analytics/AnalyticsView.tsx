@@ -119,22 +119,62 @@ export const AnalyticsView: React.FC = () => {
     technicalIndicator,
   } = analyticsData;
 
-  // SVG parameters for 14-day FNG trendline
+  // Adaptive SVG geometry for 14-day Fear & Greed wave
   const fngPoints = fearAndGreed.history;
-  const svgWidth = 280;
-  const svgHeight = 65;
-  const padding = 8;
-  const minVal = 0;
-  const maxVal = 100;
+  const fngValues = fngPoints.map((p) => p.value);
+  const fngDataMin = fngValues.length ? Math.min(...fngValues) : 40;
+  const fngDataMax = fngValues.length ? Math.max(...fngValues) : 60;
 
-  const pointsString = fngPoints
-    .map((pt, idx) => {
-      const x = padding + (idx / (fngPoints.length - 1)) * (svgWidth - 2 * padding);
-      const y =
-        svgHeight - padding - ((pt.value - minVal) / (maxVal - minVal)) * (svgHeight - 2 * padding);
-      return `${x},${y}`;
-    })
-    .join(' ');
+  // Dynamic adaptive scale: pad by 18% of range or min 5 points so wave utilizes full vertical space
+  const fngRangeBuffer = Math.max(Math.ceil((fngDataMax - fngDataMin) * 0.18), 5);
+  const fngMinVal = Math.max(0, fngDataMin - fngRangeBuffer);
+  const fngMaxVal = Math.min(100, fngDataMax + fngRangeBuffer);
+  const fngEffectiveRange = fngMaxVal - fngMinVal || 1;
+
+  // Viewport: 360 x 115 (more than double the previous height)
+  const svgWidth = 360;
+  const svgHeight = 115;
+  const padTop = 14;
+  const padBottom = 22;
+  const padLeft = 14;
+  const padRight = 48; // Dedicated rail for Max/Min stamps
+
+  const getFngX = (idx: number) => {
+    if (fngPoints.length <= 1) return padLeft;
+    return padLeft + (idx / (fngPoints.length - 1)) * (svgWidth - padLeft - padRight);
+  };
+
+  const getFngY = (val: number) => {
+    return padTop + ((fngMaxVal - val) / fngEffectiveRange) * (svgHeight - padTop - padBottom);
+  };
+
+  const fngCoordinates = fngPoints.map((pt, idx) => ({
+    x: getFngX(idx),
+    y: getFngY(pt.value),
+    pt,
+  }));
+
+  const pointsString = fngCoordinates.map((c) => `${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' ');
+
+  // Shaded area path
+  const areaBottomY = svgHeight - padBottom;
+  const areaPathD =
+    fngCoordinates.length > 0
+      ? `M ${fngCoordinates[0].x.toFixed(1)},${areaBottomY.toFixed(1)} L ${pointsString.replace(/,/g, ' ')} L ${fngCoordinates[fngCoordinates.length - 1].x.toFixed(1)},${areaBottomY.toFixed(1)} Z`
+      : '';
+
+  // 14-day net delta (change from 14 days ago to today)
+  const fngDelta =
+    fngPoints.length >= 2 ? fngPoints[fngPoints.length - 1].value - fngPoints[0].value : 0;
+  const isFngBullish = fngDelta >= 0;
+
+  // Primary sentiment color based on current score
+  const fngColor =
+    fearAndGreed.current >= 55
+      ? '#16a34a'
+      : fearAndGreed.current <= 45
+      ? '#dc2626'
+      : '#d97706';
 
   return (
     <div className="pb-24 pt-2 px-3 font-mono max-w-2xl mx-auto">
@@ -265,64 +305,167 @@ export const AnalyticsView: React.FC = () => {
 
         {/* 14-Day Micro Historical Trend Chart with hover inspection */}
         <div className="mt-2 pt-2 border-t border-stone-200">
-          <div className="flex items-center justify-between text-[10px] text-stone-600 font-bold mb-1">
-            <span>14 GÜNLÜK DUYGU DALGASI</span>
-            <span>
+          <div className="flex items-center justify-between text-[10px] font-bold mb-1.5">
+            <div className="flex items-center gap-1.5 text-stone-700">
+              <span className="uppercase">14 GÜNLÜK DUYGU DALGASI</span>
+              <span
+                className={`inline-flex items-center gap-0.5 px-1 py-0.2 rounded font-black text-[9px] border border-stone-900 shadow-hard-xs ${
+                  isFngBullish ? 'bg-emerald-200 text-emerald-950' : 'bg-rose-200 text-rose-950'
+                }`}
+              >
+                {isFngBullish ? (
+                  <TrendingUp className="w-2.5 h-2.5 stroke-[3]" />
+                ) : (
+                  <TrendingDown className="w-2.5 h-2.5 stroke-[3]" />
+                )}
+                {fngDelta >= 0 ? `+${fngDelta}` : fngDelta} PUAN
+              </span>
+            </div>
+
+            <span className="text-stone-600">
               {hoveredFng ? (
-                <strong className="text-amber-800">
-                  {hoveredFng.date}: Skor {hoveredFng.value}
+                <strong className="text-stone-900 bg-amber-200 border border-stone-900 px-1.5 py-0.5 rounded shadow-hard-xs text-[9px]">
+                  {hoveredFng.date}: SKOR {hoveredFng.value}
                 </strong>
               ) : (
-                'Son 14 Gün Eğilimi'
+                <span className="text-stone-500 text-[9px]">MİN {fngDataMin} // MAX {fngDataMax}</span>
               )}
             </span>
           </div>
 
-          <svg
-            viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-            className="w-full h-16 bg-stone-50 rounded border border-stone-900/60 p-1"
-            onMouseLeave={() => setHoveredFng(null)}
-          >
-            {/* Guide line at 50 */}
-            <line
-              x1="0"
-              y1={svgHeight / 2}
-              x2={svgWidth}
-              y2={svgHeight / 2}
-              stroke="#d6d3d1"
-              strokeDasharray="3,3"
-            />
-            {/* The SVG Trendline */}
-            <polyline
-              fill="none"
-              stroke="#d97706"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              points={pointsString}
-            />
-            {/* Interactive Data Dots */}
-            {fngPoints.map((pt, idx) => {
-              const x = padding + (idx / (fngPoints.length - 1)) * (svgWidth - 2 * padding);
-              const y =
-                svgHeight -
-                padding -
-                ((pt.value - minVal) / (maxVal - minVal)) * (svgHeight - 2 * padding);
-              return (
-                <circle
-                  key={pt.date}
-                  cx={x}
-                  cy={y}
-                  r="3.5"
-                  fill="#f59e0b"
-                  stroke="#1c1917"
-                  strokeWidth="1.5"
-                  className="cursor-pointer hover:r-5 transition-all"
-                  onMouseEnter={() => setHoveredFng(pt)}
-                />
-              );
-            })}
-          </svg>
+          <div className="w-full h-28 sm:h-32 bg-[#faf7f0] rounded border-2 border-stone-900 p-0.5 shadow-inner overflow-hidden relative">
+            <svg
+              viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+              className="w-full h-full"
+              preserveAspectRatio="none"
+              onMouseLeave={() => setHoveredFng(null)}
+            >
+              <defs>
+                <linearGradient id="fngAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={fngColor} stopOpacity="0.32" />
+                  <stop offset="100%" stopColor={fngColor} stopOpacity="0.02" />
+                </linearGradient>
+              </defs>
+
+              {/* Shaded Area Beneath the Wave */}
+              {areaPathD && <path d={areaPathD} fill="url(#fngAreaGrad)" />}
+
+              {/* Peak Benchmark Guideline */}
+              <line
+                x1={padLeft}
+                y1={getFngY(fngDataMax)}
+                x2={svgWidth - padRight + 6}
+                y2={getFngY(fngDataMax)}
+                stroke="#1c1917"
+                strokeWidth="1"
+                strokeDasharray="2 2"
+                strokeOpacity="0.25"
+              />
+              <text
+                x={svgWidth - padRight + 8}
+                y={getFngY(fngDataMax) + 3}
+                fill="#1c1917"
+                fontSize="7"
+                fontWeight="900"
+                fontFamily="monospace"
+              >
+                {fngDataMax} MAX
+              </text>
+
+              {/* 50 Neutral Baseline (If within range) */}
+              {fngMinVal <= 50 && fngMaxVal >= 50 && (
+                <>
+                  <line
+                    x1={padLeft}
+                    y1={getFngY(50)}
+                    x2={svgWidth - padRight + 6}
+                    y2={getFngY(50)}
+                    stroke="#1c1917"
+                    strokeWidth="1.2"
+                    strokeDasharray="3 3"
+                    strokeOpacity="0.35"
+                  />
+                  <text
+                    x={svgWidth - padRight + 8}
+                    y={getFngY(50) + 3}
+                    fill="#78716c"
+                    fontSize="6.5"
+                    fontWeight="bold"
+                    fontFamily="monospace"
+                  >
+                    50 NÖTR
+                  </text>
+                </>
+              )}
+
+              {/* Trough Benchmark Guideline */}
+              <line
+                x1={padLeft}
+                y1={getFngY(fngDataMin)}
+                x2={svgWidth - padRight + 6}
+                y2={getFngY(fngDataMin)}
+                stroke="#1c1917"
+                strokeWidth="1"
+                strokeDasharray="2 2"
+                strokeOpacity="0.25"
+              />
+              <text
+                x={svgWidth - padRight + 8}
+                y={getFngY(fngDataMin) + 3}
+                fill="#1c1917"
+                fontSize="7"
+                fontWeight="900"
+                fontFamily="monospace"
+              >
+                {fngDataMin} MİN
+              </text>
+
+              {/* The SVG Bold Trendline */}
+              <polyline
+                fill="none"
+                stroke={fngColor}
+                strokeWidth="2.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                points={pointsString}
+              />
+
+              {/* Interactive Data Dots with Touch Target Hitboxes */}
+              {fngCoordinates.map(({ x, y, pt }) => {
+                const isPointHovered = hoveredFng?.date === pt.date;
+                const dotColor =
+                  pt.value >= 55
+                    ? '#16a34a'
+                    : pt.value <= 45
+                    ? '#dc2626'
+                    : '#f59e0b';
+
+                return (
+                  <g key={pt.date} className="cursor-pointer">
+                    {/* Invisible Larger Hit Area for Mobile Touch */}
+                    <circle
+                      cx={x}
+                      cy={y}
+                      r="12"
+                      fill="transparent"
+                      onMouseEnter={() => setHoveredFng(pt)}
+                      onTouchStart={() => setHoveredFng(pt)}
+                    />
+                    {/* Visual Stamp Dot */}
+                    <circle
+                      cx={x}
+                      cy={y}
+                      r={isPointHovered ? 5 : 3.5}
+                      fill={dotColor}
+                      stroke="#1c1917"
+                      strokeWidth="1.5"
+                      className="transition-all pointer-events-none"
+                    />
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
         </div>
       </div>
 

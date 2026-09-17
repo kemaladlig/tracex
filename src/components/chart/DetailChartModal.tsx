@@ -28,10 +28,14 @@ import {
   Layers,
   Activity,
   Tag,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { useCryptoStore } from '../../store/useCryptoStore';
 import { fetchHistoricalKlines } from '../../services/binanceApi';
 import { cleanSymbol, formatCurrency, formatPercentage } from '../../utils/formatters';
+import { triggerHaptic } from '../../utils/haptics';
+
+export type ModalChartType = 'candlestick' | 'heikin' | 'area';
 
 const INTERVALS = [
   { label: '1dk', value: '1m' },
@@ -80,6 +84,33 @@ const calculateSMA = (data: { time: UTCTimestamp; close: number }[], period: num
   return result;
 };
 
+const calculateHeikinAshi = (
+  data: CandlestickData<UTCTimestamp>[]
+): CandlestickData<UTCTimestamp>[] => {
+  if (data.length === 0) return [];
+  const haData: CandlestickData<UTCTimestamp>[] = [];
+  for (let i = 0; i < data.length; i++) {
+    const curr = data[i];
+    const haClose = (curr.open + curr.high + curr.low + curr.close) / 4;
+    let haOpen: number;
+    if (i === 0) {
+      haOpen = (curr.open + curr.close) / 2;
+    } else {
+      haOpen = (haData[i - 1].open + haData[i - 1].close) / 2;
+    }
+    const haHigh = Math.max(curr.high, haOpen, haClose);
+    const haLow = Math.min(curr.low, haOpen, haClose);
+    haData.push({
+      time: curr.time,
+      open: parseFloat(haOpen.toFixed(4)),
+      high: parseFloat(haHigh.toFixed(4)),
+      low: parseFloat(haLow.toFixed(4)),
+      close: parseFloat(haClose.toFixed(4)),
+    });
+  }
+  return haData;
+};
+
 type PriceLineHandle = ReturnType<ISeriesApi<'Candlestick'>['createPriceLine']>;
 
 export const DetailChartModal: React.FC = () => {
@@ -105,9 +136,21 @@ export const DetailChartModal: React.FC = () => {
     return '1h';
   });
 
-  const [chartType, setChartType] = useState<'candlestick' | 'area'>('candlestick');
+  const [chartType, setChartType] = useState<ModalChartType>(() => {
+    try {
+      const saved = localStorage.getItem('tracex_chart_type');
+      if (saved === 'candlestick' || saved === 'heikin' || saved === 'area') {
+        return saved;
+      }
+    } catch {
+      // ignore
+    }
+    return 'candlestick';
+  });
+
   const [showVolume, setShowVolume] = useState<boolean>(true);
   const [showEMA, setShowEMA] = useState<boolean>(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [showCostLine, setShowCostLine] = useState<boolean>(() => {
     try {
       const saved = localStorage.getItem(CHART_COST_LINE_KEY);
@@ -140,6 +183,7 @@ export const DetailChartModal: React.FC = () => {
   const smaSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const costLineRef = useRef<PriceLineHandle | null>(null);
 
+  const rawCandlesRef = useRef<CandlestickData<UTCTimestamp>[]>([]);
   const lastCandleRef = useRef<CandlestickData<UTCTimestamp> | null>(null);
   const lastAreaPointRef = useRef<AreaData<UTCTimestamp> | null>(null);
 
@@ -202,7 +246,7 @@ export const DetailChartModal: React.FC = () => {
     let emaSeries: ISeriesApi<'Line'> | null = null;
     let smaSeries: ISeriesApi<'Line'> | null = null;
 
-    // Candlestick Series
+    // Candlestick Series (Serves both Klasik and Heikin-Ashi)
     try {
       candleSeries = chart.addSeries(CandlestickSeries, {
         upColor: '#16a34a',
@@ -211,12 +255,14 @@ export const DetailChartModal: React.FC = () => {
         borderColor: '#1c1917',
         wickUpColor: '#16a34a',
         wickDownColor: '#dc2626',
-        visible: chartType === 'candlestick',
+        visible: chartType === 'candlestick' || chartType === 'heikin',
       });
     } catch {
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-expect-error fallback
-      candleSeries = chart.addCandlestickSeries({ visible: chartType === 'candlestick' });
+      candleSeries = chart.addCandlestickSeries({
+        visible: chartType === 'candlestick' || chartType === 'heikin',
+      });
     }
     candleSeriesRef.current = candleSeries;
 
@@ -287,7 +333,7 @@ export const DetailChartModal: React.FC = () => {
         setHoveredData(null);
         return;
       }
-      const activeSeries = chartType === 'candlestick' ? candleSeriesRef.current : areaSeriesRef.current;
+      const activeSeries = chartType === 'area' ? areaSeriesRef.current : candleSeriesRef.current;
       if (activeSeries) {
         const data = param.seriesData.get(activeSeries);
         if (data && 'open' in data) {
@@ -340,8 +386,15 @@ export const DetailChartModal: React.FC = () => {
             low: d.low,
             close: d.close,
           }));
-          candleSeries.setData(formattedData);
-          lastCandleRef.current = formattedData[formattedData.length - 1];
+          rawCandlesRef.current = formattedData;
+          if (chartType === 'heikin') {
+            const ha = calculateHeikinAshi(formattedData);
+            candleSeries.setData(ha);
+            lastCandleRef.current = ha[ha.length - 1];
+          } else {
+            candleSeries.setData(formattedData);
+            lastCandleRef.current = formattedData[formattedData.length - 1];
+          }
         }
 
         if (areaSeries) {
@@ -409,8 +462,23 @@ export const DetailChartModal: React.FC = () => {
 
   // 2. Dynamic Series Visibility & Options: Toggles without tearing down the chart
   useEffect(() => {
-    candleSeriesRef.current?.applyOptions({ visible: chartType === 'candlestick' });
-    areaSeriesRef.current?.applyOptions({ visible: chartType === 'area' });
+    if (chartType === 'area') {
+      candleSeriesRef.current?.applyOptions({ visible: false });
+      areaSeriesRef.current?.applyOptions({ visible: true });
+    } else {
+      areaSeriesRef.current?.applyOptions({ visible: false });
+      candleSeriesRef.current?.applyOptions({ visible: true });
+      if (rawCandlesRef.current.length > 0 && candleSeriesRef.current) {
+        if (chartType === 'heikin') {
+          const ha = calculateHeikinAshi(rawCandlesRef.current);
+          candleSeriesRef.current.setData(ha);
+          lastCandleRef.current = ha[ha.length - 1];
+        } else {
+          candleSeriesRef.current.setData(rawCandlesRef.current);
+          lastCandleRef.current = rawCandlesRef.current[rawCandlesRef.current.length - 1];
+        }
+      }
+    }
   }, [chartType]);
 
   useEffect(() => {
@@ -424,7 +492,7 @@ export const DetailChartModal: React.FC = () => {
 
   // 3. Independent Portfolio Cost Line: Updates smoothly on currency/rate changes without resetting chart
   useEffect(() => {
-    const activeSeries = chartType === 'candlestick' ? candleSeriesRef.current : areaSeriesRef.current;
+    const activeSeries = chartType === 'area' ? areaSeriesRef.current : candleSeriesRef.current;
     if (!activeSeries) return;
 
     if (costLineRef.current) {
@@ -488,31 +556,68 @@ export const DetailChartModal: React.FC = () => {
     const barSec = INTERVAL_SECONDS[interval] || 3600;
     const currentBarTime = (Math.floor(nowSec / barSec) * barSec) as UTCTimestamp;
 
-    // Candlestick series live update
-    if (candleSeriesRef.current && lastCandleRef.current) {
-      const prev = lastCandleRef.current;
-      if (currentBarTime > prev.time) {
-        // Advance into new candle bar in real time
-        const newCandle: CandlestickData<UTCTimestamp> = {
+    // Update raw candle tracking
+    if (rawCandlesRef.current.length > 0) {
+      const lastRaw = rawCandlesRef.current[rawCandlesRef.current.length - 1];
+      if (currentBarTime > lastRaw.time) {
+        rawCandlesRef.current.push({
           time: currentBarTime,
           open: currentPrice,
           high: currentPrice,
           low: currentPrice,
           close: currentPrice,
-        };
-        lastCandleRef.current = newCandle;
-        candleSeriesRef.current.update(newCandle);
+        });
       } else {
-        // Smoothly update current bar high/low/close
-        const updatedCandle: CandlestickData<UTCTimestamp> = {
-          time: prev.time,
-          open: prev.open,
-          high: Math.max(prev.high, currentPrice),
-          low: Math.min(prev.low, currentPrice),
-          close: currentPrice,
-        };
-        lastCandleRef.current = updatedCandle;
-        candleSeriesRef.current.update(updatedCandle);
+        lastRaw.high = Math.max(lastRaw.high, currentPrice);
+        lastRaw.low = Math.min(lastRaw.low, currentPrice);
+        lastRaw.close = currentPrice;
+      }
+    }
+
+    // Candlestick series live update
+    if (candleSeriesRef.current && lastCandleRef.current) {
+      if (chartType === 'heikin') {
+        const len = rawCandlesRef.current.length;
+        if (len >= 2) {
+          const currRaw = rawCandlesRef.current[len - 1];
+          const prevRaw = rawCandlesRef.current[len - 2];
+          const haClose = (currRaw.open + currRaw.high + currRaw.low + currRaw.close) / 4;
+          const haOpen = (prevRaw.open + prevRaw.close) / 2;
+          const haHigh = Math.max(currRaw.high, haOpen, haClose);
+          const haLow = Math.min(currRaw.low, haOpen, haClose);
+          const updatedHa: CandlestickData<UTCTimestamp> = {
+            time: currRaw.time,
+            open: parseFloat(haOpen.toFixed(4)),
+            high: parseFloat(haHigh.toFixed(4)),
+            low: parseFloat(haLow.toFixed(4)),
+            close: parseFloat(haClose.toFixed(4)),
+          };
+          lastCandleRef.current = updatedHa;
+          candleSeriesRef.current.update(updatedHa);
+        }
+      } else if (chartType === 'candlestick') {
+        const prev = lastCandleRef.current;
+        if (currentBarTime > prev.time) {
+          const newCandle: CandlestickData<UTCTimestamp> = {
+            time: currentBarTime,
+            open: currentPrice,
+            high: currentPrice,
+            low: currentPrice,
+            close: currentPrice,
+          };
+          lastCandleRef.current = newCandle;
+          candleSeriesRef.current.update(newCandle);
+        } else {
+          const updatedCandle: CandlestickData<UTCTimestamp> = {
+            time: prev.time,
+            open: prev.open,
+            high: Math.max(prev.high, currentPrice),
+            low: Math.min(prev.low, currentPrice),
+            close: currentPrice,
+          };
+          lastCandleRef.current = updatedCandle;
+          candleSeriesRef.current.update(updatedCandle);
+        }
       }
     }
 
@@ -605,33 +710,23 @@ export const DetailChartModal: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          {/* Chart Type Toggle Button */}
-          <div className="flex items-center bg-white p-0.5 rounded border-2 border-stone-900 shadow-hard-sm">
-            <button
-              onClick={() => setChartType('candlestick')}
-              title="Mum Grafiği"
-              className={`p-1.5 rounded transition cursor-pointer ${
-                chartType === 'candlestick'
-                  ? 'bg-amber-300 text-stone-900 font-bold'
-                  : 'text-stone-500 hover:text-stone-900'
-              }`}
-            >
-              <BarChart2 className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setChartType('area')}
-              title="Çizgi Grafiği"
-              className={`p-1.5 rounded transition cursor-pointer ${
-                chartType === 'area'
-                  ? 'bg-amber-300 text-stone-900 font-bold'
-                  : 'text-stone-500 hover:text-stone-900'
-              }`}
-            >
-              <LineChart className="w-4 h-4" />
-            </button>
-          </div>
+          {/* Quick Settings Drawer Trigger */}
+          <button
+            onClick={() => {
+              triggerHaptic('light');
+              setIsSettingsOpen(true);
+            }}
+            className="px-2.5 py-1 rounded-md bg-white border-2 border-stone-900 hover:bg-stone-100 shadow-hard-sm btn-hard cursor-pointer flex items-center gap-1.5 text-xs font-black text-stone-900"
+            title="Grafik ve Gösterge Ayarları"
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>AYARLAR</span>
+            {(showEMA || !showVolume || showCostLine || chartType !== 'candlestick') && (
+              <span className="w-2 h-2 rounded-full bg-amber-400 border border-stone-900" />
+            )}
+          </button>
 
-          {/* Redundant X button hidden on mobile, visible only on desktop */}
+          {/* Desktop Close X */}
           <button
             onClick={handleClose}
             title="Kapat"
@@ -767,17 +862,17 @@ export const DetailChartModal: React.FC = () => {
         )}
       </div>
 
-      {/* Interval Selector Tabs & Feature Toggles Bar */}
-      <div className="flex items-center justify-between px-4 py-1.5 bg-[#ede8dd] border-b-2 border-stone-900">
+      {/* Interval Selector Bar & Quick Active Indicators Status */}
+      <div className="flex items-center justify-between px-4 py-1.5 bg-[#ede8dd] border-b-2 border-stone-900 gap-2">
         <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
-          <Clock className="w-3.5 h-3.5 text-stone-600 mr-1 shrink-0" />
+          <Clock className="w-3.5 h-3.5 text-stone-600 mr-0.5 shrink-0" />
           {INTERVALS.map((item) => (
             <button
               key={item.value}
               onClick={() => handleIntervalChange(item.value)}
               className={`px-2 py-0.5 rounded text-xs font-bold transition-all shrink-0 border cursor-pointer ${
                 interval === item.value
-                  ? 'bg-stone-900 text-white border-stone-900 shadow-hard-sm'
+                  ? 'bg-stone-900 text-white border-stone-900 shadow-hard-xs'
                   : 'bg-white text-stone-700 border-stone-900/40 hover:bg-stone-100'
               }`}
             >
@@ -786,47 +881,32 @@ export const DetailChartModal: React.FC = () => {
           ))}
         </div>
 
-        {/* Feature Toggles (Volume, EMA, Cost Line) */}
-        <div className="flex items-center gap-1 shrink-0 ml-2">
-          {/* Volume Toggle */}
-          <button
-            onClick={() => setShowVolume(!showVolume)}
-            className={`px-1.5 py-0.5 rounded text-[10px] font-black border border-stone-900 transition flex items-center gap-0.5 cursor-pointer ${
-              showVolume
-                ? 'bg-amber-300 text-stone-900 shadow-hard-sm'
-                : 'bg-white text-stone-500 hover:text-stone-900'
-            }`}
-            title="Hacim Barlarını Aç/Kapa"
-          >
-            <Layers className="w-3 h-3" /> VOL
-          </button>
-
-          {/* EMA Toggle */}
-          <button
-            onClick={() => setShowEMA(!showEMA)}
-            className={`px-1.5 py-0.5 rounded text-[10px] font-black border border-stone-900 transition flex items-center gap-0.5 cursor-pointer ${
-              showEMA
-                ? 'bg-amber-300 text-stone-900 shadow-hard-sm'
-                : 'bg-white text-stone-500 hover:text-stone-900'
-            }`}
-            title="EMA 20 ve SMA 50 Trend Çizgilerini Aç/Kapa"
-          >
-            <Activity className="w-3 h-3" /> EMA
-          </button>
-
-          {/* My Cost Line Toggle (Only if user owns this asset) */}
-          {userAsset && (
-            <button
-              onClick={handleToggleCostLine}
-              className={`px-1.5 py-0.5 rounded text-[10px] font-black border border-stone-900 transition flex items-center gap-0.5 cursor-pointer ${
-                showCostLine
-                  ? 'bg-emerald-300 text-stone-950 shadow-hard-sm'
-                  : 'bg-white text-stone-500 hover:text-stone-900'
-              }`}
-              title="Cüzdan Alış Maliyeti Seviyesini Göster/Gizle"
-            >
-              <Tag className="w-3 h-3" /> MALİYET
-            </button>
+        {/* Quick Active Indicators Summary Chips (Tap to open Quick Settings) */}
+        <div
+          onClick={() => {
+            triggerHaptic('light');
+            setIsSettingsOpen(true);
+          }}
+          className="flex items-center gap-1 shrink-0 cursor-pointer hover:opacity-85 transition"
+          title="Ayarları ve Göstergeleri Düzenle"
+        >
+          <span className="text-[9px] font-black bg-stone-200 text-stone-900 px-1.5 py-0.5 rounded border border-stone-900/60 shadow-hard-xs uppercase">
+            {chartType === 'heikin' ? 'HEIKIN' : chartType === 'area' ? 'ALAN' : 'MUM'}
+          </span>
+          {showVolume && (
+            <span className="text-[9px] font-black bg-amber-200 text-amber-950 px-1 py-0.5 rounded border border-stone-900/60 shadow-hard-xs">
+              VOL
+            </span>
+          )}
+          {showEMA && (
+            <span className="text-[9px] font-black bg-blue-200 text-blue-950 px-1 py-0.5 rounded border border-stone-900/60 shadow-hard-xs">
+              EMA
+            </span>
+          )}
+          {showCostLine && userAsset && (
+            <span className="text-[9px] font-black bg-emerald-200 text-emerald-950 px-1 py-0.5 rounded border border-stone-900/60 shadow-hard-xs">
+              MALİYET
+            </span>
           )}
         </div>
       </div>
@@ -856,6 +936,229 @@ export const DetailChartModal: React.FC = () => {
       </div>
 
       <div className="pb-safe bg-[#ede8dd] border-t-2 border-stone-900" />
+
+      {/* Quick Settings Bottom Sheet Drawer */}
+      {isSettingsOpen && (
+        <div
+          className="fixed inset-0 z-60 flex items-end justify-center bg-stone-900/60 backdrop-blur-xs p-0 sm:p-4 animate-fadeIn"
+          onClick={() => setIsSettingsOpen(false)}
+        >
+          <div
+            className="w-full max-w-lg bg-[#faf7f0] border-t-2 sm:border-2 border-stone-900 rounded-t-xl sm:rounded-xl p-4 shadow-hard flex flex-col gap-3.5 animate-sheetUp max-h-[85dvh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between pb-2 border-b-2 border-stone-900">
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal className="w-4 h-4 text-stone-900" />
+                <span className="text-xs font-black text-stone-900 uppercase tracking-wider">
+                  GRAFİK & GÖSTERGE HIZLI AYARLARI
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  triggerHaptic('light');
+                  setIsSettingsOpen(false);
+                }}
+                className="p-1 rounded bg-white border border-stone-900 hover:bg-stone-200 cursor-pointer shadow-hard-xs"
+              >
+                <X className="w-4 h-4 stroke-[3]" />
+              </button>
+            </div>
+
+            {/* 1. Grafik Modeli (Chart Style) */}
+            <div>
+              <span className="text-[10px] font-black text-stone-500 uppercase tracking-wider block mb-1.5">
+                // GRAFİK TİPİ
+              </span>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  onClick={() => {
+                    triggerHaptic('light');
+                    setChartType('candlestick');
+                    localStorage.setItem('tracex_chart_type', 'candlestick');
+                  }}
+                  className={`p-2 rounded border-2 border-stone-900 text-left transition cursor-pointer ${
+                    chartType === 'candlestick'
+                      ? 'bg-amber-300 text-stone-950 shadow-hard-sm'
+                      : 'bg-white text-stone-700 hover:bg-stone-100'
+                  }`}
+                >
+                  <BarChart2 className="w-4 h-4 mb-1" />
+                  <div className="text-[11px] font-black uppercase">KLASİK MUM</div>
+                  <div className="text-[9px] text-stone-600">Standart OHLC</div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    triggerHaptic('light');
+                    setChartType('heikin');
+                    localStorage.setItem('tracex_chart_type', 'heikin');
+                  }}
+                  className={`p-2 rounded border-2 border-stone-900 text-left transition cursor-pointer ${
+                    chartType === 'heikin'
+                      ? 'bg-amber-300 text-stone-950 shadow-hard-sm'
+                      : 'bg-white text-stone-700 hover:bg-stone-100'
+                  }`}
+                >
+                  <Activity className="w-4 h-4 mb-1" />
+                  <div className="text-[11px] font-black uppercase">HEIKIN-ASHI</div>
+                  <div className="text-[9px] text-stone-600">Trend akışı</div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    triggerHaptic('light');
+                    setChartType('area');
+                    localStorage.setItem('tracex_chart_type', 'area');
+                  }}
+                  className={`p-2 rounded border-2 border-stone-900 text-left transition cursor-pointer ${
+                    chartType === 'area'
+                      ? 'bg-amber-300 text-stone-950 shadow-hard-sm'
+                      : 'bg-white text-stone-700 hover:bg-stone-100'
+                  }`}
+                >
+                  <LineChart className="w-4 h-4 mb-1" />
+                  <div className="text-[11px] font-black uppercase">ALAN / ÇİZGİ</div>
+                  <div className="text-[9px] text-stone-600">Sürekli dalga</div>
+                </button>
+              </div>
+            </div>
+
+            {/* 2. Teknik Göstergeler (Indicators) */}
+            <div>
+              <span className="text-[10px] font-black text-stone-500 uppercase tracking-wider block mb-1.5">
+                // TEKNİK KATMANLAR & GÖSTERGELER
+              </span>
+              <div className="space-y-1.5">
+                {/* Volume Toggle */}
+                <div
+                  onClick={() => {
+                    triggerHaptic('light');
+                    setShowVolume(!showVolume);
+                  }}
+                  className="p-2.5 bg-white border-2 border-stone-900 rounded flex items-center justify-between cursor-pointer hover:bg-stone-50 shadow-hard-xs"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Layers className="w-4 h-4 text-stone-700 shrink-0" />
+                    <div>
+                      <div className="text-xs font-black text-stone-900">İŞLEM HACMİ (VOL)</div>
+                      <div className="text-[9px] text-stone-500">Alt panelde yeşil/kırmızı hacim barları</div>
+                    </div>
+                  </div>
+                  <div
+                    className={`w-10 h-5 rounded-full border-2 border-stone-900 p-0.5 transition-colors shrink-0 ${
+                      showVolume ? 'bg-amber-300' : 'bg-stone-200'
+                    }`}
+                  >
+                    <div
+                      className={`w-3.5 h-3.5 rounded-full bg-stone-900 transition-transform ${
+                        showVolume ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                {/* EMA / SMA Toggle */}
+                <div
+                  onClick={() => {
+                    triggerHaptic('light');
+                    setShowEMA(!showEMA);
+                  }}
+                  className="p-2.5 bg-white border-2 border-stone-900 rounded flex items-center justify-between cursor-pointer hover:bg-stone-50 shadow-hard-xs"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Activity className="w-4 h-4 text-amber-600 shrink-0" />
+                    <div>
+                      <div className="text-xs font-black text-stone-900">HAREKETLİ ORTALAMALAR (EMA 20 & SMA 50)</div>
+                      <div className="text-[9px] text-stone-500">Kısa ve orta vadeli trend kılavuzları</div>
+                    </div>
+                  </div>
+                  <div
+                    className={`w-10 h-5 rounded-full border-2 border-stone-900 p-0.5 transition-colors shrink-0 ${
+                      showEMA ? 'bg-amber-300' : 'bg-stone-200'
+                    }`}
+                  >
+                    <div
+                      className={`w-3.5 h-3.5 rounded-full bg-stone-900 transition-transform ${
+                        showEMA ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                {/* Portfolio Cost Line Toggle */}
+                {userAsset && (
+                  <div
+                    onClick={() => {
+                      triggerHaptic('light');
+                      handleToggleCostLine();
+                    }}
+                    className="p-2.5 bg-white border-2 border-stone-900 rounded flex items-center justify-between cursor-pointer hover:bg-stone-50 shadow-hard-xs"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Tag className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <div>
+                        <div className="text-xs font-black text-stone-900">CÜZDAN ALIŞ MALİYETİM</div>
+                        <div className="text-[9px] text-stone-500">
+                          {formatCurrency(userAsset.buyPrice, currency, activeRate)} seviyesinde referans çizgisi
+                        </div>
+                      </div>
+                    </div>
+                    <div
+                      className={`w-10 h-5 rounded-full border-2 border-stone-900 p-0.5 transition-colors shrink-0 ${
+                        showCostLine ? 'bg-emerald-300' : 'bg-stone-200'
+                      }`}
+                    >
+                      <div
+                        className={`w-3.5 h-3.5 rounded-full bg-stone-900 transition-transform ${
+                          showCostLine ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 3. Zaman Dilimleri (Intervals) */}
+            <div>
+              <span className="text-[10px] font-black text-stone-500 uppercase tracking-wider block mb-1.5">
+                // ZAMAN PERİYODU
+              </span>
+              <div className="grid grid-cols-7 gap-1">
+                {INTERVALS.map((item) => (
+                  <button
+                    key={item.value}
+                    onClick={() => {
+                      triggerHaptic('light');
+                      handleIntervalChange(item.value);
+                    }}
+                    className={`py-1.5 rounded text-xs font-black border-2 border-stone-900 text-center transition cursor-pointer ${
+                      interval === item.value
+                        ? 'bg-stone-900 text-white shadow-hard-xs'
+                        : 'bg-white text-stone-800 hover:bg-stone-100'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Close / Confirm Button */}
+            <button
+              onClick={() => {
+                triggerHaptic('medium');
+                setIsSettingsOpen(false);
+              }}
+              className="w-full py-2.5 bg-stone-900 text-amber-300 border-2 border-stone-900 rounded font-black text-xs uppercase shadow-hard btn-hard cursor-pointer tracking-wider mt-1"
+            >
+              TAMAMLA VE GRAFİĞE DÖN
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
