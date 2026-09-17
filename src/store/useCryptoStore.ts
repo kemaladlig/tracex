@@ -99,6 +99,24 @@ const DEFAULT_GROUPS: PortfolioGroup[] = [
   },
 ];
 
+const TICKERS_CACHE_KEY = 'tracex_cached_tickers';
+let lastTickerPersistTime = 0;
+
+const getCachedTickers = (): Record<string, TickerData> => {
+  try {
+    const raw = localStorage.getItem(TICKERS_CACHE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') return parsed;
+    }
+  } catch {
+    // ignore
+  }
+  return {};
+};
+
+const initialCachedTickers = getCachedTickers();
+
 export const useCryptoStore = create<CryptoState>()(
   persist(
     (set, get) => ({
@@ -109,11 +127,11 @@ export const useCryptoStore = create<CryptoState>()(
       hideBalances: false,
       realizedPnL: 0,
       currency: 'USD',
-      tickers: {},
-      tryRate: 38.65,
+      tickers: initialCachedTickers,
+      tryRate: initialCachedTickers['USDTTRY']?.price || 38.65,
       eurRate: 1.08,
       analyticsData: null,
-      activeTab: 'markets',
+      activeTab: 'home',
       selectedCoinForChart: null,
       connectionStatus: 'connecting',
       activeMarketSymbols: [],
@@ -542,6 +560,16 @@ export const useCryptoStore = create<CryptoState>()(
               tryRate = incoming.price;
             } else if (incoming.symbol === 'EURUSDT') {
               eurRate = incoming.price;
+            }
+          }
+
+          const now = Date.now();
+          if (now - lastTickerPersistTime > 4000) {
+            lastTickerPersistTime = now;
+            try {
+              localStorage.setItem(TICKERS_CACHE_KEY, JSON.stringify(nextTickers));
+            } catch {
+              // Ignore quota issues
             }
           }
 

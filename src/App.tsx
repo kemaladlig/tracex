@@ -8,6 +8,7 @@ import { PullToRefresh } from './components/common/PullToRefresh';
 import { MarketList } from './components/markets/MarketList';
 import { PortfolioList } from './components/portfolio/PortfolioList';
 import { AnalyticsView } from './components/analytics/AnalyticsView';
+import { HomeDashboardView } from './components/home/HomeDashboardView';
 import { fetchComprehensiveAnalytics } from './services/onChainApi';
 
 // Code-split heavyweight lightweight-charts bundle (~250kb) to accelerate First Contentful Paint
@@ -47,6 +48,7 @@ export const App: React.FC = () => {
       <PullToRefresh onRefresh={handlePullRefresh}>
         <main className="flex-1 w-full max-w-lg mx-auto flex flex-col min-h-[calc(100vh-130px)]">
           <div key={activeTab} className="animate-tabEnter w-full flex flex-col flex-1">
+            {activeTab === 'home' && <HomeDashboardView />}
             {activeTab === 'markets' && <MarketList />}
             {activeTab === 'analytics' && <AnalyticsView />}
             {activeTab === 'portfolio' && <PortfolioList />}

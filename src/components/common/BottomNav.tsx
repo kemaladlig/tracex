@@ -1,5 +1,5 @@
 import React from 'react';
-import { Newspaper, Compass, Wallet } from 'lucide-react';
+import { LayoutDashboard, Newspaper, Compass, Wallet } from 'lucide-react';
 import { useCryptoStore } from '../../store/useCryptoStore';
 import type { TabType } from '../../types/crypto';
 import { triggerHaptic } from '../../utils/haptics';
@@ -9,9 +9,10 @@ export const BottomNav: React.FC = () => {
   const setActiveTab = useCryptoStore((state) => state.setActiveTab);
 
   const navItems: { id: TabType; label: string; icon: React.FC<{ className?: string }> }[] = [
-    { id: 'markets', label: 'PİYASALAR', icon: Newspaper },
+    { id: 'home', label: 'ÖZET', icon: LayoutDashboard },
+    { id: 'markets', label: 'PİYASA', icon: Newspaper },
+    { id: 'portfolio', label: 'CÜZDAN', icon: Wallet },
     { id: 'analytics', label: 'ANALİZ', icon: Compass },
-    { id: 'portfolio', label: 'CÜZDANIM', icon: Wallet },
   ];
 
   return (
