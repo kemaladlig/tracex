@@ -32,43 +32,60 @@ interface Candle {
   high: number;
   low: number;
   close: number;
+  volume?: number;
 }
 
-export type ChartMode = 'candle' | 'heikin' | 'stepped';
+export type ChartMode = 'candle' | 'heikin' | 'volume';
 
 const DEFAULT_4H_CANDLES: Candle[] = [
-  { time: 1, open: 92800, high: 93400, low: 92500, close: 93200 },
-  { time: 2, open: 93200, high: 93900, low: 93000, close: 93700 },
-  { time: 3, open: 93700, high: 94200, low: 93400, close: 93600 },
-  { time: 4, open: 93600, high: 94100, low: 93200, close: 93950 },
-  { time: 5, open: 93950, high: 94600, low: 93800, close: 94400 },
-  { time: 6, open: 94400, high: 94900, low: 94100, close: 94300 },
-  { time: 7, open: 94300, high: 95200, low: 94200, close: 95050 },
-  { time: 8, open: 95050, high: 95600, low: 94800, close: 95400 },
-  { time: 9, open: 95400, high: 95800, low: 94900, close: 95100 },
-  { time: 10, open: 95100, high: 95700, low: 94850, close: 95550 },
-  { time: 11, open: 95550, high: 96100, low: 95300, close: 95900 },
-  { time: 12, open: 95900, high: 96400, low: 95600, close: 96250 },
-  { time: 13, open: 96250, high: 96800, low: 96000, close: 96500 },
-  { time: 14, open: 96500, high: 96950, low: 96200, close: 96400 },
-  { time: 15, open: 96400, high: 97100, low: 96300, close: 96950 },
-  { time: 16, open: 96950, high: 97500, low: 96700, close: 97200 },
-  { time: 17, open: 97200, high: 97600, low: 96900, close: 97100 },
-  { time: 18, open: 97100, high: 97400, low: 96600, close: 96800 },
-  { time: 19, open: 96800, high: 97300, low: 96500, close: 97150 },
-  { time: 20, open: 97150, high: 97700, low: 96900, close: 97450 },
-  { time: 21, open: 97450, high: 97900, low: 97200, close: 97600 },
-  { time: 22, open: 97600, high: 98100, low: 97400, close: 97850 },
-  { time: 23, open: 97850, high: 98400, low: 97600, close: 98100 },
-  { time: 24, open: 98100, high: 98600, low: 97800, close: 98000 },
-  { time: 25, open: 98000, high: 98300, low: 97400, close: 97650 },
-  { time: 26, open: 97650, high: 97950, low: 97100, close: 97300 },
-  { time: 27, open: 97300, high: 97800, low: 96900, close: 97550 },
-  { time: 28, open: 97550, high: 98200, low: 97400, close: 98000 },
-  { time: 29, open: 98000, high: 98500, low: 97700, close: 98350 },
-  { time: 30, open: 98350, high: 98800, low: 98100, close: 98500 },
-  { time: 31, open: 98500, high: 99100, low: 98300, close: 98850 },
-  { time: 32, open: 98850, high: 99400, low: 98600, close: 99100 },
+  { time: 1, open: 91400, high: 92100, low: 91100, close: 91800, volume: 3100 },
+  { time: 2, open: 91800, high: 92400, low: 91500, close: 92200, volume: 2800 },
+  { time: 3, open: 92200, high: 92800, low: 92000, close: 92500, volume: 3400 },
+  { time: 4, open: 92500, high: 93200, low: 92300, close: 93000, volume: 4200 },
+  { time: 5, open: 93000, high: 93600, low: 92700, close: 93300, volume: 2900 },
+  { time: 6, open: 93300, high: 93900, low: 93100, close: 93700, volume: 3600 },
+  { time: 7, open: 93700, high: 94200, low: 93400, close: 93600, volume: 2200 },
+  { time: 8, open: 93600, high: 94100, low: 93200, close: 93950, volume: 3100 },
+  { time: 9, open: 93950, high: 94600, low: 93800, close: 94400, volume: 4800 },
+  { time: 10, open: 94400, high: 94900, low: 94100, close: 94300, volume: 2600 },
+  { time: 11, open: 94300, high: 95200, low: 94200, close: 95050, volume: 5100 },
+  { time: 12, open: 95050, high: 95600, low: 94800, close: 95400, volume: 3900 },
+  { time: 13, open: 95400, high: 95800, low: 94900, close: 95100, volume: 2700 },
+  { time: 14, open: 95100, high: 95700, low: 94850, close: 95550, volume: 3300 },
+  { time: 15, open: 95550, high: 96100, low: 95300, close: 95900, volume: 4100 },
+  { time: 16, open: 95900, high: 96400, low: 95600, close: 96250, volume: 3700 },
+  { time: 17, open: 96250, high: 96800, low: 96000, close: 96500, volume: 3500 },
+  { time: 18, open: 96500, high: 96950, low: 96200, close: 96400, volume: 2400 },
+  { time: 19, open: 96400, high: 97100, low: 96300, close: 96950, volume: 4600 },
+  { time: 20, open: 96950, high: 97500, low: 96700, close: 97200, volume: 5200 },
+  { time: 21, open: 97200, high: 97600, low: 96900, close: 97100, volume: 2900 },
+  { time: 22, open: 97100, high: 97400, low: 96600, close: 96800, volume: 3100 },
+  { time: 23, open: 96800, high: 97300, low: 96500, close: 97150, volume: 3600 },
+  { time: 24, open: 97150, high: 97700, low: 96900, close: 97450, volume: 4300 },
+  { time: 25, open: 97450, high: 97900, low: 97200, close: 97600, volume: 3800 },
+  { time: 26, open: 97600, high: 98100, low: 97400, close: 97850, volume: 4100 },
+  { time: 27, open: 97850, high: 98400, low: 97600, close: 98100, volume: 4900 },
+  { time: 28, open: 98100, high: 98600, low: 97800, close: 98000, volume: 3300 },
+  { time: 29, open: 98000, high: 98300, low: 97400, close: 97650, volume: 2800 },
+  { time: 30, open: 97650, high: 97950, low: 97100, close: 97300, volume: 3200 },
+  { time: 31, open: 97300, high: 97800, low: 96900, close: 97550, volume: 3700 },
+  { time: 32, open: 97550, high: 98200, low: 97400, close: 98000, volume: 4500 },
+  { time: 33, open: 98000, high: 98500, low: 97700, close: 98350, volume: 4200 },
+  { time: 34, open: 98350, high: 98800, low: 98100, close: 98500, volume: 4700 },
+  { time: 35, open: 98500, high: 99100, low: 98300, close: 98850, volume: 5400 },
+  { time: 36, open: 98850, high: 99400, low: 98600, close: 99100, volume: 6200 },
+  { time: 37, open: 99100, high: 99600, low: 98800, close: 99300, volume: 5800 },
+  { time: 38, open: 99300, high: 99800, low: 99000, close: 99200, volume: 4100 },
+  { time: 39, open: 99200, high: 99500, low: 98600, close: 98900, volume: 4900 },
+  { time: 40, open: 98900, high: 99200, low: 98300, close: 98600, volume: 4400 },
+  { time: 41, open: 98600, high: 98900, low: 98100, close: 98400, volume: 3600 },
+  { time: 42, open: 98400, high: 98800, low: 97900, close: 98200, volume: 3900 },
+  { time: 43, open: 98200, high: 98600, low: 97800, close: 98100, volume: 3200 },
+  { time: 44, open: 98100, high: 98500, low: 97700, close: 98300, volume: 3500 },
+  { time: 45, open: 98300, high: 98900, low: 98000, close: 98700, volume: 4800 },
+  { time: 46, open: 98700, high: 99300, low: 98500, close: 99000, volume: 5300 },
+  { time: 47, open: 99000, high: 99500, low: 98800, close: 99250, volume: 5100 },
+  { time: 48, open: 99250, high: 99800, low: 99000, close: 99600, volume: 6800 },
 ];
 
 export const HomeDashboardView: React.FC = () => {
@@ -89,10 +106,10 @@ export const HomeDashboardView: React.FC = () => {
     return saved !== null ? saved === 'true' : true;
   });
 
-  // 3-Mode Chart Style Preference: 'candle' (Klasik) | 'heikin' (Trend) | 'stepped' (Basamak)
+  // 3-Mode Chart Style Preference: 'candle' (Klasik) | 'heikin' (Trend) | 'volume' (Hacim)
   const [chartMode, setChartMode] = useState<ChartMode>(() => {
     const saved = localStorage.getItem('tracex_home_chart_mode');
-    if (saved === 'candle' || saved === 'heikin' || saved === 'stepped') {
+    if (saved === 'candle' || saved === 'heikin' || saved === 'volume') {
       return saved;
     }
     return 'candle';
@@ -140,11 +157,11 @@ export const HomeDashboardView: React.FC = () => {
     return 58.4;
   });
 
-  // Fetch 32 candles of 4-hour Klines for BTC from Binance Public API (~5.3 days range)
+  // Fetch 48 candles of 4-hour Klines for BTC from Binance Public API (~8 days range)
   useEffect(() => {
-    fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=4h&limit=32')
+    fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=4h&limit=48')
       .then((res) => res.json())
-      .then((data: [number, string, string, string, string][]) => {
+      .then((data: [number, string, string, string, string, string][]) => {
         if (Array.isArray(data) && data.length > 0) {
           const parsed: Candle[] = data.map((d) => ({
             time: d[0],
@@ -152,6 +169,7 @@ export const HomeDashboardView: React.FC = () => {
             high: parseFloat(d[2]),
             low: parseFloat(d[3]),
             close: parseFloat(d[4]),
+            volume: parseFloat(d[5]) || 3000,
           }));
           setCandles4h(parsed);
           try {
@@ -245,14 +263,10 @@ export const HomeDashboardView: React.FC = () => {
   // Geometric Calculations for All 3 Chart Modes (360x190 Viewport)
   const {
     candleElements,
+    volumeBars,
     minPrice,
     maxPrice,
     currentPriceY,
-    baselineY,
-    avgPrice,
-    steppedPathD,
-    steppedAreaD,
-    steppedPoints,
   } = useMemo(() => {
     const width = 360;
     const height = 190;
@@ -264,14 +278,10 @@ export const HomeDashboardView: React.FC = () => {
     if (liveCandles.length === 0) {
       return {
         candleElements: [],
+        volumeBars: [],
         minPrice: 0,
         maxPrice: 0,
         currentPriceY: height / 2,
-        baselineY: height / 2,
-        avgPrice: 0,
-        steppedPathD: '',
-        steppedAreaD: '',
-        steppedPoints: [],
       };
     }
 
@@ -291,11 +301,20 @@ export const HomeDashboardView: React.FC = () => {
     const chartWidth = width - padLeft - padRight;
     const chartHeight = height - padTop - padBottom;
     const step = chartWidth / liveCandles.length;
-    const candleWidth = Math.max(step * 0.65, 4.5);
 
-    const getY = (val: number) => padTop + ((effMax - val) / effRange) * chartHeight;
+    // Volume calculations
+    const volumes = liveCandles.map((c) => c.volume || 3000);
+    const minVol = Math.min(...volumes);
+    const maxVol = Math.max(...volumes);
+    const volRange = maxVol - minVol || 1;
 
-    // 1 & 2: Candlestick & Heikin-Ashi Elements
+    const isVolMode = chartMode === 'volume';
+    // In volume mode, candles sit in upper 128px, leaving bottom 30px for volume bars
+    const effectiveChartHeight = isVolMode ? 128 : chartHeight;
+
+    const getY = (val: number) => padTop + ((effMax - val) / effRange) * effectiveChartHeight;
+
+    // 1, 2, 3: Candlestick Elements (Width modulated by volume in volume mode)
     const elements = activeDataset.map((c, i) => {
       const cx = padLeft + (i + 0.5) * step;
       const yHigh = getY(c.high);
@@ -306,58 +325,58 @@ export const HomeDashboardView: React.FC = () => {
       const top = Math.min(yOpen, yClose);
       const h = Math.max(Math.abs(yClose - yOpen), 2.5);
 
+      const rawVol = c.volume || 3000;
+      const normVol = (rawVol - minVol) / volRange;
+      const cWidth = isVolMode
+        ? Math.max(step * 0.45 + normVol * (step * 0.50), 2.6)
+        : Math.max(step * 0.65, 3.6);
+
       return {
         key: c.time || i,
         cx,
         yHigh,
         yLow,
-        xRect: cx - candleWidth / 2,
+        xRect: cx - cWidth / 2,
         yRect: top,
-        width: candleWidth,
+        width: cWidth,
         height: h,
         isBull,
+        volume: rawVol,
+      };
+    });
+
+    // Volume histogram bars for volume mode
+    const volBars = liveCandles.map((c, i) => {
+      const cx = padLeft + (i + 0.5) * step;
+      const rawVol = c.volume || 3000;
+      const normVol = (rawVol - minVol) / volRange;
+      const barH = Math.max(normVol * 24 + 3, 3);
+      const bottomY = height - padBottom;
+      const barY = bottomY - barH;
+      const isBull = c.close >= c.open;
+      const barW = Math.max(step * 0.72, 2.6);
+
+      return {
+        key: c.time || i,
+        cx,
+        x: cx - barW / 2,
+        y: barY,
+        width: barW,
+        height: barH,
+        isBull,
+        volume: rawVol,
       };
     });
 
     const lastClose = liveCandles[liveCandles.length - 1].close;
     const curY = getY(lastClose);
 
-    // 3: Stepped-Area Baseline Calculations
-    const sum = liveCandles.reduce((acc, c) => acc + c.close, 0);
-    const mean = sum / liveCandles.length;
-    const bLineY = getY(mean);
-
-    // Build the stepped staircase coordinates
-    let stepPath = '';
-    const points: { x: number; y: number; price: number }[] = [];
-
-    liveCandles.forEach((c, i) => {
-      const x1 = padLeft + i * step;
-      const x2 = padLeft + (i + 1) * step;
-      const y = getY(c.close);
-      points.push({ x: (x1 + x2) / 2, y, price: c.close });
-
-      if (i === 0) {
-        stepPath += `M ${x1.toFixed(1)},${y.toFixed(1)} H ${x2.toFixed(1)}`;
-      } else {
-        stepPath += ` V ${y.toFixed(1)} H ${x2.toFixed(1)}`;
-      }
-    });
-
-    const bottomY = height - padBottom;
-    const startX = padLeft;
-    const stepArea = `${stepPath} V ${bottomY.toFixed(1)} H ${startX.toFixed(1)} Z`;
-
     return {
       candleElements: elements,
+      volumeBars: volBars,
       minPrice: min,
       maxPrice: max,
       currentPriceY: curY,
-      baselineY: bLineY,
-      avgPrice: mean,
-      steppedPathD: stepPath,
-      steppedAreaD: stepArea,
-      steppedPoints: points,
     };
   }, [liveCandles, heikinCandles, chartMode]);
 
@@ -575,102 +594,75 @@ export const HomeDashboardView: React.FC = () => {
                 ${Math.round(btcPriceUSD).toLocaleString()}
               </text>
 
-              {/* MODE 3: KADEMELİ BASAMAK (STEPPED-AREA) */}
-              {chartMode === 'stepped' && (
+              {/* MODE 3: HACİM AĞIRLIKLI VE HACİM HİSTOGRAMI (VOLUME-WEIGHTED) */}
+              {chartMode === 'volume' && (
                 <>
-                  <defs>
-                    <linearGradient id="steppedGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop
-                        offset="0%"
-                        stopColor={btcIsPositive ? '#16a34a' : '#dc2626'}
-                        stopOpacity="0.32"
-                      />
-                      <stop
-                        offset="100%"
-                        stopColor={btcIsPositive ? '#16a34a' : '#dc2626'}
-                        stopOpacity="0.02"
-                      />
-                    </linearGradient>
-                  </defs>
-
-                  {/* Shaded Area Below Steps */}
-                  <path d={steppedAreaD} fill="url(#steppedGrad)" />
-
-                  {/* 5-Day Period Mean Baseline */}
+                  {/* Subtle Separator for Bottom Volume Section */}
                   <line
                     x1="8"
-                    y1={baselineY}
+                    y1="145"
                     x2="294"
-                    y2={baselineY}
+                    y2="145"
                     stroke="#1c1917"
-                    strokeWidth="1.5"
-                    strokeDasharray="4 4"
-                    strokeOpacity="0.38"
+                    strokeWidth="1"
+                    strokeDasharray="2 2"
+                    strokeOpacity="0.2"
                   />
-                  {/* Baseline Stamp */}
                   <text
                     x="12"
-                    y={baselineY - 4}
+                    y="153"
                     fill="#78716c"
-                    fontSize="7.5"
+                    fontSize="6.5"
                     fontWeight="bold"
                     fontFamily="monospace"
                   >
-                    ORTALAMA: ${Math.round(avgPrice).toLocaleString()}
+                    HACİM AKIŞI
                   </text>
 
-                  {/* Bold Stepped Staircase Line */}
-                  <path
-                    d={steppedPathD}
-                    fill="none"
-                    stroke={btcIsPositive ? '#16a34a' : '#dc2626'}
-                    strokeWidth="2.8"
-                    strokeLinecap="square"
-                    strokeLinejoin="miter"
-                  />
-
-                  {/* Step Level Dots on Key Breaks */}
-                  {steppedPoints.map((pt, idx) => (
-                    <circle
-                      key={idx}
-                      cx={pt.x}
-                      cy={pt.y}
-                      r="2"
-                      fill="#1c1917"
-                      stroke="#ffffff"
-                      strokeWidth="1"
+                  {/* Base Volume Histogram Bars */}
+                  {volumeBars.map((vb) => (
+                    <rect
+                      key={vb.key}
+                      x={vb.x}
+                      y={vb.y}
+                      width={vb.width}
+                      height={vb.height}
+                      fill={vb.isBull ? '#16a34a' : '#dc2626'}
+                      fillOpacity="0.45"
+                      stroke="#1c1917"
+                      strokeWidth="0.75"
+                      rx="0.5"
                     />
                   ))}
                 </>
               )}
 
-              {/* MODES 1 & 2: CANDLESTICK & HEIKIN-ASHI */}
-              {(chartMode === 'candle' || chartMode === 'heikin') &&
-                candleElements.map((el) => (
-                  <g key={el.key}>
-                    {/* Candle Wick (High to Low) */}
-                    <line
-                      x1={el.cx}
-                      y1={el.yHigh}
-                      x2={el.cx}
-                      y2={el.yLow}
-                      stroke="#1c1917"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                    />
-                    {/* Candle Body (Open to Close) */}
-                    <rect
-                      x={el.xRect}
-                      y={el.yRect}
-                      width={el.width}
-                      height={el.height}
-                      fill={el.isBull ? '#16a34a' : '#dc2626'}
-                      stroke="#1c1917"
-                      strokeWidth="1.5"
-                      rx="1"
-                    />
-                  </g>
-                ))}
+              {/* CANDLESTICKS (Classic, Heikin-Ashi, or Volume-Modulated) */}
+              {candleElements.map((el) => (
+                <g key={el.key}>
+                  {/* Candle Wick (High to Low) */}
+                  <line
+                    x1={el.cx}
+                    y1={el.yHigh}
+                    x2={el.cx}
+                    y2={el.yLow}
+                    stroke="#1c1917"
+                    strokeWidth="1.25"
+                    strokeLinecap="round"
+                  />
+                  {/* Candle Body (Open to Close) */}
+                  <rect
+                    x={el.xRect}
+                    y={el.yRect}
+                    width={el.width}
+                    height={el.height}
+                    fill={el.isBull ? '#16a34a' : '#dc2626'}
+                    stroke="#1c1917"
+                    strokeWidth="1.25"
+                    rx="0.75"
+                  />
+                </g>
+              ))}
             </svg>
           </div>
         </div>
@@ -678,9 +670,9 @@ export const HomeDashboardView: React.FC = () => {
         {/* Footer: Dynamic Mode Label & 3-Mode Tactile Toggle Switch */}
         <div className="flex items-center justify-between pt-1 border-t border-stone-900/10 gap-2">
           <span className="text-[10px] text-stone-600 font-bold uppercase truncate">
-            {chartMode === 'candle' && '4S KLASİK MUM // 32 PERİYOT'}
+            {chartMode === 'candle' && '4S KLASİK MUM // 48 PERİYOT'}
             {chartMode === 'heikin' && '4S HEIKIN-ASHI // TREND AKIŞI'}
-            {chartMode === 'stepped' && '4S KADEMELİ BASAMAK // BASELINE'}
+            {chartMode === 'volume' && '4S HACİM AĞIRLIKLI // 48 PERİYOT'}
           </span>
 
           <div className="flex items-center bg-stone-200/90 p-0.5 rounded border border-stone-900 shadow-hard-xs shrink-0">
@@ -723,16 +715,16 @@ export const HomeDashboardView: React.FC = () => {
               onClick={(e) => {
                 e.stopPropagation();
                 triggerHaptic('light');
-                setChartMode('stepped');
-                localStorage.setItem('tracex_home_chart_mode', 'stepped');
+                setChartMode('volume');
+                localStorage.setItem('tracex_home_chart_mode', 'volume');
               }}
               className={`px-2 py-0.5 text-[9px] font-black rounded transition-all cursor-pointer ${
-                chartMode === 'stepped'
+                chartMode === 'volume'
                   ? 'bg-amber-300 text-stone-900 border border-stone-900 shadow-hard-xs'
                   : 'text-stone-700 hover:text-stone-900'
               }`}
             >
-              BASAMAK
+              HACİM
             </button>
           </div>
         </div>
