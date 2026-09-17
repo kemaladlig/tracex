@@ -595,13 +595,12 @@ export const DetailChartModal: React.FC = () => {
             {base.substring(0, 3)}
           </div>
           <div className="min-w-0">
-            <div className="flex items-baseline gap-1.5 truncate">
-              <h2 className="text-base font-black text-stone-900 tracking-tight">{base}</h2>
+            <div className="flex items-baseline gap-1 truncate">
+              <h2 className="text-base sm:text-lg font-black text-stone-900 tracking-tight">{base}</h2>
               <span className="text-xs font-bold text-stone-500 tracking-wide">
-                // {quote}
+                / {quote}
               </span>
             </div>
-            <p className="text-[10px] text-stone-600 font-bold tracking-tight">BİNANCE CANLI GRAFİK</p>
           </div>
         </div>
 

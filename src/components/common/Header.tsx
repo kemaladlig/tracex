@@ -32,7 +32,7 @@ export const Header: React.FC = () => {
         <div className="flex items-center justify-between max-w-lg mx-auto">
           {/* Brand Stamp */}
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-md bg-stone-900 text-amber-300 border-2 border-stone-900 flex items-center justify-center font-black text-sm shadow-hard-sm tracking-tighter">
+            <div className="w-8 h-8 rounded-md bg-stone-900 text-amber-300 border-2 border-stone-900 flex items-center justify-center font-black text-sm shadow-hard-sm tracking-tighter shrink-0">
               TX
             </div>
             <div>
@@ -43,9 +43,26 @@ export const Header: React.FC = () => {
                 <span className="text-[9px] font-bold uppercase tracking-widest bg-amber-200 border border-stone-900 px-1 py-0.2 rounded-xs">
                   V2.5
                 </span>
+                {/* Minimal live dot indicator: no box, no text */}
+                <span
+                  title={
+                    connectionStatus === 'connected'
+                      ? 'Canlı Akış Aktif'
+                      : connectionStatus === 'connecting'
+                      ? 'Bağlantı Kuruluyor...'
+                      : 'Bağlantı Kesildi'
+                  }
+                  className={`inline-block w-2 h-2 rounded-full border border-stone-900 shrink-0 ${
+                    connectionStatus === 'connected'
+                      ? 'bg-emerald-500 animate-pulse'
+                      : connectionStatus === 'connecting'
+                      ? 'bg-amber-400 animate-pulse'
+                      : 'bg-rose-500'
+                  }`}
+                />
               </div>
               <p className="text-[10px] text-stone-600 font-medium -mt-0.5">
-                CANLI PİYASA & PORTFÖY
+                PİYASA & PORTFÖY
               </p>
             </div>
           </div>
@@ -57,9 +74,9 @@ export const Header: React.FC = () => {
               <button
                 onClick={handleInstallClick}
                 title="TraceX'i Ana Ekrana Ekle / İndir"
-                className="flex items-center justify-center p-1.5 rounded-md border-2 border-stone-900 bg-amber-300 hover:bg-amber-400 text-stone-900 shadow-hard-xs btn-hard cursor-pointer"
+                className="flex items-center justify-center p-2 rounded-md border-2 border-stone-900 bg-amber-300 hover:bg-amber-400 text-stone-900 shadow-hard-xs btn-hard cursor-pointer"
               >
-                <Download className="w-3.5 h-3.5 stroke-[3]" />
+                <Download className="w-4 h-4 stroke-[3]" />
               </button>
             )}
 
@@ -68,28 +85,28 @@ export const Header: React.FC = () => {
               <button
                 onClick={toggleHideBalances}
                 title={hideBalances ? 'Bakiyeleri Göster' : 'Bakiyeleri Gizle'}
-                className={`flex items-center justify-center p-1.5 rounded-md border-2 border-stone-900 shadow-hard-xs btn-hard cursor-pointer ${
+                className={`flex items-center justify-center p-2 rounded-md border-2 border-stone-900 shadow-hard-xs btn-hard cursor-pointer ${
                   hideBalances
                     ? 'bg-amber-300 text-stone-900'
                     : 'bg-white text-stone-800'
                 }`}
               >
                 {hideBalances ? (
-                  <EyeOff className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <EyeOff className="w-4 h-4 stroke-[2.5]" />
                 ) : (
-                  <Eye className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <Eye className="w-4 h-4 stroke-[2.5]" />
                 )}
               </button>
             )}
 
-            {/* Currency Segmented Switch - USD ($) vs TRY (₺) */}
+            {/* Enlarged Currency Segmented Switch - USD ($) vs TRY (₺) */}
             <div
-              className="flex items-center bg-white border-2 border-stone-900 rounded-md p-0.5 shadow-hard-xs"
+              className="flex items-center bg-white border-2 border-stone-900 rounded-md p-0.5 shadow-hard-sm"
               title={`Aktif Para Birimi: ${currency === 'TRY' ? 'Türk Lirası (₺)' : 'Amerikan Doları ($)'}`}
             >
               <button
                 onClick={() => setCurrency('USD')}
-                className={`px-2 py-0.5 text-xs font-black rounded-xs transition-all cursor-pointer ${
+                className={`px-3 py-1 text-sm font-black rounded-xs transition-all cursor-pointer ${
                   currency === 'USD'
                     ? 'bg-stone-900 text-amber-300 shadow-xs'
                     : 'text-stone-500 hover:text-stone-900'
@@ -99,7 +116,7 @@ export const Header: React.FC = () => {
               </button>
               <button
                 onClick={() => setCurrency('TRY')}
-                className={`px-2 py-0.5 text-xs font-black rounded-xs transition-all cursor-pointer ${
+                className={`px-3 py-1 text-sm font-black rounded-xs transition-all cursor-pointer ${
                   currency === 'TRY'
                     ? 'bg-stone-900 text-amber-300 shadow-xs'
                     : 'text-stone-500 hover:text-stone-900'
@@ -107,25 +124,6 @@ export const Header: React.FC = () => {
               >
                 ₺
               </button>
-            </div>
-
-            {/* Minimal Connection Status Indicator */}
-            <div
-              title={`Bağlantı: ${connectionStatus === 'connected' ? 'Canlı WebSocket Akışı' : 'Bağlantı Yok'}`}
-              className="flex items-center gap-1.5 px-2 py-1 rounded-md border-2 border-stone-900 bg-white shadow-hard-xs"
-            >
-              <span
-                className={`w-2 h-2 rounded-full border border-stone-900 shrink-0 ${
-                  connectionStatus === 'connected'
-                    ? 'bg-emerald-500 animate-pulse'
-                    : connectionStatus === 'connecting'
-                    ? 'bg-amber-400 animate-pulse'
-                    : 'bg-rose-500'
-                }`}
-              />
-              <span className="text-[10px] font-black text-stone-900 tracking-wider">
-                {connectionStatus === 'connected' ? 'CANLI' : connectionStatus === 'connecting' ? '...' : 'KOPUK'}
-              </span>
             </div>
           </div>
         </div>
