@@ -8,7 +8,6 @@ import {
   Plus,
   PieChart,
   TrendingUp,
-  ArrowRightLeft,
   Eye,
   EyeOff,
   ChevronDown,
@@ -99,11 +98,6 @@ export const HomeDashboardView: React.FC = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   // Default wallet collapsible state: collapsed by default for public privacy
   const [isWalletExpanded, setIsWalletExpanded] = useState<boolean>(false);
-  // Default wallet currency preference: User wants TRY (₺) 95% of the time, can flip on tap
-  const [walletPrimaryTRY, setWalletPrimaryTRY] = useState<boolean>(() => {
-    const saved = localStorage.getItem('tracex_home_wallet_pref');
-    return saved !== null ? saved === 'true' : true;
-  });
 
   // 3-Mode Chart Style Preference: 'candle' (Klasik) | 'heikin' (Trend) | 'volume' (Hacim)
   const [chartMode, setChartMode] = useState<ChartMode>(() => {
@@ -200,16 +194,6 @@ export const HomeDashboardView: React.FC = () => {
       })
       .catch(() => {});
   }, []);
-
-  const toggleWalletCurrency = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    triggerHaptic('light');
-    setWalletPrimaryTRY((prev) => {
-      const next = !prev;
-      localStorage.setItem('tracex_home_wallet_pref', String(next));
-      return next;
-    });
-  };
 
   // BTC Live Focus Data
   const btcTicker = tickers['BTCUSDT'];
@@ -392,7 +376,7 @@ export const HomeDashboardView: React.FC = () => {
   }, [enrichedHoldings]);
 
   return (
-    <div className="flex-1 w-full px-4 py-3 space-y-3 pb-8 font-mono">
+    <div className="flex-1 w-full px-4 py-3 space-y-3 pb-36 sm:pb-40 font-mono">
       {/* 1. HERO COCKPIT: BITCOIN PRICE, 4H CANDLESTICK CHART & MARKET MODE */}
       <div
         onClick={() => {
@@ -782,7 +766,7 @@ export const HomeDashboardView: React.FC = () => {
                     </span>
                   </div>
 
-                  {/* Actions: Privacy Toggle & Currency Swap Quick Toggle */}
+                  {/* Actions: Privacy Toggle */}
                   <div className="flex items-center gap-1.5">
                     <button
                       type="button"
@@ -804,36 +788,20 @@ export const HomeDashboardView: React.FC = () => {
                         <Eye className="w-3.5 h-3.5 stroke-[2.5]" />
                       )}
                     </button>
-
-                    <button
-                      type="button"
-                      onClick={toggleWalletCurrency}
-                      title="Birincil Para Birimini Değiştir (₺ / $)"
-                      className="flex items-center gap-1 text-[10px] font-black px-1.5 py-1 rounded bg-[#ede8dd] border border-stone-900 hover:bg-stone-200 shadow-hard-xs transition-colors cursor-pointer"
-                    >
-                      <span>{walletPrimaryTRY ? '₺ > $' : '$ > ₺'}</span>
-                      <ArrowRightLeft className="w-2.5 h-2.5" />
-                    </button>
                   </div>
                 </div>
 
-                {/* Primary & Secondary Clean Balances */}
+                {/* Primary TRY & Secondary USD Clean Balances */}
                 <div className="py-2.5">
                   <div className="text-3xl sm:text-4xl font-black text-stone-900 tracking-tight">
                     {hideBalances
                       ? '••••••••'
-                      : walletPrimaryTRY
-                      ? formatCurrency(totalUSD, 'TRY', tryRate, 0)
-                      : formatCurrency(totalUSD, 'USD', 1, 0)}
+                      : formatCurrency(totalUSD, 'TRY', tryRate, 0)}
                   </div>
                   <p className="text-sm font-bold text-stone-500 mt-1">
                     {hideBalances
                       ? '••••••'
-                      : `≈ ${
-                          walletPrimaryTRY
-                            ? formatCurrency(totalUSD, 'USD', 1, 0)
-                            : formatCurrency(totalUSD, 'TRY', tryRate, 0)
-                        }`}
+                      : `≈ ${formatCurrency(totalUSD, 'USD', 1, 0)}`}
                   </p>
                 </div>
               </div>
@@ -927,22 +895,18 @@ export const HomeDashboardView: React.FC = () => {
                           </div>
                         </div>
 
-                        {/* Right: Holding Total Value */}
+                        {/* Right: Holding Total Value in TRY with USD conversion */}
                         <div className="text-right shrink-0">
                           <div className="text-xs font-black text-stone-900">
                             {hideBalances
                               ? '••••••'
-                              : walletPrimaryTRY
-                              ? formatCurrency(item.valUSD, 'TRY', tryRate)
-                              : formatCurrency(item.valUSD, 'USD', 1)}
+                              : formatCurrency(item.valUSD, 'TRY', tryRate)}
                           </div>
                           <div className="flex items-center justify-end gap-1.5 mt-0.5">
                             <span className="text-[10px] font-bold text-stone-500">
                               {hideBalances
                                 ? '••'
-                                : walletPrimaryTRY
-                                ? `≈ ${formatCurrency(item.valUSD, 'USD', 1)}`
-                                : `≈ ${formatCurrency(item.valUSD, 'TRY', tryRate)}`}
+                                : `≈ ${formatCurrency(item.valUSD, 'USD', 1)}`}
                             </span>
                             <div className="w-10 h-1.5 bg-stone-200 border border-stone-900 rounded-full overflow-hidden">
                               <div

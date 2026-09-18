@@ -45,10 +45,6 @@ export const MarketItem: React.FC<MarketItemProps> = ({
   const watchlist = useCryptoStore((state) => state.watchlist);
   const toggleWatchlist = useCryptoStore((state) => state.toggleWatchlist);
   const isFavorite = watchlist.includes(symbol);
-  const currency = useCryptoStore((state) => state.currency);
-  const tryRate = useCryptoStore((state) => state.tryRate);
-
-  const activeRate = currency === 'TRY' ? tryRate : 1;
 
   const [flashClass, setFlashClass] = useState<string>('');
   const prevPriceRef = useRef<number | undefined>(ticker?.price);
@@ -146,7 +142,7 @@ export const MarketItem: React.FC<MarketItemProps> = ({
             className={`font-mono font-black text-base text-stone-900 tracking-tight transition-all duration-300 px-1 rounded ${flashClass}`}
           >
             {ticker ? (
-              formatCurrency(ticker.price, currency, activeRate)
+              formatCurrency(ticker.price, 'USD', 1)
             ) : (
               <span className="text-xs text-stone-400 font-mono">Yükleniyor...</span>
             )}

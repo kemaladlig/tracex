@@ -23,10 +23,7 @@ export const PortfolioItem: React.FC<PortfolioItemProps> = ({
   const removePortfolioAsset = useCryptoStore((state) => state.removePortfolioAsset);
   const setSelectedCoinForChart = useCryptoStore((state) => state.setSelectedCoinForChart);
   const hideBalances = useCryptoStore((state) => state.hideBalances);
-  const currency = useCryptoStore((state) => state.currency);
   const tryRate = useCryptoStore((state) => state.tryRate);
-
-  const activeRate = currency === 'TRY' ? tryRate : 1;
 
   const currentPrice = ticker?.price ?? asset.buyPrice;
   const currentValue = asset.amount * currentPrice;
@@ -53,7 +50,7 @@ export const PortfolioItem: React.FC<PortfolioItemProps> = ({
       style={{ '--stagger-idx': Math.min(index, 8) } as React.CSSProperties}
       className="relative flex flex-col p-3.5 mb-3 bg-white border-2 border-stone-900 rounded-lg shadow-hard font-mono transition-all duration-150 stagger-item"
     >
-      {/* Top Row: Symbol, Quantity & Current Total Value */}
+      {/* Top Row: Symbol, Quantity & Current Total Value (TRY) */}
       <div className="flex items-center justify-between pb-2.5 border-b-2 border-stone-900/40">
         <div className="flex items-center gap-2.5">
           <div className="w-10 h-10 rounded-md bg-stone-900 text-amber-300 border-2 border-stone-900 flex items-center justify-center font-black text-sm shadow-hard-sm">
@@ -72,24 +69,24 @@ export const PortfolioItem: React.FC<PortfolioItemProps> = ({
           </div>
         </div>
 
-        {/* Current Total Value */}
+        {/* Current Total Value in TRY with USD Unit Price */}
         <div className="text-right">
           <div className="text-base font-black text-stone-900 tracking-tight">
-            {hideBalances ? '••••••' : formatCurrency(currentValue, currency, activeRate)}
+            {hideBalances ? '••••••' : formatCurrency(currentValue, 'TRY', tryRate)}
           </div>
           <div className="text-[11px] text-stone-500 font-bold">
-            Birim: {ticker ? formatCurrency(currentPrice, currency, activeRate) : '...'}
+            Birim: {ticker ? formatCurrency(currentPrice, 'USD', 1) : '...'}
           </div>
         </div>
       </div>
 
-      {/* Middle Row: Cost & Net PnL (Only displayed in Detailed View) */}
+      {/* Middle Row: Cost (USD) & Net PnL (TRY) (Only displayed in Detailed View) */}
       {showPnL && (
         <div className="flex items-center justify-between py-2 border-b border-stone-200 animate-in fade-in duration-100">
           <div className="text-xs">
             <span className="text-[10px] text-stone-500 block uppercase font-bold">Ort. Alış Maliyeti</span>
             <span className="text-stone-900 font-bold">
-              {hideBalances ? '••••' : formatCurrency(asset.buyPrice, currency, activeRate)}
+              {hideBalances ? '••••' : formatCurrency(asset.buyPrice, 'USD', 1)}
             </span>
           </div>
 
@@ -104,7 +101,7 @@ export const PortfolioItem: React.FC<PortfolioItemProps> = ({
                 }`}
               >
                 {isProfit ? <ArrowUpRight className="w-3.5 h-3.5 stroke-[3]" /> : <ArrowDownRight className="w-3.5 h-3.5 stroke-[3]" />}
-                {formatCurrency(pnlAmount, currency, activeRate)} ({formatPercentage(pnlPercent)})
+                {formatCurrency(pnlAmount, 'TRY', tryRate)} ({formatPercentage(pnlPercent)})
               </span>
             )}
           </div>

@@ -15,8 +15,6 @@ export const Header: React.FC = () => {
   const connectionStatus = useCryptoStore((state) => state.connectionStatus);
   const hideBalances = useCryptoStore((state) => state.hideBalances);
   const toggleHideBalances = useCryptoStore((state) => state.toggleHideBalances);
-  const currency = useCryptoStore((state) => state.currency);
-  const setCurrency = useCryptoStore((state) => state.setCurrency);
   const activeTab = useCryptoStore((state) => state.activeTab);
 
   const { isInstallable, isStandalone, installApp } = usePWAInstall();
@@ -97,35 +95,6 @@ export const Header: React.FC = () => {
                   <Eye className="w-4 h-4 stroke-[2.5]" />
                 )}
               </button>
-            )}
-
-            {/* Currency Switch - Only displayed on Markets and Portfolio tabs where list conversions are needed */}
-            {(activeTab === 'markets' || activeTab === 'portfolio') && (
-              <div
-                className="flex items-center bg-white border-2 border-stone-900 rounded-md p-0.5 shadow-hard-sm"
-                title={`Aktif Para Birimi: ${currency === 'TRY' ? 'Türk Lirası (₺)' : 'Amerikan Doları ($)'}`}
-              >
-                <button
-                  onClick={() => setCurrency('USD')}
-                  className={`px-3 py-1 text-sm font-black rounded-xs transition-all cursor-pointer ${
-                    currency === 'USD'
-                      ? 'bg-stone-900 text-amber-300 shadow-xs'
-                      : 'text-stone-500 hover:text-stone-900'
-                  }`}
-                >
-                  $
-                </button>
-                <button
-                  onClick={() => setCurrency('TRY')}
-                  className={`px-3 py-1 text-sm font-black rounded-xs transition-all cursor-pointer ${
-                    currency === 'TRY'
-                      ? 'bg-stone-900 text-amber-300 shadow-xs'
-                      : 'text-stone-500 hover:text-stone-900'
-                  }`}
-                >
-                  ₺
-                </button>
-              </div>
             )}
           </div>
         </div>

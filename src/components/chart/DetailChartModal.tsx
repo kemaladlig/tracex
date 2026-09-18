@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useTransition } from 'react';
+import React, { useEffect, useRef, useState, useTransition, useCallback } from 'react';
 import {
   createChart,
   ColorType,
@@ -33,6 +33,7 @@ import {
   Tag,
   SlidersHorizontal,
   CandlestickChart,
+  TrendingUp,
 } from 'lucide-react';
 import { useCryptoStore } from '../../store/useCryptoStore';
 import { fetchHistoricalKlines } from '../../services/binanceApi';
@@ -65,6 +66,7 @@ const INTERVAL_SECONDS: Record<string, number> = {
 const ZOOM_STORAGE_KEY = 'tracex_chart_zoom_bars';
 const CHART_INTERVAL_KEY = 'tracex_chart_interval';
 const CHART_COST_LINE_KEY = 'tracex_chart_show_cost_line';
+const CHART_HIGH_LOW_KEY = 'tracex_chart_show_high_low';
 
 const calculateEMA = (data: { time: UTCTimestamp; close: number }[], period: number) => {
   if (data.length < period) return [];
@@ -124,10 +126,6 @@ export const DetailChartModal: React.FC = () => {
   const setSelectedSymbol = useCryptoStore((state) => state.setSelectedCoinForChart);
   const ticker = useCryptoStore((state) => (selectedSymbol ? state.tickers[selectedSymbol] : undefined));
   const portfolio = useCryptoStore((state) => state.portfolio);
-  const currency = useCryptoStore((state) => state.currency);
-  const tryRate = useCryptoStore((state) => state.tryRate);
-
-  const activeRate = currency === 'TRY' ? tryRate : 1;
   const userAsset = portfolio.find((a) => a.symbol === selectedSymbol);
 
   const [interval, setInterval] = useState<string>(() => {
@@ -159,6 +157,17 @@ export const DetailChartModal: React.FC = () => {
 
   const [showVolume, setShowVolume] = useState<boolean>(true);
   const [showEMA, setShowEMA] = useState<boolean>(false);
+  const [showHighLow, setShowHighLow] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem(CHART_HIGH_LOW_KEY);
+      if (saved !== null) {
+        return saved === 'true';
+      }
+    } catch {
+      // ignore
+    }
+    return true;
+  });
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [showCostLine, setShowCostLine] = useState<boolean>(() => {
     try {
@@ -171,6 +180,12 @@ export const DetailChartModal: React.FC = () => {
     }
     return false;
   });
+
+  const [visibleRangeStats, setVisibleRangeStats] = useState<{
+    high: number;
+    low: number;
+    changePct: number;
+  } | null>(null);
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -196,12 +211,110 @@ export const DetailChartModal: React.FC = () => {
   const emaSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const smaSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const costLineRef = useRef<PriceLineHandle | null>(null);
+  const highLineRef = useRef<PriceLineHandle | null>(null);
+  const lowLineRef = useRef<PriceLineHandle | null>(null);
 
   const rawCandlesRef = useRef<CandleItem[]>([]);
   const lastCandleRef = useRef<CandlestickData<UTCTimestamp> | null>(null);
   const lastAreaPointRef = useRef<AreaData<UTCTimestamp> | null>(null);
 
   const [, startTransition] = useTransition();
+
+  // Dynamic Visible High / Low Price Overlay update callback
+  const updateHighLowLines = useCallback(() => {
+    if (!chartRef.current || rawCandlesRef.current.length === 0) return;
+
+    const activeSeries =
+      chartTypeRef.current === 'volume'
+        ? volumeCandleSeriesRef.current
+        : chartTypeRef.current === 'area'
+        ? areaSeriesRef.current
+        : candleSeriesRef.current;
+
+    if (!activeSeries) return;
+
+    // Remove existing price lines cleanly
+    if (highLineRef.current) {
+      try {
+        candleSeriesRef.current?.removePriceLine(highLineRef.current);
+        areaSeriesRef.current?.removePriceLine(highLineRef.current);
+        volumeCandleSeriesRef.current?.removePriceLine(highLineRef.current);
+      } catch {
+        // ignore
+      }
+      highLineRef.current = null;
+    }
+    if (lowLineRef.current) {
+      try {
+        candleSeriesRef.current?.removePriceLine(lowLineRef.current);
+        areaSeriesRef.current?.removePriceLine(lowLineRef.current);
+        volumeCandleSeriesRef.current?.removePriceLine(lowLineRef.current);
+      } catch {
+        // ignore
+      }
+      lowLineRef.current = null;
+    }
+
+    if (!showHighLow) {
+      setVisibleRangeStats(null);
+      return;
+    }
+
+    const logicalRange = chartRef.current.timeScale().getVisibleLogicalRange();
+    const candles = rawCandlesRef.current;
+    if (!logicalRange || candles.length === 0) return;
+
+    const fromIndex = Math.max(0, Math.floor(logicalRange.from));
+    const toIndex = Math.min(candles.length - 1, Math.ceil(logicalRange.to));
+
+    if (fromIndex > toIndex || fromIndex >= candles.length) return;
+
+    const visibleSlice = candles.slice(fromIndex, toIndex + 1);
+    if (visibleSlice.length === 0) return;
+
+    let maxPrice = visibleSlice[0].high;
+    let minPrice = visibleSlice[0].low;
+
+    for (let i = 0; i < visibleSlice.length; i++) {
+      const c = visibleSlice[i];
+      if (c.high > maxPrice) maxPrice = c.high;
+      if (c.low < minPrice) minPrice = c.low;
+    }
+
+    const firstOpen = visibleSlice[0].open;
+    const lastClose = visibleSlice[visibleSlice.length - 1].close;
+    const changePct = firstOpen > 0 ? ((lastClose - firstOpen) / firstOpen) * 100 : 0;
+
+    setVisibleRangeStats({
+      high: maxPrice,
+      low: minPrice,
+      changePct,
+    });
+
+    try {
+      // Peak Price Line (Green dashed, numeric price on scale, strictly NO label text as requested)
+      highLineRef.current = activeSeries.createPriceLine({
+        price: maxPrice,
+        color: '#16a34a',
+        lineWidth: 1,
+        lineStyle: LineStyle.Dashed,
+        axisLabelVisible: true,
+        title: '',
+      });
+
+      // Low Price Line (Red dashed, numeric price on scale, strictly NO label text as requested)
+      lowLineRef.current = activeSeries.createPriceLine({
+        price: minPrice,
+        color: '#dc2626',
+        lineWidth: 1,
+        lineStyle: LineStyle.Dashed,
+        axisLabelVisible: true,
+        title: '',
+      });
+    } catch (err) {
+      console.warn('Error creating high/low price lines:', err);
+    }
+  }, [showHighLow]);
 
   // 1. Core Chart Lifecycle: ONLY rebuilds when selectedSymbol or interval changes
   useEffect(() => {
@@ -244,13 +357,14 @@ export const DetailChartModal: React.FC = () => {
 
     chartRef.current = chart;
 
-    // Track user zoom adjustments and persist visible bar span
+    // Track user zoom adjustments and update high/low price lines on visible range changes
     chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
       if (range) {
         const count = Math.round(range.to - range.from);
         if (count >= 10) {
           sessionStorage.setItem(ZOOM_STORAGE_KEY, String(count));
         }
+        updateHighLowLines();
       }
     });
 
@@ -299,21 +413,23 @@ export const DetailChartModal: React.FC = () => {
         lineColor: '#1c1917',
         topColor: 'rgba(217, 119, 6, 0.35)',
         bottomColor: 'rgba(217, 119, 6, 0.02)',
-        lineWidth: 3,
-        crosshairMarkerVisible: true,
-        crosshairMarkerRadius: 5,
-        crosshairMarkerBorderColor: '#1c1917',
-        crosshairMarkerBackgroundColor: '#d97706',
+        lineWidth: 2,
         visible: chartType === 'area',
       });
     } catch {
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-expect-error fallback
-      areaSeries = chart.addAreaSeries({ visible: chartType === 'area' });
+      areaSeries = chart.addAreaSeries({
+        lineColor: '#1c1917',
+        topColor: 'rgba(217, 119, 6, 0.35)',
+        bottomColor: 'rgba(217, 119, 6, 0.02)',
+        lineWidth: 2,
+        visible: chartType === 'area',
+      });
     }
     areaSeriesRef.current = areaSeries;
 
-    // Volume Series
+    // Volume Histogram Series
     try {
       volumeSeries = chart.addSeries(HistogramSeries, {
         priceFormat: { type: 'volume' },
@@ -321,23 +437,28 @@ export const DetailChartModal: React.FC = () => {
         visible: showVolume,
       });
       volumeSeries.priceScale().applyOptions({
-        scaleMargins: {
-          top: 0.82,
-          bottom: 0,
-        },
+        scaleMargins: { top: 0.8, bottom: 0 },
       });
-      volumeSeriesRef.current = volumeSeries;
-    } catch (e) {
-      console.warn('Volume series fallback:', e);
+    } catch {
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-expect-error fallback
+      volumeSeries = chart.addHistogramSeries({
+        priceFormat: { type: 'volume' },
+        priceScaleId: '',
+        visible: showVolume,
+      });
+      volumeSeries?.priceScale().applyOptions({
+        scaleMargins: { top: 0.8, bottom: 0 },
+      });
     }
+    volumeSeriesRef.current = volumeSeries;
 
-    // EMA Series
+    // EMA & SMA Lines
     try {
       emaSeries = chart.addSeries(LineSeries, {
         color: '#d97706',
         lineWidth: 2,
-        title: 'EMA20',
-        crosshairMarkerVisible: false,
+        title: 'EMA 20',
         visible: showEMA,
       });
       emaSeriesRef.current = emaSeries;
@@ -345,8 +466,7 @@ export const DetailChartModal: React.FC = () => {
       smaSeries = chart.addSeries(LineSeries, {
         color: '#2563eb',
         lineWidth: 2,
-        title: 'SMA50',
-        crosshairMarkerVisible: false,
+        title: 'SMA 50',
         visible: showEMA,
       });
       smaSeriesRef.current = smaSeries;
@@ -472,6 +592,9 @@ export const DetailChartModal: React.FC = () => {
           chart.timeScale().fitContent();
         }
 
+        // Calculate and display visible high / low price lines
+        updateHighLowLines();
+
         setIsLoading(false);
       })
       .catch((err) => {
@@ -493,6 +616,8 @@ export const DetailChartModal: React.FC = () => {
       emaSeriesRef.current = null;
       smaSeriesRef.current = null;
       costLineRef.current = null;
+      highLineRef.current = null;
+      lowLineRef.current = null;
       lastCandleRef.current = null;
       lastAreaPointRef.current = null;
     };
@@ -527,7 +652,8 @@ export const DetailChartModal: React.FC = () => {
         }
       }
     }
-  }, [chartType]);
+    updateHighLowLines();
+  }, [chartType, updateHighLowLines]);
 
   useEffect(() => {
     volumeSeriesRef.current?.applyOptions({ visible: showVolume });
@@ -538,7 +664,11 @@ export const DetailChartModal: React.FC = () => {
     smaSeriesRef.current?.applyOptions({ visible: showEMA });
   }, [showEMA]);
 
-  // 3. Independent Portfolio Cost Line: Updates smoothly on currency/rate changes without resetting chart
+  useEffect(() => {
+    updateHighLowLines();
+  }, [showHighLow, updateHighLowLines]);
+
+  // 3. Independent Portfolio Cost Line: In USD
   useEffect(() => {
     const activeSeries =
       chartType === 'volume'
@@ -561,13 +691,8 @@ export const DetailChartModal: React.FC = () => {
 
     if (showCostLine && userAsset) {
       try {
-        const convertedCost =
-          currency === 'TRY'
-            ? userAsset.buyPrice * tryRate
-            : userAsset.buyPrice;
-
         costLineRef.current = activeSeries.createPriceLine({
-          price: convertedCost,
+          price: userAsset.buyPrice,
           color: '#1c1917',
           lineWidth: 2,
           lineStyle: LineStyle.Dashed,
@@ -578,7 +703,7 @@ export const DetailChartModal: React.FC = () => {
         console.warn('Cost line update fallback:', e);
       }
     }
-  }, [showCostLine, userAsset, chartType, currency, tryRate, activeRate]);
+  }, [showCostLine, userAsset, chartType]);
 
   const handleIntervalChange = (val: string) => {
     startTransition(() => {
@@ -596,6 +721,18 @@ export const DetailChartModal: React.FC = () => {
       const next = !prev;
       try {
         localStorage.setItem(CHART_COST_LINE_KEY, String(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
+
+  const handleToggleHighLow = () => {
+    setShowHighLow((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(CHART_HIGH_LOW_KEY, String(next));
       } catch {
         // ignore
       }
@@ -804,15 +941,15 @@ export const DetailChartModal: React.FC = () => {
         </div>
       </div>
 
-      {/* Ticker Price & Stats Overview */}
+      {/* Ticker Price & Stats Overview (Strictly USD for professional market analysis) */}
       <div className="px-4 py-2.5 bg-[#faf7f0] border-b-2 border-stone-900">
         <div className="flex items-baseline justify-between mb-2">
           <div className="flex items-baseline gap-2.5">
             <span className="text-2xl font-black text-stone-900 tracking-tight">
               {hoveredData
-                ? formatCurrency(hoveredData.close, currency, activeRate)
+                ? formatCurrency(hoveredData.close, 'USD', 1)
                 : ticker
-                ? formatCurrency(ticker.price, currency, activeRate)
+                ? formatCurrency(ticker.price, 'USD', 1)
                 : '...'}
             </span>
             {hoveredData ? (
@@ -856,6 +993,20 @@ export const DetailChartModal: React.FC = () => {
             <span className="text-[10px] font-black bg-amber-300 text-stone-950 px-2 py-0.5 rounded border border-stone-900 shadow-hard-xs">
               MUM: {hoveredData.time}
             </span>
+          ) : visibleRangeStats ? (
+            <div className="flex items-center gap-1.5 text-[10px] font-black">
+              <span className="text-stone-500 font-bold uppercase hidden sm:inline">Görünüm:</span>
+              <span
+                className={`px-1.5 py-0.5 rounded border border-stone-900 flex items-center gap-0.5 shadow-hard-xs ${
+                  visibleRangeStats.changePct >= 0
+                    ? 'bg-emerald-100 text-emerald-900'
+                    : 'bg-rose-100 text-rose-900'
+                }`}
+              >
+                {visibleRangeStats.changePct >= 0 ? '+' : ''}
+                {visibleRangeStats.changePct.toFixed(2)}%
+              </span>
+            </div>
           ) : (
             <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider">
               24S PİYASA
@@ -869,19 +1020,19 @@ export const DetailChartModal: React.FC = () => {
             <div className="bg-white border-2 border-stone-900 rounded p-1.5 shadow-hard-sm min-w-0">
               <span className="text-[9px] text-stone-500 block font-bold uppercase truncate">Açılış</span>
               <span className="text-stone-900 font-black text-[11px] sm:text-xs truncate block">
-                {formatCurrency(hoveredData.open, currency, activeRate)}
+                {formatCurrency(hoveredData.open, 'USD', 1)}
               </span>
             </div>
             <div className="bg-white border-2 border-stone-900 rounded p-1.5 shadow-hard-sm min-w-0">
               <span className="text-[9px] text-emerald-700 block font-bold uppercase truncate">Yüksek</span>
               <span className="text-emerald-700 font-black text-[11px] sm:text-xs truncate block">
-                {formatCurrency(hoveredData.high, currency, activeRate)}
+                {formatCurrency(hoveredData.high, 'USD', 1)}
               </span>
             </div>
             <div className="bg-white border-2 border-stone-900 rounded p-1.5 shadow-hard-sm min-w-0">
               <span className="text-[9px] text-rose-700 block font-bold uppercase truncate">Düşük</span>
               <span className="text-rose-700 font-black text-[11px] sm:text-xs truncate block">
-                {formatCurrency(hoveredData.low, currency, activeRate)}
+                {formatCurrency(hoveredData.low, 'USD', 1)}
               </span>
             </div>
             <div className="bg-white border-2 border-stone-900 rounded p-1.5 shadow-hard-sm min-w-0">
@@ -891,7 +1042,7 @@ export const DetailChartModal: React.FC = () => {
                   hoveredData.close >= hoveredData.open ? 'text-emerald-700' : 'text-rose-700'
                 }`}
               >
-                {formatCurrency(hoveredData.close, currency, activeRate)}
+                {formatCurrency(hoveredData.close, 'USD', 1)}
               </span>
             </div>
           </div>
@@ -900,13 +1051,13 @@ export const DetailChartModal: React.FC = () => {
             <div className="bg-white border-2 border-stone-900 rounded p-1.5 shadow-hard-sm min-w-0">
               <span className="text-[9px] text-stone-500 block font-bold uppercase truncate">24s Yüksek</span>
               <span className="text-stone-900 font-black text-[11px] sm:text-xs truncate block">
-                {ticker ? formatCurrency(ticker.high24h, currency, activeRate) : '--'}
+                {ticker ? formatCurrency(ticker.high24h, 'USD', 1) : '--'}
               </span>
             </div>
             <div className="bg-white border-2 border-stone-900 rounded p-1.5 shadow-hard-sm min-w-0">
               <span className="text-[9px] text-stone-500 block font-bold uppercase truncate">24s Düşük</span>
               <span className="text-stone-900 font-black text-[11px] sm:text-xs truncate block">
-                {ticker ? formatCurrency(ticker.low24h, currency, activeRate) : '--'}
+                {ticker ? formatCurrency(ticker.low24h, 'USD', 1) : '--'}
               </span>
             </div>
             <div className="bg-white border-2 border-stone-900 rounded p-1.5 shadow-hard-sm min-w-0">
@@ -929,7 +1080,7 @@ export const DetailChartModal: React.FC = () => {
         )}
       </div>
 
-      {/* Interval Selector Bar & Quick Active Indicators Status */}
+      {/* Interval Selector Bar & Quick Interactive Indicator Chips */}
       <div className="flex items-center justify-between px-4 py-1.5 bg-[#ede8dd] border-b-2 border-stone-900 gap-2">
         <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
           <Clock className="w-3.5 h-3.5 text-stone-600 mr-0.5 shrink-0" />
@@ -948,38 +1099,68 @@ export const DetailChartModal: React.FC = () => {
           ))}
         </div>
 
-        {/* Quick Active Indicators Summary Chips (Tap to open Quick Settings) */}
-        <div
-          onClick={() => {
-            triggerHaptic('light');
-            setIsSettingsOpen(true);
-          }}
-          className="flex items-center gap-1 shrink-0 cursor-pointer hover:opacity-85 transition"
-          title="Ayarları ve Göstergeleri Düzenle"
-        >
-          <span className="text-[9px] font-black bg-stone-200 text-stone-900 px-1.5 py-0.5 rounded border border-stone-900/60 shadow-hard-xs uppercase">
-            {chartType === 'heikin'
-              ? 'HEIKIN'
-              : chartType === 'volume'
-              ? 'HACİM MUM'
-              : chartType === 'area'
-              ? 'ALAN'
-              : 'MUM'}
-          </span>
-          {showVolume && (
-            <span className="text-[9px] font-black bg-amber-200 text-amber-950 px-1 py-0.5 rounded border border-stone-900/60 shadow-hard-xs">
-              VOL BAR
-            </span>
-          )}
-          {showEMA && (
-            <span className="text-[9px] font-black bg-blue-200 text-blue-950 px-1 py-0.5 rounded border border-stone-900/60 shadow-hard-xs">
-              EMA
-            </span>
-          )}
-          {showCostLine && userAsset && (
-            <span className="text-[9px] font-black bg-emerald-200 text-emerald-950 px-1 py-0.5 rounded border border-stone-900/60 shadow-hard-xs">
+        {/* Quick Interactive Indicator Chips: 1-Tap Toggle Directly on Chart */}
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={() => {
+              triggerHaptic('light');
+              setShowVolume(!showVolume);
+            }}
+            title="İşlem Hacmini Aç / Kapat"
+            className={`text-[9px] font-black px-1.5 py-0.5 rounded border transition-all cursor-pointer shadow-hard-xs ${
+              showVolume
+                ? 'bg-amber-300 text-stone-900 border-stone-900'
+                : 'bg-white/70 text-stone-500 border-stone-400 opacity-75'
+            }`}
+          >
+            VOL
+          </button>
+
+          <button
+            onClick={() => {
+              triggerHaptic('light');
+              setShowEMA(!showEMA);
+            }}
+            title="EMA/SMA Trend Çizgilerini Aç / Kapat"
+            className={`text-[9px] font-black px-1.5 py-0.5 rounded border transition-all cursor-pointer shadow-hard-xs ${
+              showEMA
+                ? 'bg-blue-300 text-stone-900 border-stone-900'
+                : 'bg-white/70 text-stone-500 border-stone-400 opacity-75'
+            }`}
+          >
+            EMA
+          </button>
+
+          <button
+            onClick={() => {
+              triggerHaptic('light');
+              handleToggleHighLow();
+            }}
+            title="Görünen Mumların Tepe ve Dip Fiyat Seviyelerini Aç / Kapat"
+            className={`text-[9px] font-black px-1.5 py-0.5 rounded border transition-all cursor-pointer shadow-hard-xs ${
+              showHighLow
+                ? 'bg-emerald-300 text-stone-900 border-stone-900'
+                : 'bg-white/70 text-stone-500 border-stone-400 opacity-75'
+            }`}
+          >
+            TEPE/DİP
+          </button>
+
+          {userAsset && (
+            <button
+              onClick={() => {
+                triggerHaptic('light');
+                handleToggleCostLine();
+              }}
+              title="Cüzdan Maliyet Çizgisini Aç / Kapat"
+              className={`text-[9px] font-black px-1.5 py-0.5 rounded border transition-all cursor-pointer shadow-hard-xs ${
+                showCostLine
+                  ? 'bg-stone-900 text-amber-300 border-stone-900'
+                  : 'bg-white/70 text-stone-500 border-stone-400 opacity-75'
+              }`}
+            >
               COST
-            </span>
+            </button>
           )}
         </div>
       </div>
@@ -1025,7 +1206,7 @@ export const DetailChartModal: React.FC = () => {
               <div className="flex items-center gap-2">
                 <SlidersHorizontal className="w-4 h-4 text-stone-900" />
                 <span className="text-xs font-black text-stone-900 uppercase tracking-wider">
-                  GRAFİK & GÖSTERGE HIZLI AYARLARI
+                  GRAFİK & GÖSTERGE AYARLARI
                 </span>
               </div>
               <button
@@ -1121,6 +1302,34 @@ export const DetailChartModal: React.FC = () => {
                 // TEKNİK KATMANLAR & GÖSTERGELER
               </span>
               <div className="space-y-1.5">
+                {/* Visible High & Low Levels Toggle */}
+                <div
+                  onClick={() => {
+                    triggerHaptic('light');
+                    handleToggleHighLow();
+                  }}
+                  className="p-2.5 bg-white border-2 border-stone-900 rounded flex items-center justify-between cursor-pointer hover:bg-stone-50 shadow-hard-xs"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <TrendingUp className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <div>
+                      <div className="text-xs font-black text-stone-900">TEPE & DİP SEVİYELERİ (EN YÜKSEK / EN DÜŞÜK)</div>
+                      <div className="text-[9px] text-stone-500">Ekranda görünen mumların sayısal tepe ve dip fiyat çizgileri</div>
+                    </div>
+                  </div>
+                  <div
+                    className={`w-10 h-5 rounded-full border-2 border-stone-900 p-0.5 transition-colors shrink-0 ${
+                      showHighLow ? 'bg-emerald-300' : 'bg-stone-200'
+                    }`}
+                  >
+                    <div
+                      className={`w-3.5 h-3.5 rounded-full bg-stone-900 transition-transform ${
+                        showHighLow ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </div>
+                </div>
+
                 {/* Volume Toggle */}
                 <div
                   onClick={() => {
@@ -1191,7 +1400,7 @@ export const DetailChartModal: React.FC = () => {
                       <div>
                         <div className="text-xs font-black text-stone-900">CÜZDAN MALİYETİ (COST)</div>
                         <div className="text-[9px] text-stone-500">
-                          {formatCurrency(userAsset.buyPrice, currency, activeRate)} seviyesinde referans çizgisi
+                          {formatCurrency(userAsset.buyPrice, 'USD', 1)} seviyesinde referans çizgisi
                         </div>
                       </div>
                     </div>

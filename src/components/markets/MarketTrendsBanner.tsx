@@ -13,10 +13,6 @@ export const MarketTrendsBanner: React.FC = () => {
 
   const setSelectedCoinForChart = useCryptoStore((state) => state.setSelectedCoinForChart);
   const addToWatchlist = useCryptoStore((state) => state.addToWatchlist);
-  const currency = useCryptoStore((state) => state.currency);
-  const tryRate = useCryptoStore((state) => state.tryRate);
-
-  const activeRate = currency === 'TRY' ? tryRate : 1;
 
   useEffect(() => {
     let isMounted = true;
@@ -117,7 +113,7 @@ export const MarketTrendsBanner: React.FC = () => {
                   </span>
                 </div>
                 <div className="font-mono font-bold text-xs text-stone-800">
-                  {formatCurrency(coin.price, currency, activeRate)}
+                  {formatCurrency(coin.price, 'USD', 1)}
                 </div>
               </button>
             );

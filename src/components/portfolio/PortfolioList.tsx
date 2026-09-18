@@ -72,7 +72,7 @@ export const PortfolioList: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col pb-28 px-4 max-w-lg mx-auto w-full font-mono">
+    <div className="flex flex-col pb-36 px-4 max-w-lg mx-auto w-full font-mono">
       {/* Multi-Portfolio Group Tabs & Backup Toolbar */}
       <div className="mt-3 stagger-item" style={{ '--stagger-idx': 0 } as React.CSSProperties}>
         <PortfolioGroupSwitcher />

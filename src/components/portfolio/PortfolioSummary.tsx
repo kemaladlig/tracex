@@ -30,10 +30,7 @@ export const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({
   const tickers = useCryptoStore((state) => state.tickers);
   const hideBalances = useCryptoStore((state) => state.hideBalances);
   const realizedPnL = useCryptoStore((state) => state.realizedPnL);
-  const currency = useCryptoStore((state) => state.currency);
   const tryRate = useCryptoStore((state) => state.tryRate);
-
-  const activeRate = currency === 'TRY' ? tryRate : 1;
 
   let totalCurrentValue = 0;
   let totalCost = 0;
@@ -91,11 +88,16 @@ export const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({
         </div>
       </div>
 
-      {/* Main Balance Display with Privacy Mode Support */}
+      {/* Main Balance Display with Privacy Mode Support (Primary TRY, Secondary USD) */}
       <div className="mb-3">
         <div className="flex items-center justify-between gap-2">
-          <div className="text-3xl font-black tracking-tight text-stone-900">
-            {hideBalances ? '••••••••' : formatCurrency(totalCurrentValue, currency, activeRate)}
+          <div>
+            <div className="text-3xl font-black tracking-tight text-stone-900">
+              {hideBalances ? '••••••••' : formatCurrency(totalCurrentValue, 'TRY', tryRate)}
+            </div>
+            <p className="text-xs font-bold text-stone-500 mt-0.5">
+              {hideBalances ? '••••••' : `≈ ${formatCurrency(totalCurrentValue, 'USD', 1)}`}
+            </p>
           </div>
 
           {/* Toggle Details Button */}
@@ -133,7 +135,7 @@ export const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({
                   }`}
                 >
                   {isProfit ? <ArrowUpRight className="w-3 h-3 stroke-[3]" /> : <ArrowDownRight className="w-3 h-3 stroke-[3]" />}
-                  {formatCurrency(totalPnL, currency, activeRate)} ({formatPercentage(totalPnLPercent)})
+                  {formatCurrency(totalPnL, 'TRY', tryRate)} ({formatPercentage(totalPnLPercent)})
                 </span>
               )}
             </div>
@@ -146,7 +148,7 @@ export const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({
                     isRealizedProfit ? 'bg-emerald-100 text-emerald-900' : 'bg-rose-100 text-rose-900'
                   }`}
                 >
-                  {formatCurrency(realizedPnL, currency, activeRate)}
+                  {formatCurrency(realizedPnL, 'TRY', tryRate)}
                 </span>
                 <InfoBadge
                   title="Realize Kâr / Zarar"
@@ -188,7 +190,7 @@ export const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({
                   </div>
                   <span className="text-[9px] text-stone-500 font-bold block">
                     {best.pnlAmount >= 0 ? '+' : ''}
-                    {formatCurrency(best.pnlAmount, currency, activeRate)}
+                    {formatCurrency(best.pnlAmount, 'TRY', tryRate)}
                   </span>
                 </div>
 
@@ -209,7 +211,7 @@ export const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({
                   </div>
                   <span className="text-[9px] text-stone-500 font-bold block">
                     {worst.pnlAmount >= 0 ? '+' : ''}
-                    {formatCurrency(worst.pnlAmount, currency, activeRate)}
+                    {formatCurrency(worst.pnlAmount, 'TRY', tryRate)}
                   </span>
                 </div>
               </div>
@@ -261,7 +263,7 @@ export const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({
           <div>
             <span className="text-stone-500 block text-[9px] uppercase font-bold">Toplam Maliyet</span>
             <span className="text-stone-900 font-bold">
-              {hideBalances ? '••••' : formatCurrency(totalCost, currency, activeRate)}
+              {hideBalances ? '••••' : formatCurrency(totalCost, 'TRY', tryRate)}
             </span>
           </div>
           <div>
