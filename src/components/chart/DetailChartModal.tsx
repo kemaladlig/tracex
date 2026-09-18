@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useTransition, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useTransition, useCallback, useMemo } from 'react';
 import {
   createChart,
   ColorType,
@@ -126,7 +126,17 @@ export const DetailChartModal: React.FC = () => {
   const setSelectedSymbol = useCryptoStore((state) => state.setSelectedCoinForChart);
   const ticker = useCryptoStore((state) => (selectedSymbol ? state.tickers[selectedSymbol] : undefined));
   const portfolio = useCryptoStore((state) => state.portfolio);
-  const userAsset = portfolio.find((a) => a.symbol === selectedSymbol);
+
+  // Flexible symbol matching for portfolio holdings (e.g. BTC vs BTCUSDT)
+  const userAsset = useMemo(() => {
+    if (!selectedSymbol) return undefined;
+    const cleanTarget = selectedSymbol.replace('USDT', '').toUpperCase();
+    return portfolio.find(
+      (a) =>
+        a.symbol.toUpperCase() === selectedSymbol.toUpperCase() ||
+        a.symbol.replace('USDT', '').toUpperCase() === cleanTarget
+    );
+  }, [portfolio, selectedSymbol]);
 
   const [interval, setInterval] = useState<string>(() => {
     try {
@@ -592,8 +602,9 @@ export const DetailChartModal: React.FC = () => {
           chart.timeScale().fitContent();
         }
 
-        // Calculate and display visible high / low price lines
+        // Calculate and display visible high / low price lines & portfolio cost line
         updateHighLowLines();
+        updateCostLine();
 
         setIsLoading(false);
       })
@@ -624,6 +635,43 @@ export const DetailChartModal: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSymbol, interval]);
 
+  // Dedicated Portfolio Cost Line update callback
+  const updateCostLine = useCallback(() => {
+    const activeSeries =
+      chartTypeRef.current === 'volume'
+        ? volumeCandleSeriesRef.current
+        : chartTypeRef.current === 'area'
+        ? areaSeriesRef.current
+        : candleSeriesRef.current;
+    if (!activeSeries) return;
+
+    if (costLineRef.current) {
+      try {
+        candleSeriesRef.current?.removePriceLine(costLineRef.current);
+        areaSeriesRef.current?.removePriceLine(costLineRef.current);
+        volumeCandleSeriesRef.current?.removePriceLine(costLineRef.current);
+      } catch {
+        // Series might have changed
+      }
+      costLineRef.current = null;
+    }
+
+    if (showCostLine && userAsset && userAsset.buyPrice > 0) {
+      try {
+        costLineRef.current = activeSeries.createPriceLine({
+          price: userAsset.buyPrice,
+          color: '#d97706',
+          lineWidth: 2,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: 'MALİYET',
+        });
+      } catch (e) {
+        console.warn('Cost line update fallback:', e);
+      }
+    }
+  }, [showCostLine, userAsset]);
+
   // 2. Dynamic Series Visibility & Options: Toggles without tearing down the chart
   useEffect(() => {
     if (chartType === 'area') {
@@ -653,7 +701,8 @@ export const DetailChartModal: React.FC = () => {
       }
     }
     updateHighLowLines();
-  }, [chartType, updateHighLowLines]);
+    updateCostLine();
+  }, [chartType, updateHighLowLines, updateCostLine]);
 
   useEffect(() => {
     volumeSeriesRef.current?.applyOptions({ visible: showVolume });
@@ -668,42 +717,9 @@ export const DetailChartModal: React.FC = () => {
     updateHighLowLines();
   }, [showHighLow, updateHighLowLines]);
 
-  // 3. Independent Portfolio Cost Line: In USD
   useEffect(() => {
-    const activeSeries =
-      chartType === 'volume'
-        ? volumeCandleSeriesRef.current
-        : chartType === 'area'
-        ? areaSeriesRef.current
-        : candleSeriesRef.current;
-    if (!activeSeries) return;
-
-    if (costLineRef.current) {
-      try {
-        candleSeriesRef.current?.removePriceLine(costLineRef.current);
-        areaSeriesRef.current?.removePriceLine(costLineRef.current);
-        volumeCandleSeriesRef.current?.removePriceLine(costLineRef.current);
-      } catch {
-        // Series might have changed
-      }
-      costLineRef.current = null;
-    }
-
-    if (showCostLine && userAsset) {
-      try {
-        costLineRef.current = activeSeries.createPriceLine({
-          price: userAsset.buyPrice,
-          color: '#1c1917',
-          lineWidth: 2,
-          lineStyle: LineStyle.Dashed,
-          axisLabelVisible: true,
-          title: 'COST',
-        });
-      } catch (e) {
-        console.warn('Cost line update fallback:', e);
-      }
-    }
-  }, [showCostLine, userAsset, chartType]);
+    updateCostLine();
+  }, [showCostLine, userAsset, updateCostLine]);
 
   const handleIntervalChange = (val: string) => {
     startTransition(() => {
