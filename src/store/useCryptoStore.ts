@@ -56,7 +56,10 @@ interface CryptoState {
   sellPortfolioAsset: (id: string, sellAmount: number, sellPrice: number) => { pnl: number; success: boolean };
   removePortfolioAsset: (id: string) => void;
   updateTicker: (data: Partial<TickerData> & { symbol: string; price: number }) => void;
-  updateTickersBatch: (dataList: (Partial<TickerData> & { symbol: string; price: number })[]) => void;
+  updateTickersBatch: (
+    dataList: (Partial<TickerData> & { symbol: string; price: number })[],
+    source?: 'ws' | 'rest'
+  ) => void;
   setActiveTab: (tab: TabType) => void;
   setSelectedCoinForChart: (symbol: string | null) => void;
   setConnectionStatus: (status: ConnectionStatus) => void;
@@ -107,7 +110,18 @@ const getCachedTickers = (): Record<string, TickerData> => {
     const raw = localStorage.getItem(TICKERS_CACHE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === 'object') return parsed;
+      if (parsed && typeof parsed === 'object') {
+        // Cache'ten gelen her ticker bilinçli olarak stale işaretlenir:
+        // fiyat boş kalmaz ama ilk WS paketi gelene kadar soluk gösterilir.
+        const marked: Record<string, TickerData> = {};
+        for (const key of Object.keys(parsed)) {
+          const t = parsed[key];
+          if (t && typeof t.price === 'number') {
+            marked[key] = { ...t, isLive: false, source: 'cache' as const };
+          }
+        }
+        return marked;
+      }
     }
   } catch {
     // ignore
@@ -503,6 +517,8 @@ export const useCryptoStore = create<CryptoState>()(
             quoteVolume: incoming.quoteVolume ?? prev?.quoteVolume ?? 0,
             direction,
             lastUpdated: Date.now(),
+            isLive: true,
+            source: 'ws',
           };
 
           let tryRate = state.tryRate;
@@ -524,18 +540,28 @@ export const useCryptoStore = create<CryptoState>()(
         });
       },
 
-      updateTickersBatch: (incomingList) => {
+      updateTickersBatch: (incomingList, source = 'ws') => {
         if (!incomingList || incomingList.length === 0) return;
         set((state) => {
           const nextTickers = { ...state.tickers };
           let tryRate = state.tryRate;
           let eurRate = state.eurRate;
+          let changed = false;
 
           for (let i = 0; i < incomingList.length; i++) {
             const incoming = incomingList[i];
             if (!incoming.symbol || incoming.price === undefined) continue;
 
             const prev = nextTickers[incoming.symbol];
+            // Binance ile birebir eşleşme kuralı: REST prefill, canlı WS verisini ASLA ezemez.
+            // WS her zaman kazanır; REST sadece sembol ilk kez görülüyorsa (veya canlı değilse) dolar.
+            if (source === 'rest' && prev?.isLive && prev?.source === 'ws') {
+              continue;
+            }
+            if (source === 'rest' && prev && Date.now() - (prev.lastUpdated ?? 0) < 5000 && prev.source === 'ws') {
+              continue;
+            }
+
             let direction: 'up' | 'down' | null = null;
             if (prev && prev.price !== incoming.price) {
               direction = incoming.price > prev.price ? 'up' : 'down';
@@ -543,6 +569,7 @@ export const useCryptoStore = create<CryptoState>()(
               direction = prev.direction;
             }
 
+            const isLive = source === 'ws';
             nextTickers[incoming.symbol] = {
               symbol: incoming.symbol,
               price: incoming.price,
@@ -553,8 +580,11 @@ export const useCryptoStore = create<CryptoState>()(
               volume: incoming.volume ?? prev?.volume ?? 0,
               quoteVolume: incoming.quoteVolume ?? prev?.quoteVolume ?? 0,
               direction,
-              lastUpdated: Date.now(),
+              lastUpdated: isLive ? Date.now() : prev?.lastUpdated ?? 0,
+              isLive,
+              source,
             };
+            changed = true;
 
             if (incoming.symbol === 'USDTTRY') {
               tryRate = incoming.price;
@@ -562,6 +592,8 @@ export const useCryptoStore = create<CryptoState>()(
               eurRate = incoming.price;
             }
           }
+
+          if (!changed) return state;
 
           const now = Date.now();
           if (now - lastTickerPersistTime > 4000) {

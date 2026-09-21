@@ -34,13 +34,28 @@ export const useBinanceWebSocket = () => {
     }
 
     let isDestroyed = false;
+    // Last raw WS packet arrival; used by the stall watchdog below.
+    const lastMessageAtRef = { current: Date.now() };
 
     // Flush buffered ticker messages every 1000ms (1 second) for calm readability, smooth color transitions and battery efficiency
+    // NOTE: source='ws' wins over REST prefill in the store, so Binance % always matches spot.
     flushIntervalRef.current = window.setInterval(() => {
       if (tickerBufferRef.current.size > 0) {
         const batch = Array.from(tickerBufferRef.current.values());
         tickerBufferRef.current.clear();
-        updateTickersBatch(batch);
+        updateTickersBatch(batch, 'ws');
+      }
+      // Stall watchdog: socket "connected" görünüp 25sn paket gelmezse sessizce ölmüştür.
+      // Gizli sekmede bilerek kapalı olabilir, o durumda dokunma (visibility handler yönetir).
+      if (!document.hidden && socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+        if (Date.now() - lastMessageAtRef.current > 25000) {
+          try {
+            socketRef.current.close();
+          } catch {
+            // onclose akışı reconnect'i tetikler
+          }
+          lastMessageAtRef.current = Date.now();
+        }
       }
     }, 1000);
 
@@ -70,7 +85,9 @@ export const useBinanceWebSocket = () => {
         }
       };
 
+      let loggedWindowProbe = false;
       ws.onmessage = (event: MessageEvent) => {
+        lastMessageAtRef.current = Date.now();
         try {
           const payload = JSON.parse(event.data);
           if (payload && payload.data && payload.data.s) {
@@ -83,6 +100,24 @@ export const useBinanceWebSocket = () => {
             const volume = parseFloat(data.v);
             const quoteVolume = parseFloat(data.q);
             const sym = data.s.toUpperCase();
+
+            // Test probe: rolling-24h window proof (O -> C must be ~24h, not midnight).
+            // Compare with Binance spot UI at the same second to verify % match.
+            if (!loggedWindowProbe && (sym === 'BTCUSDT' || tickerBufferRef.current.size === 0)) {
+              loggedWindowProbe = true;
+              try {
+                const openT = Number(data.O);
+                const closeT = Number(data.C);
+                if (openT && closeT) {
+                  const windowH = (closeT - openT) / 3600000;
+                  console.info(
+                    `[TraceX][24h-probe] ${sym} P=${data.P}% o=${data.o} c=${data.c} window=${windowH.toFixed(2)}h O=${new Date(openT).toLocaleTimeString()} C=${new Date(closeT).toLocaleTimeString()}`
+                  );
+                }
+              } catch {
+                // ignore probe errors
+              }
+            }
 
             // Buffer the update in map
             tickerBufferRef.current.set(sym, {

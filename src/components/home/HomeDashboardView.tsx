@@ -94,6 +94,7 @@ export const HomeDashboardView: React.FC = () => {
   const toggleHideBalances = useCryptoStore((state) => state.toggleHideBalances);
   const setActiveTab = useCryptoStore((state) => state.setActiveTab);
   const setSelectedCoinForChart = useCryptoStore((state) => state.setSelectedCoinForChart);
+  const connectionStatus = useCryptoStore((state) => state.connectionStatus);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   // Default wallet collapsible state: collapsed by default for public privacy
@@ -200,6 +201,7 @@ export const HomeDashboardView: React.FC = () => {
   const btcPriceUSD = btcTicker?.price ?? 96500;
   const btcChange = btcTicker?.changePercent24h ?? 0;
   const btcIsPositive = btcChange >= 0;
+  const btcIsStale = !btcTicker || btcTicker.isLive !== true || connectionStatus !== 'connected';
 
   // Dynamic market paper wash on the Bitcoin card based on 24h percentage change
   const cardBg = useMemo(() => {
@@ -410,7 +412,10 @@ export const HomeDashboardView: React.FC = () => {
           <div className="flex items-start justify-between gap-2 mb-1.5">
             <div>
               {/* Row 1: USD Price + Percentage Badge right next to it */}
-              <div className="flex items-center gap-2">
+              <div className={`flex items-center gap-2 transition-opacity duration-500 ${btcIsStale ? 'opacity-60 saturate-[.65]' : 'opacity-100'}`}>
+                {btcIsStale && (
+                  <span aria-hidden="true" className="w-1.5 self-stretch rounded-full bg-amber-400 animate-pulse" />
+                )}
                 <span className="text-3xl sm:text-4xl font-black text-stone-900 tracking-tight">
                   {formatCurrency(btcPriceUSD, 'USD', 1, 0)}
                 </span>

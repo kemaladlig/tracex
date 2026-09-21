@@ -71,14 +71,20 @@ export const MarketList: React.FC = () => {
       const symbols = coins.map((c) => c.symbol);
       setActiveMarketSymbols(symbols);
 
-      // Prepopulate tickers immediately with 24h stats so there is zero flash
+      // Prepopulate tickers immediately with full 24h snapshot so there is zero flash.
+      // source='rest': fills only unseen symbols, NEVER overwrites live WS data (Binance match).
+      // All fields come from the same REST snapshot, so price/%/high/low/volume stay internally consistent.
       const initialBatch = coins.map((c) => ({
         symbol: c.symbol,
         price: c.price,
         changePercent24h: c.changePercent24h,
+        changeAmount24h: c.changeAmount24h,
+        high24h: c.high24h,
+        low24h: c.low24h,
+        volume: c.volume,
         quoteVolume: c.quoteVolume,
       }));
-      updateTickersBatch(initialBatch);
+      updateTickersBatch(initialBatch, 'rest');
     });
   }, [category, setActiveMarketSymbols, updateTickersBatch]);
 

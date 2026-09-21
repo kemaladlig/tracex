@@ -41,10 +41,14 @@ export const MarketItem: React.FC<MarketItemProps> = ({
   onTouchStartHandle,
 }) => {
   const ticker = useCryptoStore((state) => state.tickers[symbol]);
+  const connectionStatus = useCryptoStore((state) => state.connectionStatus);
   const setSelectedCoinForChart = useCryptoStore((state) => state.setSelectedCoinForChart);
   const watchlist = useCryptoStore((state) => state.watchlist);
   const toggleWatchlist = useCryptoStore((state) => state.toggleWatchlist);
   const isFavorite = watchlist.includes(symbol);
+  // Yazısız stale sinyali: cache/REST verisi veya bağlantı kurulmamışsa soluk + amber bar.
+  // Ekstra yazı yok; ilk WS paketiyle (isLive) normale döner.
+  const isStale = !ticker || ticker.isLive !== true || connectionStatus !== 'connected';
 
   const [flashClass, setFlashClass] = useState<string>('');
   const prevPriceRef = useRef<number | undefined>(ticker?.price);
@@ -98,11 +102,20 @@ export const MarketItem: React.FC<MarketItemProps> = ({
           ? 'opacity-40 scale-[0.98] border-dashed border-amber-500 bg-amber-50/60'
           : isDragOver
           ? 'border-t-4 border-t-amber-500 bg-amber-50/40 -translate-y-0.5 shadow-hard-lg'
+          : isStale
+          ? 'border-dashed'
           : ''
       }`}
     >
+      {/* Yazısız canlılık damgası: stale iken sol kenarda nabız atan amber bar */}
+      {isStale && !isDragging && !isDragOver && (
+        <span
+          aria-hidden="true"
+          className="absolute left-1.5 top-2.5 bottom-2.5 w-1 rounded-full bg-amber-400 animate-pulse"
+        />
+      )}
       {/* Left: Grip Handle (if custom order) + Symbol stamp & Volume */}
-      <div className="flex items-center gap-2.5">
+      <div className={`flex items-center gap-2.5 ${isStale ? 'pl-2' : ''}`}>
         {canReorder && (
           <div
             onTouchStart={(e) => {
@@ -136,7 +149,7 @@ export const MarketItem: React.FC<MarketItemProps> = ({
       </div>
 
       {/* Right: Price, Micro-Sparkline Accent & Actions */}
-      <div className="flex items-center gap-2 shrink-0">
+      <div className={`flex items-center gap-2 shrink-0 transition-opacity duration-500 ${isStale ? 'opacity-60 saturate-[.65]' : 'opacity-100'}`}>
         <div className="text-right">
           <div
             className={`font-mono font-black text-base text-stone-900 tracking-tight transition-all duration-300 px-1 rounded ${flashClass}`}

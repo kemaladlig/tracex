@@ -20,10 +20,13 @@ export const PortfolioItem: React.FC<PortfolioItemProps> = ({
   onBuyMoreClick,
 }) => {
   const ticker = useCryptoStore((state) => state.tickers[asset.symbol]);
+  const connectionStatus = useCryptoStore((state) => state.connectionStatus);
   const removePortfolioAsset = useCryptoStore((state) => state.removePortfolioAsset);
   const setSelectedCoinForChart = useCryptoStore((state) => state.setSelectedCoinForChart);
   const hideBalances = useCryptoStore((state) => state.hideBalances);
   const tryRate = useCryptoStore((state) => state.tryRate);
+  // PnL de fiyattan türediği için aynı yazısız stale dili: soluk + amber bar, ekstra yazı yok.
+  const isStale = !ticker || ticker.isLive !== true || connectionStatus !== 'connected';
 
   const currentPrice = ticker?.price ?? asset.buyPrice;
   const currentValue = asset.amount * currentPrice;
@@ -48,8 +51,14 @@ export const PortfolioItem: React.FC<PortfolioItemProps> = ({
   return (
     <div
       style={{ '--stagger-idx': Math.min(index, 8) } as React.CSSProperties}
-      className="relative flex flex-col p-3.5 mb-3 bg-white border-2 border-stone-900 rounded-lg shadow-hard font-mono transition-all duration-150 stagger-item"
+      className={`relative flex flex-col p-3.5 mb-3 bg-white border-2 border-stone-900 rounded-lg shadow-hard font-mono transition-all duration-150 stagger-item ${isStale ? 'border-dashed' : ''}`}
     >
+      {isStale && (
+        <span
+          aria-hidden="true"
+          className="absolute left-1.5 top-2.5 bottom-2.5 w-1 rounded-full bg-amber-400 animate-pulse"
+        />
+      )}
       {/* Top Row: Symbol, Quantity & Current Total Value (TRY) */}
       <div className="flex items-center justify-between pb-2.5 border-b-2 border-stone-900/40">
         <div className="flex items-center gap-2.5">
@@ -70,7 +79,7 @@ export const PortfolioItem: React.FC<PortfolioItemProps> = ({
         </div>
 
         {/* Current Total Value in TRY with USD Unit Price */}
-        <div className="text-right">
+        <div className={`text-right transition-opacity duration-500 ${isStale ? 'opacity-60 saturate-[.65]' : 'opacity-100'}`}>
           <div className="text-base font-black text-stone-900 tracking-tight">
             {hideBalances ? '••••••' : formatCurrency(currentValue, 'TRY', tryRate)}
           </div>
@@ -82,7 +91,7 @@ export const PortfolioItem: React.FC<PortfolioItemProps> = ({
 
       {/* Middle Row: Cost (USD) & Net PnL (TRY) (Only displayed in Detailed View) */}
       {showPnL && (
-        <div className="flex items-center justify-between py-2 border-b border-stone-200 animate-in fade-in duration-100">
+        <div className={`flex items-center justify-between py-2 border-b border-stone-200 animate-in fade-in duration-100 transition-opacity duration-500 ${isStale ? 'opacity-60 saturate-[.65]' : 'opacity-100'}`}>
           <div className="text-xs">
             <span className="text-[10px] text-stone-500 block uppercase font-bold">Ort. Alış Maliyeti</span>
             <span className="text-stone-900 font-bold">

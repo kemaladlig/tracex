@@ -126,6 +126,7 @@ export const DetailChartModal: React.FC = () => {
   const setSelectedSymbol = useCryptoStore((state) => state.setSelectedCoinForChart);
   const ticker = useCryptoStore((state) => (selectedSymbol ? state.tickers[selectedSymbol] : undefined));
   const portfolio = useCryptoStore((state) => state.portfolio);
+  const connectionStatus = useCryptoStore((state) => state.connectionStatus);
 
   // Flexible symbol matching for portfolio holdings (e.g. BTC vs BTCUSDT)
   const userAsset = useMemo(() => {
@@ -902,6 +903,7 @@ export const DetailChartModal: React.FC = () => {
 
   const { base, quote } = cleanSymbol(selectedSymbol);
   const isPositive = (ticker?.changePercent24h ?? 0) >= 0;
+  const isPriceStale = !ticker || ticker.isLive !== true || connectionStatus !== 'connected';
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-[#f4f0e6] animate-sheetUp font-mono">
@@ -960,7 +962,10 @@ export const DetailChartModal: React.FC = () => {
       {/* Ticker Price & Stats Overview (Strictly USD for professional market analysis) */}
       <div className="px-4 py-2.5 bg-[#faf7f0] border-b-2 border-stone-900">
         <div className="flex items-baseline justify-between mb-2">
-          <div className="flex items-baseline gap-2.5">
+          <div className={`flex items-baseline gap-2.5 transition-opacity duration-500 ${isPriceStale ? 'opacity-60 saturate-[.65]' : 'opacity-100'}`}>
+            {isPriceStale && (
+              <span aria-hidden="true" className="w-1 self-stretch rounded-full bg-amber-400 animate-pulse" />
+            )}
             <span className="text-2xl font-black text-stone-900 tracking-tight">
               {hoveredData
                 ? formatCurrency(hoveredData.close, 'USD', 1)

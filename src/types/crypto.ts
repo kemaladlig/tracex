@@ -3,6 +3,8 @@ export type Currency = 'USD' | 'TRY';
 export type TabType = 'home' | 'markets' | 'analytics' | 'portfolio';
 export type ConnectionStatus = 'connected' | 'connecting' | 'disconnected';
 
+export type TickerSource = 'cache' | 'rest' | 'ws';
+
 export interface TickerData {
   symbol: string;
   price: number;
@@ -14,6 +16,9 @@ export interface TickerData {
   quoteVolume: number;
   direction: PriceDirection;
   lastUpdated: number;
+  /** true only after a fresh WS packet; cache/REST prefill stays false (no text badge, styling only) */
+  isLive: boolean;
+  source: TickerSource;
 }
 
 export interface PortfolioAsset {
