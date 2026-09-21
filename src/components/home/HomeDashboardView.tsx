@@ -203,18 +203,6 @@ export const HomeDashboardView: React.FC = () => {
   const btcIsPositive = btcChange >= 0;
   const btcIsStale = !btcTicker || btcTicker.isLive !== true || connectionStatus !== 'connected';
 
-  // Dynamic market paper wash on the Bitcoin card based on 24h percentage change
-  const cardBg = useMemo(() => {
-    const absChange = Math.min(Math.abs(btcChange), 8);
-    const factor = absChange / 8; // 0.0 (neutral) to 1.0 (strong move)
-
-    if (btcIsPositive) {
-      return `rgba(240, 253, 244, ${0.50 + factor * 0.45})`; // Fresh mint-parchment
-    } else {
-      return `rgba(255, 241, 242, ${0.50 + factor * 0.45})`; // Soft rose-parchment
-    }
-  }, [btcChange, btcIsPositive]);
-
   // Real-time candle updates: sync last candle's close, high, and low with WebSocket price
   const liveCandles = useMemo(() => {
     if (!candles4h.length) return [];
@@ -385,10 +373,7 @@ export const HomeDashboardView: React.FC = () => {
           triggerHaptic('medium');
           setSelectedCoinForChart('BTCUSDT');
         }}
-        style={{
-          backgroundColor: cardBg,
-        }}
-        className="border-2 border-stone-900 rounded-lg p-3.5 shadow-hard btn-hard cursor-pointer relative transition-colors duration-700 animate-sheetUp flex flex-col justify-between"
+        className="border-2 border-stone-900 rounded-lg p-3.5 shadow-hard btn-hard cursor-pointer relative bg-white animate-sheetUp flex flex-col justify-between"
       >
         <div>
           {/* Header Row: Symbol / Name on Left, Chart Navigation on Right */}
