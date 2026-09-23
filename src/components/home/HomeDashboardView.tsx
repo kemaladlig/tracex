@@ -107,7 +107,6 @@ export const HomeDashboardView: React.FC = () => {
   const toggleHideBalances = useCryptoStore((state) => state.toggleHideBalances);
   const setActiveTab = useCryptoStore((state) => state.setActiveTab);
   const setSelectedCoinForChart = useCryptoStore((state) => state.setSelectedCoinForChart);
-  const connectionStatus = useCryptoStore((state) => state.connectionStatus);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const handleAddClose = useCallback(() => setIsAddModalOpen(false), []);
@@ -238,7 +237,8 @@ export const HomeDashboardView: React.FC = () => {
   const btcPriceUSD = btcTicker?.price ?? 96500;
   const btcChange = btcTicker?.changePercent24h ?? 0;
   const btcIsPositive = btcChange >= 0;
-  const btcIsStale = !btcTicker || btcTicker.isLive !== true || connectionStatus !== 'connected';
+  // Solukluk SADECE açılışta cache'ten gelen veri içindir; fiyat akışı soldurmaz.
+  const btcIsStale = !btcTicker || btcTicker.source === 'cache';
 
   // Real-time candle updates: sync last candle's close, high, and low with WebSocket price
   const liveCandles = useMemo(() => {

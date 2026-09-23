@@ -286,18 +286,6 @@ export const AnalyticsView: React.FC = () => {
                 {macroPhase.riskScore} / 10
               </span>
             </div>
-            <span
-              className={`text-[9px] font-black px-1.5 py-0.5 rounded border ${
-                macroPhase.confidence === 'high'
-                  ? 'bg-emerald-900 text-emerald-300 border-emerald-700'
-                  : macroPhase.confidence === 'medium'
-                  ? 'bg-amber-900 text-amber-300 border-amber-700'
-                  : 'bg-rose-900 text-rose-300 border-rose-700'
-              }`}
-              title="Stale girdi arttıkça güven düşer"
-            >
-              GÜVEN: {macroPhase.confidence === 'high' ? 'YÜKSEK' : macroPhase.confidence === 'medium' ? 'ORTA' : 'DÜŞÜK'}
-            </span>
           </div>
         </div>
 

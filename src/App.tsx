@@ -12,17 +12,36 @@ import { PullToRefresh } from './components/common/PullToRefresh';
 import { MarketList } from './components/markets/MarketList';
 import { PortfolioList } from './components/portfolio/PortfolioList';
 import { HomeDashboardView } from './components/home/HomeDashboardView';
+// Static import: AnalyticsView has no heavy deps (no lightweight-charts),
+// so bundling it avoids the "Failed to fetch dynamically imported module"
+// recovery-mode crash seen with lazy() on dev/Vite + stale chunks.
+import { AnalyticsView } from './components/analytics/AnalyticsView';
 import { fetchComprehensiveAnalytics } from './services/onChainApi';
 
-// Code-split heavyweight lightweight-charts bundle (~250kb) to accelerate First Contentful Paint
-const DetailChartModal = lazy(() =>
-  import('./components/chart/DetailChartModal').then((m) => ({ default: m.DetailChartModal }))
-);
-
-// Analytics bento is heavy too — pull it into its own chunk, fetched only when the tab opens
-const AnalyticsView = lazy(() =>
-  import('./components/analytics/AnalyticsView').then((m) => ({ default: m.AnalyticsView }))
-);
+// Code-split ONLY the heavyweight lightweight-charts bundle (~250kb) to accelerate First Contentful Paint.
+// On a stale-chunk / transient network failure, reload once (fresh HTML points at
+// the new chunk filenames) instead of surfacing the recovery screen immediately.
+const DetailChartModal = lazy(() => {
+  const retryKey = 'tracex-chart-retry';
+  return import('./components/chart/DetailChartModal').then(
+    (m) => {
+      sessionStorage.removeItem(retryKey);
+      return { default: m.DetailChartModal };
+    },
+    (err: Error) => {
+      const isChunkError =
+        err?.message?.includes('Failed to fetch dynamically imported module') ||
+        err?.message?.includes('Importing a module script failed');
+      if (isChunkError && sessionStorage.getItem(retryKey) !== '1') {
+        sessionStorage.setItem(retryKey, '1');
+        window.location.reload();
+        // Return a never-resolving promise while the reload happens.
+        return new Promise<{ default: React.ComponentType }>(() => {});
+      }
+      throw err;
+    }
+  );
+});
 
 import type { TabType } from './types/crypto';
 
@@ -97,17 +116,7 @@ export const App: React.FC = () => {
             >
               {activeTab === 'home' && <HomeDashboardView />}
               {activeTab === 'markets' && <MarketList />}
-              {activeTab === 'analytics' && (
-                <Suspense
-                  fallback={
-                    <div className="p-10 flex justify-center font-mono">
-                      <div className="w-6 h-6 border-2 border-stone-900 border-t-amber-400 rounded-full animate-spin" />
-                    </div>
-                  }
-                >
-                  <AnalyticsView />
-                </Suspense>
-              )}
+              {activeTab === 'analytics' && <AnalyticsView />}
               {activeTab === 'portfolio' && <PortfolioList />}
             </div>
           </main>

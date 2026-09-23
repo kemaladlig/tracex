@@ -267,12 +267,6 @@ export const DetailChartModal: React.FC = () => {
     return false;
   });
 
-  const [visibleRangeStats, setVisibleRangeStats] = useState<{
-    high: number;
-    low: number;
-    changePct: number;
-  } | null>(null);
-
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [retryNonce, setRetryNonce] = useState<number>(0);
@@ -343,7 +337,6 @@ export const DetailChartModal: React.FC = () => {
     }
 
     if (!showHighLow) {
-      setVisibleRangeStats(null);
       return;
     }
 
@@ -367,16 +360,6 @@ export const DetailChartModal: React.FC = () => {
       if (c.high > maxPrice) maxPrice = c.high;
       if (c.low < minPrice) minPrice = c.low;
     }
-
-    const firstOpen = visibleSlice[0].open;
-    const lastClose = visibleSlice[visibleSlice.length - 1].close;
-    const changePct = firstOpen > 0 ? ((lastClose - firstOpen) / firstOpen) * 100 : 0;
-
-    setVisibleRangeStats({
-      high: maxPrice,
-      low: minPrice,
-      changePct,
-    });
 
     try {
       // Peak Price Line (Green dashed, numeric price on scale, strictly NO label text as requested)
@@ -954,7 +937,6 @@ export const DetailChartModal: React.FC = () => {
       if (sym === selectedSymbol) return;
       triggerHaptic('light');
       setHoveredData(null);
-      setVisibleRangeStats(null);
       setSelectedSymbol(sym);
     },
     [selectedSymbol, setSelectedSymbol]
@@ -1060,7 +1042,9 @@ export const DetailChartModal: React.FC = () => {
 
   const { base, quote } = cleanSymbol(selectedSymbol);
   const isPositive = (ticker?.changePercent24h ?? 0) >= 0;
-  const isPriceStale = !ticker || ticker.isLive !== true || connectionStatus !== 'connected';
+  // Solukluk SADECE açılışta cache'ten gelen veri içindir; fiyat akışı soldurmaz.
+  // (Bağlantı noktası alt bardaki CANLI rozetinden takip edilir.)
+  const isPriceStale = !ticker || ticker.source === 'cache';
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-[#f4f0e6] animate-sheetUp font-mono">
@@ -1175,20 +1159,6 @@ export const DetailChartModal: React.FC = () => {
             <span className="text-[10px] font-black bg-amber-300 text-stone-950 px-2 py-0.5 rounded border border-stone-900 shadow-hard-xs">
               MUM: {hoveredData.time}
             </span>
-          ) : visibleRangeStats ? (
-            <div className="flex items-center gap-1.5 text-[10px] font-black">
-              <span className="text-stone-500 font-bold uppercase hidden sm:inline">Görünüm:</span>
-              <span
-                className={`px-1.5 py-0.5 rounded border border-stone-900 flex items-center gap-0.5 shadow-hard-xs ${
-                  visibleRangeStats.changePct >= 0
-                    ? 'bg-emerald-100 text-emerald-900'
-                    : 'bg-rose-100 text-rose-900'
-                }`}
-              >
-                {visibleRangeStats.changePct >= 0 ? '+' : ''}
-                {visibleRangeStats.changePct.toFixed(2)}%
-              </span>
-            </div>
           ) : (
             <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider">
               24S PİYASA

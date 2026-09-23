@@ -6,10 +6,8 @@ import {
   Star,
 } from 'lucide-react';
 import { useCryptoStore } from '../../store/useCryptoStore';
-import { fetchSparklineCloses } from '../../services/binanceApi';
 import { cleanSymbol, formatCurrency, formatPercentage } from '../../utils/formatters';
 import { triggerHaptic } from '../../utils/haptics';
-import { Sparkline } from './Sparkline';
 
 interface MarketItemProps {
   symbol: string;
@@ -42,29 +40,17 @@ const MarketItemInner: React.FC<MarketItemProps> = ({
   onTouchStartHandle,
 }) => {
   const ticker = useCryptoStore((state) => state.tickers[symbol]);
-  const connectionStatus = useCryptoStore((state) => state.connectionStatus);
   const setSelectedCoinForChart = useCryptoStore((state) => state.setSelectedCoinForChart);
   const watchlist = useCryptoStore((state) => state.watchlist);
   const toggleWatchlist = useCryptoStore((state) => state.toggleWatchlist);
   const isFavorite = watchlist.includes(symbol);
-  // Stale signal without layout shift: dot indicator only, border stays solid.
-  const isStale = !ticker || ticker.isLive !== true || connectionStatus !== 'connected';
+  // Solukluk SADECE açılışta localStorage cache'inden gelen veri içindir — ilk WS
+  // paketiyle biter. Bağlantı dalgalanması veya fiyat güncellemesi bir daha soldurmaz.
+  const isStale = !ticker || ticker.source === 'cache';
 
   const [flashClass, setFlashClass] = useState<string>('');
   const prevPriceRef = useRef<number | undefined>(ticker?.price);
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [sparkline, setSparkline] = useState<number[] | null>(null);
-
-  // 24h closes for the desktop sparkline — service-level cache dedupes remounts & category switches
-  useEffect(() => {
-    let alive = true;
-    fetchSparklineCloses(symbol).then((closes) => {
-      if (alive) setSparkline(closes.length >= 2 ? closes : null);
-    });
-    return () => {
-      alive = false;
-    };
-  }, [symbol]);
 
   useEffect(() => {
     const prev = prevPriceRef.current;
@@ -113,7 +99,7 @@ const MarketItemInner: React.FC<MarketItemProps> = ({
       onDrop={(e) => onDrop?.(index, e)}
       onDragEnd={onDragEnd}
       data-drag-index={index}
-      className={`group grid grid-cols-[auto_1fr_auto_44px] md:grid-cols-[auto_1fr_auto_auto_44px] items-center gap-3 min-h-[60px] px-3 py-2 bg-white border-2 border-stone-900 rounded-lg shadow-hard-sm cursor-pointer select-none transition-[background-color,box-shadow,transform] duration-150 hover:bg-stone-50 hover:shadow-hard lg:hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-amber-500 focus-visible:outline-offset-2 ${
+      className={`group grid grid-cols-[auto_1fr_auto_44px] items-center gap-3 min-h-[60px] px-3 py-2 bg-white border-2 border-stone-900 rounded-lg shadow-hard-sm cursor-pointer select-none transition-[background-color,box-shadow,transform] duration-150 hover:bg-stone-50 hover:shadow-hard lg:hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-amber-500 focus-visible:outline-offset-2 ${
         isDragging
           ? 'opacity-40 border-dashed border-amber-500 bg-amber-50/60'
           : isDragOver
@@ -166,12 +152,7 @@ const MarketItemInner: React.FC<MarketItemProps> = ({
         </div>
       </div>
 
-      {/* Col 3 (md+): 24h sparkline — desktop grid density */}
-      <div className="hidden md:flex items-center shrink-0">
-        <Sparkline values={sparkline} positive={isPositive} />
-      </div>
-
-      {/* Col 4: Fixed-width price block, right aligned */}
+      {/* Col 3: Fixed-width price block, right aligned */}
       <div
         className={`min-w-[112px] text-right tabular-nums transition-opacity duration-500 ${
           isStale ? 'opacity-60 saturate-[.65]' : 'opacity-100'
@@ -208,7 +189,7 @@ const MarketItemInner: React.FC<MarketItemProps> = ({
         </div>
       </div>
 
-      {/* Col 5: Fixed 44px star rail — identical x-position on every row */}
+      {/* Col 4: Fixed 44px star rail — identical x-position on every row */}
       <button
         onClick={handleToggleFavorite}
         title={isFavorite ? 'Favorilerden Çıkar' : 'Favorilere Ekle'}

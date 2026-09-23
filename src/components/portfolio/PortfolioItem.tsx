@@ -20,13 +20,13 @@ const PortfolioItemInner: React.FC<PortfolioItemProps> = ({
   onBuyMoreClick,
 }) => {
   const ticker = useCryptoStore((state) => state.tickers[asset.symbol]);
-  const connectionStatus = useCryptoStore((state) => state.connectionStatus);
   const removePortfolioAsset = useCryptoStore((state) => state.removePortfolioAsset);
   const setSelectedCoinForChart = useCryptoStore((state) => state.setSelectedCoinForChart);
   const hideBalances = useCryptoStore((state) => state.hideBalances);
   const tryRate = useCryptoStore((state) => state.tryRate);
   // PnL de fiyattan türediği için aynı yazısız stale dili: soluk + amber bar, ekstra yazı yok.
-  const isStale = !ticker || ticker.isLive !== true || connectionStatus !== 'connected';
+  // Solukluk SADECE açılışta cache'ten gelen veri içindir; fiyat akışı soldurmaz.
+  const isStale = !ticker || ticker.source === 'cache';
 
   const currentPrice = ticker?.price ?? asset.buyPrice;
   const currentValue = asset.amount * currentPrice;
