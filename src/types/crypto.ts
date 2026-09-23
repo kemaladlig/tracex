@@ -63,12 +63,31 @@ export interface CandleData {
   volume?: number;
 }
 
+export interface DataFreshness {
+  /** true ise bu bölüm canlı çekilemedi, fallback/önbellek gösteriliyor */
+  isStale: boolean;
+  /** verinin çekildiği zaman (ms epoch). Fallback ise son başarılı zaman veya 0 */
+  updatedAt: number;
+  /** insan-dili kaynak etiketi, örn. "Binance Futures" */
+  source: string;
+}
+
 export interface MarketAnalyticsData {
+  meta: {
+    updatedAt: number;
+    /** herhangi bir bölüm stale ise true */
+    isPartiallyStale: boolean;
+    staleSections: string[];
+  };
   macroPhase: {
     title: string;
     riskScore: number;
     verdict: string;
     strategy: string;
+    /** 1-10 riskin ne kadar güvenilir olduğu: stale girdi varsa düşer */
+    confidence: 'low' | 'medium' | 'high';
+    /** hükmü üreten ateşlenen sinyaller, örn. "Aşırı korku (18/100)" */
+    signals: string[];
   };
   fearAndGreed: {
     current: number;
@@ -77,6 +96,7 @@ export interface MarketAnalyticsData {
     lastWeek: number;
     lastMonth: number;
     history: { date: string; value: number }[];
+    freshness: DataFreshness;
   };
   marketDominance: {
     btcD: number;
@@ -86,6 +106,7 @@ export interface MarketAnalyticsData {
     mcapChange24h: number;
     totalVolume24hUsd: number;
     interpretation: string;
+    freshness: DataFreshness;
   };
   longShortRatio: {
     longPercent: number;
@@ -93,18 +114,23 @@ export interface MarketAnalyticsData {
     ratio: number;
     signal: string;
     description: string;
+    /** son 30 x 5dk snapshot'tan yön: pozitif = long'lar artıyor */
+    trendDelta?: number;
+    freshness: DataFreshness;
   };
   fundingRate: {
     ratePercent: number;
-    hourlyCost: string;
+    intervalLabel: string;
     status: 'bullish' | 'neutral' | 'overheated' | 'bearish';
     interpretation: string;
+    freshness: DataFreshness;
   };
   mvrvRatio: {
     value: number;
     status: 'dip' | 'fair' | 'heated';
     label: string;
     interpretation: string;
+    freshness: DataFreshness;
   };
   takerVolume: {
     buyVolBtc: number;
@@ -113,12 +139,16 @@ export interface MarketAnalyticsData {
     sellPercent: number;
     ratio: number;
     signal: string;
+    freshness: DataFreshness;
   };
   openInterest: {
     amountBtc: number;
     valueUsd: number;
     change24hUsd: number;
     interpretation: string;
+    /** fiyatla birleştirilmiş yön sinyali */
+    bias?: 'long-buildup' | 'short-buildup' | 'unwinding' | 'neutral';
+    freshness: DataFreshness;
   };
   technicalIndicator: {
     symbol: string;
@@ -126,7 +156,11 @@ export interface MarketAnalyticsData {
     rsiStatus: 'oversold' | 'neutral' | 'overbought';
     rsiLabel: string;
     sma20Price: number;
+    ema50Price?: number;
+    sma200Price?: number;
+    crossSignal?: string;
     currentPrice: number;
     trendLabel: string;
+    freshness: DataFreshness;
   };
 }

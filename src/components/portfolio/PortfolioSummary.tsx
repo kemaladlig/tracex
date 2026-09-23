@@ -238,9 +238,9 @@ export const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({
                 ))}
               </div>
 
-              {/* Asset percentage chips */}
+              {/* Asset percentage chips (top 7 by value) */}
               <div className="flex flex-wrap items-center gap-2 mt-2">
-                {assetValues.slice(0, 4).map((asset, idx) => (
+                {assetValues.slice(0, 7).map((asset, idx) => (
                   <div key={asset.symbol} className="flex items-center gap-1 text-[10px] font-bold">
                     <span
                       className={`w-2 h-2 border border-stone-900 rounded-xs ${

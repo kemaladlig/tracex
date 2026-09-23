@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
+  Activity,
   BarChart3,
   Flame,
   Gauge,
@@ -11,31 +12,88 @@ import {
   TrendingDown,
   TrendingUp,
 } from 'lucide-react';
-import { fetchComprehensiveAnalytics } from '../../services/onChainApi';
+import { fetchComprehensiveAnalytics, classifyFng } from '../../services/onChainApi';
 import { useCryptoStore } from '../../store/useCryptoStore';
 import { InfoBadge } from '../common/InfoBadge';
+
+const formatUpdateTime = (ts: number): string => {
+  if (!ts) return 'bilinmiyor';
+  try {
+    return new Date(ts).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return 'bilinmiyor';
+  }
+};
+
+const StaleBadge: React.FC<{ label?: string }> = ({ label }) => (
+  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-stone-900 bg-stone-800 text-amber-300 text-[8px] font-black uppercase tracking-wide shadow-hard-xs">
+    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+    {label ?? 'Önbellek / Güncel değil'}
+  </span>
+);
+
+const SourceFooter: React.FC<{ source: string; updatedAt: number; isStale: boolean }> = ({ source, updatedAt, isStale }) => (
+  <div className="mt-3 pt-2 border-t border-dashed border-stone-300 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[8px] font-bold text-stone-500 uppercase">
+    <span className="truncate min-w-0 flex-1">Kaynak: {source}</span>
+    <span className="flex flex-wrap items-center justify-end gap-1.5">
+      {isStale && <StaleBadge />}
+      <span className="whitespace-nowrap">Güncelleme: {formatUpdateTime(updatedAt)}</span>
+    </span>
+  </div>
+);
+
+/** Çekilemeyen bölüm güncelmiş gibi görünmesin: sönük + gri ton. */
+const staleCardClass = (isStale: boolean): string =>
+  isStale ? 'opacity-70 grayscale-[0.45] saturate-[0.7]' : '';
+
+/** Bento kartları için standart başlık: kicker + ikon + başlık + sağ rozetler. */
+const CardHeader: React.FC<{
+  kicker: string;
+  icon: React.ReactNode;
+  title: string;
+  right?: React.ReactNode;
+  infoTitle?: string;
+  infoContent?: string;
+}> = ({ kicker, icon, title, right, infoTitle, infoContent }) => (
+  <div className="mb-3">
+    <div className="text-[9px] font-black tracking-[0.18em] text-stone-400 uppercase mb-1.5">{kicker}</div>
+    <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 pb-2.5 border-b-2 border-stone-900/40">
+      <div className="flex items-center gap-1.5 text-xs font-black text-stone-900 uppercase min-w-0 flex-1">
+        {icon}
+        <span className="truncate">{title}</span>
+      </div>
+      <div className="flex flex-wrap items-center justify-end gap-1.5">
+        {right}
+        {infoContent && <InfoBadge title={infoTitle} content={infoContent} />}
+      </div>
+    </div>
+  </div>
+);
 
 export const AnalyticsView: React.FC = () => {
   const analyticsData = useCryptoStore((state) => state.analyticsData);
   const setAnalyticsData = useCryptoStore((state) => state.setAnalyticsData);
   const [isLoading, setIsLoading] = useState<boolean>(!analyticsData);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [hoveredFng, setHoveredFng] = useState<{ date: string; value: number } | null>(null);
 
-  const loadData = () => {
-    setIsLoading(true);
-    fetchComprehensiveAnalytics().then((data) => {
+  const loadData = (forceFresh: boolean = false) => {
+    if (forceFresh) setIsRefreshing(true);
+    else setIsLoading(true);
+    fetchComprehensiveAnalytics(forceFresh).then((data) => {
       setAnalyticsData(data);
       setIsLoading(false);
+      setIsRefreshing(false);
     });
   };
 
   useEffect(() => {
-    loadData();
+    loadData(false);
   }, []);
 
   if (isLoading || !analyticsData) {
     return (
-      <div className="pb-24 pt-2 px-3 font-mono max-w-2xl mx-auto">
+      <div className="pb-24 pt-2 px-3 font-mono max-w-4xl mx-auto">
         {/* Title Bar (Solid frame, zero layout shift) */}
         <div className="flex items-center justify-between mb-3 border-b-2 border-stone-900 pb-2">
           <div>
@@ -52,56 +110,35 @@ export const AnalyticsView: React.FC = () => {
           </div>
         </div>
 
-        {/* Clean Official Loading Screen */}
-        <div className="my-8 p-6 bg-white border-2 border-stone-900 rounded-lg shadow-hard flex flex-col items-center justify-center text-center animate-popIn">
-          {/* Status Header */}
-          <div className="flex items-center gap-2 px-2.5 py-1 bg-stone-100 border border-stone-900 rounded shadow-hard-xs mb-4">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-livePulse" />
-            <span className="text-[10px] font-black tracking-wider text-stone-800 uppercase">
-              PİYASA VERİLERİ YÜKLENİYOR
-            </span>
+        {/* Skeleton Bento — final dizilimin iskeleti, kayma olmaz */}
+        <div className="p-4 sm:p-5 bg-stone-900 border-2 border-stone-900 rounded-lg shadow-hard mb-3 animate-pulse">
+          <div className="h-3 w-40 bg-stone-700 rounded mb-2" />
+          <div className="h-5 w-3/4 bg-stone-700 rounded mb-2" />
+          <div className="h-3 w-full bg-stone-800 rounded mb-1" />
+          <div className="h-3 w-2/3 bg-stone-800 rounded mb-3" />
+          <div className="flex gap-1.5 mb-3">
+            <div className="h-5 w-24 bg-stone-800 rounded border border-stone-700" />
+            <div className="h-5 w-28 bg-stone-800 rounded border border-stone-700" />
+            <div className="h-5 w-20 bg-stone-800 rounded border border-stone-700" />
           </div>
-
-          {/* Minimalist Scope Indicator */}
-          <div className="relative w-24 h-24 rounded-full border-2 border-stone-900 bg-stone-950 flex items-center justify-center overflow-hidden shadow-hard my-2">
-            <div className="absolute w-16 h-16 rounded-full border border-emerald-500/25" />
-            <div className="absolute w-8 h-8 rounded-full border border-emerald-500/35" />
-            <div className="absolute w-full h-[1px] bg-emerald-500/20" />
-            <div className="absolute h-full w-[1px] bg-emerald-500/20" />
-
-            {/* Sweep Beam */}
-            <div
-              className="absolute inset-0 rounded-full animate-spin"
-              style={{
-                background: 'conic-gradient(from 0deg, transparent 0deg, transparent 270deg, rgba(52, 211, 153, 0.45) 360deg)',
-                animationDuration: '2s',
-              }}
-            />
+          <div className="w-full bg-stone-800 h-2 rounded overflow-hidden border border-stone-700">
+            <div className="h-full bg-amber-400/70 w-1/2" />
           </div>
+        </div>
 
-          {/* Clean Professional Copy */}
-          <div className="mt-4 space-y-1">
-            <h3 className="text-xs font-black text-stone-900 tracking-tight uppercase">
-              Göstergeler Hesaplanıyor
-            </h3>
-            <p className="text-[11px] text-stone-600 max-w-xs leading-relaxed font-sans font-medium">
-              Binance vadeli emir akışı, MVRV döngü oranı ve duygu endeksi verileri derleniyor...
-            </p>
-          </div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start animate-pulse">
+          <div className="lg:col-span-12 h-56 bg-white border-2 border-stone-900 rounded-lg shadow-hard" />
+          <div className="lg:col-span-4 h-44 bg-white border-2 border-stone-900 rounded-lg shadow-hard" />
+          <div className="lg:col-span-8 h-44 bg-white border-2 border-stone-900 rounded-lg shadow-hard" />
+          <div className="lg:col-span-4 h-32 bg-white border-2 border-stone-900 rounded-lg shadow-hard" />
+          <div className="lg:col-span-4 h-32 bg-white border-2 border-stone-900 rounded-lg shadow-hard" />
+          <div className="lg:col-span-4 h-32 bg-white border-2 border-stone-900 rounded-lg shadow-hard" />
+          <div className="lg:col-span-12 h-36 bg-white border-2 border-stone-900 rounded-lg shadow-hard" />
+        </div>
 
-          {/* Segmented Loading Bar */}
-          <div className="w-48 h-2 rounded border-2 border-stone-900 overflow-hidden bg-stone-200 mt-4 shadow-hard-xs">
-            <div className="h-full bg-amber-300 border-r-2 border-stone-900 w-3/4 animate-pulse" />
-          </div>
-
-          {/* Telemetry Tags */}
-          <div className="flex items-center gap-2 mt-4 text-[9px] font-bold text-stone-500">
-            <span>[ON-CHAIN]</span>
-            <span>//</span>
-            <span>[VADELİ PİYASA]</span>
-            <span>//</span>
-            <span>[DUYGU ENDEKSİ]</span>
-          </div>
+        <div className="mt-3 flex items-center justify-center gap-2 text-[9px] font-bold text-stone-500">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-livePulse" />
+          <span className="uppercase tracking-wider">Vadeli akış • MVRV • Duygu endeksi derleniyor</span>
         </div>
       </div>
     );
@@ -176,8 +213,14 @@ export const AnalyticsView: React.FC = () => {
       ? '#dc2626'
       : '#d97706';
 
+  // Vadeli kartın zaman damgası: iki kaynaktan eski olanı göster (render'da Date.now yok)
+  const lsFundingTs = Math.min(
+    longShortRatio.freshness.updatedAt || analyticsData.meta.updatedAt,
+    fundingRate.freshness.updatedAt || analyticsData.meta.updatedAt
+  );
+
   return (
-    <div className="pb-24 pt-2 px-3 font-mono max-w-2xl mx-auto">
+    <div className="pb-24 pt-2 px-3 font-mono max-w-4xl mx-auto">
       {/* Title & Refresh */}
       <div className="flex items-center justify-between mb-3 border-b-2 border-stone-900 pb-2">
         <div>
@@ -190,48 +233,100 @@ export const AnalyticsView: React.FC = () => {
           </p>
         </div>
         <button
-          onClick={loadData}
-          className="p-1.5 bg-stone-100 border border-stone-900 rounded shadow-hard-sm hover:bg-stone-200 active:translate-x-[1px] active:translate-y-[1px] transition-all cursor-pointer"
-          title="Verileri Güncelle"
+          onClick={() => loadData(true)}
+          disabled={isRefreshing}
+          className="p-1.5 bg-stone-100 border border-stone-900 rounded shadow-hard-sm hover:bg-stone-200 active:translate-x-[1px] active:translate-y-[1px] transition-all cursor-pointer disabled:opacity-60 disabled:cursor-wait"
+          title="Verileri Güncelle (önbelleği atla)"
         >
-          <RefreshCw className="w-3.5 h-3.5 text-stone-900" />
+          <RefreshCw className={`w-3.5 h-3.5 text-stone-900 ${isRefreshing ? 'animate-spin' : ''}`} />
         </button>
       </div>
 
-      {/* 1. MAKRO FAZ & RİSK SKORU KARTI */}
+      {/* Kısmi stale uyarısı: hangi bölümler önbellek açıkça yazılır */}
+      {analyticsData.meta.isPartiallyStale && (
+        <div className="mb-3 p-2.5 bg-stone-800 text-amber-200 border-2 border-stone-900 rounded-lg shadow-hard-sm text-[10px] font-bold leading-relaxed">
+          <span className="font-black uppercase">Bazı veriler güncellenemedi: </span>
+          {analyticsData.meta.staleSections.join(' • ')} önbellekten gösteriliyor ve kartlar sönük bırakıldı. Güncelmiş gibi işlem yapmayın.
+        </div>
+      )}
+
+      {/* 1. MAKRO FAZ & RİSK SKORU — hero kart, hükmün kanıtları chiplerde */}
       <div
-        className="p-4 bg-stone-900 text-stone-100 border-2 border-stone-900 rounded-lg shadow-hard mb-3.5 stagger-item"
+        className="p-4 sm:p-5 bg-stone-900 text-stone-100 border-2 border-stone-900 rounded-lg shadow-hard mb-3 stagger-item"
         style={{ '--stagger-idx': 0 } as React.CSSProperties}
       >
-        <div className="flex items-center justify-between pb-2 border-b border-stone-800 mb-3">
-          <span className="text-[10px] tracking-widest text-amber-400 font-bold uppercase">
+        <div className="flex items-center gap-1.5 text-[9px] font-black tracking-[0.18em] text-stone-500 uppercase mb-2">
+          <Activity className="w-3.5 h-3.5 text-amber-400" />
+          [01 // GENEL HÜKÜM]
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-stone-800 mb-3">
+          <span className="text-sm sm:text-base tracking-wide text-stone-50 font-black uppercase">
             {macroPhase.title}
           </span>
-          <div className="flex items-center gap-1 bg-stone-800 border border-stone-700 px-2 py-0.5 rounded text-xs font-black">
-            <span className="text-stone-400 text-[10px]">RİSK:</span>
+          <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1 bg-stone-800 border border-stone-700 px-2 py-0.5 rounded text-xs font-black">
+              <span className="text-stone-400 text-[10px]">RİSK:</span>
+              <span
+                className={
+                  macroPhase.riskScore >= 7
+                    ? 'text-rose-400'
+                    : macroPhase.riskScore <= 4
+                    ? 'text-emerald-400'
+                    : 'text-amber-400'
+                }
+              >
+                {macroPhase.riskScore} / 10
+              </span>
+            </div>
             <span
-              className={
-                macroPhase.riskScore >= 7
-                  ? 'text-rose-400'
-                  : macroPhase.riskScore <= 4
-                  ? 'text-emerald-400'
-                  : 'text-amber-400'
-              }
+              className={`text-[9px] font-black px-1.5 py-0.5 rounded border ${
+                macroPhase.confidence === 'high'
+                  ? 'bg-emerald-900 text-emerald-300 border-emerald-700'
+                  : macroPhase.confidence === 'medium'
+                  ? 'bg-amber-900 text-amber-300 border-amber-700'
+                  : 'bg-rose-900 text-rose-300 border-rose-700'
+              }`}
+              title="Stale girdi arttıkça güven düşer"
             >
-              {macroPhase.riskScore} / 10
+              GÜVEN: {macroPhase.confidence === 'high' ? 'YÜKSEK' : macroPhase.confidence === 'medium' ? 'ORTA' : 'DÜŞÜK'}
             </span>
           </div>
         </div>
 
         <div className="mb-2.5">
-          <div className="text-xs font-bold text-amber-300 uppercase mb-1 flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-amber-400 inline-block shrink-0" />
-            <span>{macroPhase.verdict}</span>
+          <div className="mb-1.5 flex items-center gap-1.5 flex-wrap">
+            <span
+              className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded border text-[11px] font-black uppercase ${
+                macroPhase.riskScore >= 7
+                  ? 'bg-rose-950 text-rose-300 border-rose-800'
+                  : macroPhase.riskScore <= 4
+                  ? 'bg-emerald-950 text-emerald-300 border-emerald-800'
+                  : 'bg-amber-950 text-amber-300 border-amber-800'
+              }`}
+            >
+              <span className={`w-2 h-2 rounded-full inline-block shrink-0 ${macroPhase.riskScore >= 7 ? 'bg-rose-400' : macroPhase.riskScore <= 4 ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+              <span>{macroPhase.verdict}</span>
+            </span>
           </div>
           <p className="text-xs text-stone-300 leading-relaxed font-sans">
             {macroPhase.strategy}
           </p>
         </div>
+
+        {/* Hükmün dayanakları: hangi sinyaller ateşlendi, hangileri sakin */}
+        {macroPhase.signals.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {macroPhase.signals.map((sig) => (
+              <span
+                key={sig}
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-stone-700 bg-stone-800 text-stone-200 text-[9px] font-bold"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
+                {sig}
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* Dynamic Risk Gauge bar */}
         <div className="w-full bg-stone-800 h-2 rounded overflow-hidden flex border border-stone-700">
@@ -246,26 +341,31 @@ export const AnalyticsView: React.FC = () => {
             }`}
           />
         </div>
+        <div className="flex justify-between text-[8px] font-bold text-stone-500 mt-1">
+          <span>1 · DÜŞÜK</span>
+          <span>5 · NÖTR</span>
+          <span>10 · YÜKSEK</span>
+        </div>
       </div>
 
-      {/* 2. KORKU & AÇGÖZLÜLÜK // ÇOKLU ZAMAN KIYASLAMASI & 14 GÜNLÜK TREND */}
+      {/* BENTO GRID: mobilde tek sütun, desktop'ta 12 kolon */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4 items-start">
+
+      {/* 2. KORKU & AÇGÖZLÜLÜK — grafik genişlik ister: tam boy */}
       <div
-        className="p-4 bg-white border-2 border-stone-900 rounded-lg shadow-hard mb-3.5 stagger-item"
+        className={`lg:col-span-12 h-full p-4 sm:p-5 bg-white border-2 border-stone-900 rounded-lg shadow-hard stagger-item ${staleCardClass(fearAndGreed.freshness.isStale)}`}
         style={{ '--stagger-idx': 1 } as React.CSSProperties}
       >
-        <div className="flex items-center justify-between pb-2 border-b-2 border-stone-900/40 mb-3">
-          <div className="flex items-center gap-1.5 text-xs font-black text-stone-900 uppercase">
-            <Gauge className="w-4 h-4 text-amber-600" />
-            <span>KORKU & AÇGÖZLÜLÜK ENDEKSİ</span>
-          </div>
-          <InfoBadge
-            title="Korku & Açgözlülük (Alternative.me)"
-            content="Piyasadaki aşırı korku yatırımcıların gereksiz paniklediğini (alım fırsatı), aşırı açgözlülük ise piyasanın bir düzeltmeye hazır olduğunu (satış uyarısı) gösterir."
-          />
-        </div>
+        <CardHeader
+          kicker="[02 // DUYGU]"
+          icon={<Gauge className="w-4 h-4 text-amber-600" />}
+          title="KORKU & AÇGÖZLÜLÜK"
+          infoTitle="Korku & Açgözlülük (Alternative.me)"
+          infoContent="Piyasadaki aşırı korku yatırımcıların gereksiz paniklediğini (alım fırsatı), aşırı açgözlülük ise piyasanın bir düzeltmeye hazır olduğunu (satış uyarısı) gösterir."
+        />
 
         {/* 4 Multi-period Comparison Boxes (Today, Yesterday, Last Week, Last Month) */}
-        <div className="grid grid-cols-4 gap-1.5 mb-3.5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
           {/* Today */}
           <div className="p-2 bg-amber-50 border-2 border-stone-900 rounded shadow-hard-sm text-center">
             <span className="text-[9px] font-bold text-stone-600 uppercase block">ŞU AN</span>
@@ -280,7 +380,7 @@ export const AnalyticsView: React.FC = () => {
             <span className="text-[9px] font-bold text-stone-500 uppercase block">DÜN</span>
             <div className="text-base font-black text-stone-800 mt-0.5">{fearAndGreed.yesterday}</div>
             <span className="text-[8px] font-bold uppercase text-stone-600 block truncate">
-              {fearAndGreed.classification}
+              {classifyFng(fearAndGreed.yesterday)}
             </span>
           </div>
 
@@ -289,7 +389,7 @@ export const AnalyticsView: React.FC = () => {
             <span className="text-[9px] font-bold text-stone-500 uppercase block">GEÇEN HAFTA</span>
             <div className="text-base font-black text-stone-800 mt-0.5">{fearAndGreed.lastWeek}</div>
             <span className="text-[8px] font-bold uppercase text-stone-600 block truncate">
-              {fearAndGreed.classification}
+              {classifyFng(fearAndGreed.lastWeek)}
             </span>
           </div>
 
@@ -298,15 +398,15 @@ export const AnalyticsView: React.FC = () => {
             <span className="text-[9px] font-bold text-stone-500 uppercase block">GEÇEN AY</span>
             <div className="text-base font-black text-stone-800 mt-0.5">{fearAndGreed.lastMonth}</div>
             <span className="text-[8px] font-bold uppercase text-stone-600 block truncate">
-              {fearAndGreed.classification}
+              {classifyFng(fearAndGreed.lastMonth)}
             </span>
           </div>
         </div>
 
         {/* 14-Day Micro Historical Trend Chart with hover inspection */}
-        <div className="mt-2 pt-2 border-t border-stone-200">
-          <div className="flex items-center justify-between text-[10px] font-bold mb-1.5">
-            <div className="flex items-center gap-1.5 text-stone-700">
+        <div className="mt-2 pt-3 border-t border-stone-200">
+          <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 text-[10px] font-bold mb-2">
+            <div className="flex flex-wrap items-center gap-1.5 text-stone-700">
               <span className="uppercase">14 GÜNLÜK DUYGU DALGASI</span>
               <span
                 className={`inline-flex items-center gap-0.5 px-1 py-0.2 rounded font-black text-[9px] border border-stone-900 shadow-hard-xs ${
@@ -466,33 +566,31 @@ export const AnalyticsView: React.FC = () => {
               })}
             </svg>
           </div>
+          <SourceFooter source={fearAndGreed.freshness.source} updatedAt={fearAndGreed.freshness.updatedAt} isStale={fearAndGreed.freshness.isStale} />
         </div>
       </div>
 
       {/* 3. KRİPTO PAZAR HAKİMİYETİ & ALTCOİN RADARI */}
       <div
-        className="p-4 bg-white border-2 border-stone-900 rounded-lg shadow-hard mb-3.5 stagger-item"
+        className={`lg:col-span-4 h-full p-4 sm:p-5 bg-white border-2 border-stone-900 rounded-lg shadow-hard stagger-item ${staleCardClass(marketDominance.freshness.isStale)}`}
         style={{ '--stagger-idx': 2 } as React.CSSProperties}
       >
-        <div className="flex items-center justify-between pb-2 border-b-2 border-stone-900/40 mb-3">
-          <div className="flex items-center gap-1.5 text-xs font-black text-stone-900 uppercase">
-            <PieChart className="w-4 h-4 text-indigo-600" />
-            <span>PAZAR HAKİMİYETİ (BTC.D)</span>
-          </div>
-          <div className="flex items-center gap-1.5">
+        <CardHeader
+          kicker="[03 // HAKİMİYET]"
+          icon={<PieChart className="w-4 h-4 text-indigo-600" />}
+          title="PAZAR HAKİMİYETİ"
+          right={
             <span className="text-[10px] font-black bg-indigo-50 border border-stone-900 px-1.5 py-0.5 rounded shadow-hard-sm">
               BTC.D: %{marketDominance.btcD}
             </span>
-            <InfoBadge
-              title="Pazar Hakimiyeti (Dominance)"
-              content={marketDominance.interpretation}
-            />
-          </div>
-        </div>
+          }
+          infoTitle="Pazar Hakimiyeti (Dominance)"
+          infoContent={marketDominance.interpretation}
+        />
 
         {/* 3-Segment Stacked Bar */}
-        <div className="mb-2">
-          <div className="flex justify-between text-[11px] font-black mb-1">
+        <div className="mb-2.5">
+          <div className="flex flex-wrap justify-between gap-x-2 gap-y-0.5 text-[11px] font-black mb-1.5">
             <span className="text-amber-800">BTC: %{marketDominance.btcD}</span>
             <span className="text-indigo-800">ETH: %{marketDominance.ethD}</span>
             <span className="text-emerald-800">DİĞERLERİ: %{marketDominance.altD}</span>
@@ -516,8 +614,8 @@ export const AnalyticsView: React.FC = () => {
           </div>
         </div>
 
-        {/* Global Market Overview */}
-        <div className="grid grid-cols-2 gap-2 mt-2.5 p-2 bg-stone-50 border border-stone-900 rounded text-xs">
+        {/* Global Market Overview — dar kutuda alt alta daha rahat */}
+        <div className="grid grid-cols-1 gap-1.5 mt-2.5 p-2 bg-stone-50 border border-stone-900 rounded text-xs">
           <div>
             <span className="text-[9px] text-stone-500 uppercase font-bold block">Toplam Kripto Değeri</span>
             <span className="font-black text-stone-900">
@@ -537,31 +635,41 @@ export const AnalyticsView: React.FC = () => {
             <span className="font-black text-stone-900">${marketDominance.totalVolume24hUsd}B</span>
           </div>
         </div>
+        <p className="mt-2 text-[10px] text-stone-500 font-sans leading-relaxed">
+          Not: "Diğerleri" dilimi stablecoin'leri de içerir; tek başına alt-sezon sinyali değildir.
+        </p>
+        <SourceFooter source={marketDominance.freshness.source} updatedAt={marketDominance.freshness.updatedAt} isStale={marketDominance.freshness.isStale} />
       </div>
 
-      {/* 4. VADELİ PİYASA LONG / SHORT DENGESİ & FONLAMA ORANI */}
+      {/* 4. VADELİ LONG / SHORT & FONLAMA — barlar + fonlama kutusu yan yana */}
       <div
-        className="p-4 bg-white border-2 border-stone-900 rounded-lg shadow-hard mb-3.5 stagger-item"
+        className={`lg:col-span-8 h-full p-4 sm:p-5 bg-white border-2 border-stone-900 rounded-lg shadow-hard stagger-item ${staleCardClass(longShortRatio.freshness.isStale || fundingRate.freshness.isStale)}`}
         style={{ '--stagger-idx': 3 } as React.CSSProperties}
       >
-        <div className="flex items-center justify-between pb-2 border-b-2 border-stone-900/40 mb-3">
-          <div className="flex items-center gap-1.5 text-xs font-black text-stone-900 uppercase">
-            <Flame className="w-4 h-4 text-amber-600" />
-            <span>VADELİ LONG / SHORT & FONLAMA</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] font-black bg-stone-100 border border-stone-900 px-1.5 py-0.5 rounded shadow-hard-sm">
-              ORAN: {longShortRatio.ratio}
-            </span>
-            <InfoBadge
-              title="Long / Short & Fonlama"
-              content={longShortRatio.description}
-            />
-          </div>
-        </div>
+        <CardHeader
+          kicker="[04 // VADELİ]"
+          icon={<Flame className="w-4 h-4 text-amber-600" />}
+          title="LONG / SHORT & FONLAMA"
+          right={
+            <>
+              <span className="text-[10px] font-black bg-stone-100 border border-stone-900 px-1.5 py-0.5 rounded shadow-hard-sm">
+                ORAN: {longShortRatio.ratio}
+              </span>
+              {longShortRatio.trendDelta !== undefined && (
+                <span className={`text-[9px] font-black border border-stone-900 px-1.5 py-0.5 rounded ${longShortRatio.trendDelta >= 0 ? 'bg-emerald-100 text-emerald-900' : 'bg-rose-100 text-rose-900'}`}>
+                  2.5SA TREND: {longShortRatio.trendDelta >= 0 ? '+' : ''}{longShortRatio.trendDelta}
+                </span>
+              )}
+            </>
+          }
+          infoTitle="Long / Short & Fonlama"
+          infoContent={longShortRatio.description}
+        />
 
+        {/* Geniş kartta bar ve fonlama yan yana: içerik nefes alır */}
+        <div className="grid sm:grid-cols-2 gap-3 items-center">
         {/* Dual Bar (Long vs Short) */}
-        <div className="mb-2">
+        <div>
           <div className="flex justify-between text-xs font-black mb-1">
             <span className="text-emerald-700 flex items-center gap-1">
               <TrendingUp className="w-3.5 h-3.5 stroke-[3]" /> %{longShortRatio.longPercent} LONG
@@ -570,51 +678,51 @@ export const AnalyticsView: React.FC = () => {
               %{longShortRatio.shortPercent} SHORT <TrendingDown className="w-3.5 h-3.5 stroke-[3]" />
             </span>
           </div>
-          <div className="w-full h-3 rounded border-2 border-stone-900 overflow-hidden flex shadow-hard-sm">
+          <div className="w-full h-3.5 rounded border-2 border-stone-900 overflow-hidden flex shadow-hard-sm">
             <div
               style={{ width: `${longShortRatio.longPercent}%` }}
               className="bg-emerald-300 border-r border-stone-900"
             />
             <div style={{ width: `${longShortRatio.shortPercent}%` }} className="bg-rose-300" />
           </div>
+          <p className="mt-1.5 text-[10px] text-stone-500 font-sans leading-relaxed">
+            Hesap sayısı bazlı oran + 8 saatte bir ödenen fonlama birlikte okunmalıdır.
+          </p>
         </div>
 
         {/* Funding Rate Box */}
-        <div className="mt-2.5 p-2 bg-stone-50 border border-stone-900 rounded flex items-center justify-between text-xs">
-          <div>
-            <span className="text-[9px] text-stone-500 uppercase font-bold block">
-              Fonlama Oranı (Funding Rate)
-            </span>
-            <span className="font-black text-stone-900">%{fundingRate.ratePercent}</span>
-          </div>
-          <div className="text-right">
+        <div className="p-2.5 bg-stone-50 border border-stone-900 rounded text-xs">
+          <span className="text-[9px] text-stone-500 uppercase font-bold block mb-0.5">
+            Fonlama Oranı (Funding Rate)
+          </span>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-base font-black text-stone-900">%{fundingRate.ratePercent}</span>
             <span className="text-[10px] font-black bg-amber-200 border border-stone-900 px-1.5 py-0.5 rounded">
-              {fundingRate.hourlyCost}
+              {fundingRate.intervalLabel}
             </span>
           </div>
         </div>
+        </div>
+        <SourceFooter source={`${longShortRatio.freshness.source} // ${fundingRate.freshness.source}`} updatedAt={lsFundingTs} isStale={longShortRatio.freshness.isStale || fundingRate.freshness.isStale} />
       </div>
 
-      {/* 5. MVRV ORANI (DÖNGÜ TEPE / DİP CETVELİ) */}
+      {/* 5. MVRV — kompakt gösterge: dar kutu, dikey istif */}
       <div
-        className="p-4 bg-white border-2 border-stone-900 rounded-lg shadow-hard mb-3.5 stagger-item"
+        className={`lg:col-span-4 h-full p-4 sm:p-5 bg-white border-2 border-stone-900 rounded-lg shadow-hard stagger-item ${staleCardClass(mvrvRatio.freshness.isStale)}`}
         style={{ '--stagger-idx': 4 } as React.CSSProperties}
       >
-        <div className="flex items-center justify-between pb-2 border-b-2 border-stone-900/40 mb-3">
-          <div className="flex items-center gap-1.5 text-xs font-black text-stone-900 uppercase">
-            <LineChart className="w-4 h-4 text-purple-600" />
-            <span>MVRV ORANI // DÖNGÜ ISITICISI</span>
-          </div>
-          <div className="flex items-center gap-1.5">
+        <CardHeader
+          kicker="[05 // DÖNGÜ]"
+          icon={<LineChart className="w-4 h-4 text-purple-600" />}
+          title="MVRV ISITICI"
+          right={
             <span className="text-xs font-black bg-stone-900 text-amber-300 px-2 py-0.5 rounded shadow-hard-sm">
               SKOR: {mvrvRatio.value}
             </span>
-            <InfoBadge
-              title="MVRV Oranı (Piyasa / Gerçekleşen Değer)"
-              content={mvrvRatio.interpretation}
-            />
-          </div>
-        </div>
+          }
+          infoTitle="MVRV Oranı (Piyasa / Gerçekleşen Değer)"
+          infoContent={mvrvRatio.interpretation}
+        />
 
         {/* The Cycle Ruler Indicator */}
         <div className="my-2">
@@ -628,83 +736,86 @@ export const AnalyticsView: React.FC = () => {
               title={`Şu anki MVRV: ${mvrvRatio.value}`}
             />
           </div>
-          <div className="flex justify-between text-[9px] font-bold text-stone-500 mt-1">
-            <span>0.8 (Tarihi Ayı Dibi)</span>
-            <span className="text-stone-900 font-black">[ŞU AN: {mvrvRatio.value}]</span>
-            <span>3.7+ (Boğa Tepesi/Satış)</span>
+          <div className="flex justify-between gap-1 text-[9px] font-bold text-stone-500 mt-1">
+            <span>0.8 DİP</span>
+            <span className="text-stone-900 font-black">[{mvrvRatio.value}]</span>
+            <span>3.7+ TEPE</span>
           </div>
+        </div>
+        <SourceFooter source={mvrvRatio.freshness.source} updatedAt={mvrvRatio.freshness.updatedAt} isStale={mvrvRatio.freshness.isStale} />
+      </div>
+
+      {/* 6a. GERÇEK EMİR AKIŞI (TAKER VOLUME) */}
+      <div className={`lg:col-span-4 h-full p-4 bg-white border-2 border-stone-900 rounded-lg shadow-hard flex flex-col justify-between stagger-item text-xs ${staleCardClass(takerVolume.freshness.isStale)}`} style={{ '--stagger-idx': 5 } as React.CSSProperties}>
+        <div>
+          <div className="text-[9px] font-black tracking-[0.18em] text-stone-400 uppercase mb-1.5">[06A // AKIŞ]</div>
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-1 text-[10px] text-stone-900 font-black uppercase">
+              <BarChart3 className="w-3.5 h-3.5 text-emerald-600" /> Taker Akışı
+            </div>
+            <InfoBadge
+              title="Taker Emir Akışı"
+              content="Piyasa emriyle anlık agresif işlem yapan hacim dağılımı. Taker alış baskısı anlık yükseliş gücünü gösterir."
+            />
+          </div>
+          <div className="text-sm font-black text-stone-900">
+            %{takerVolume.buyPercent} Alış / %{takerVolume.sellPercent} Satış
+          </div>
+          <div className="w-full h-2.5 rounded border border-stone-900 overflow-hidden flex my-1.5">
+            <div style={{ width: `${takerVolume.buyPercent}%` }} className="bg-emerald-400" />
+            <div style={{ width: `${takerVolume.sellPercent}%` }} className="bg-rose-400" />
+          </div>
+          <span className="inline-block mt-0.5 bg-stone-100 border border-stone-900 text-stone-900 text-[8px] font-black px-1 rounded-xs">
+            {takerVolume.signal}
+          </span>
+          {takerVolume.freshness.isStale && <div className="mt-1.5"><StaleBadge /></div>}
         </div>
       </div>
 
-      {/* 6. GERÇEK EMİR AKIŞI (TAKER VOLUME) & AÇIK POZİSYON (OPEN INTEREST) */}
-      <div
-        className="grid grid-cols-2 gap-2.5 text-xs mb-3.5 stagger-item"
-        style={{ '--stagger-idx': 5 } as React.CSSProperties}
-      >
-        {/* Taker Buy vs Sell Volume */}
-        <div className="p-3 bg-white border-2 border-stone-900 rounded-lg shadow-hard flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-1 text-[9px] text-stone-500 font-bold uppercase">
-                <BarChart3 className="w-3 h-3 text-emerald-600" /> Taker Akışı
-              </div>
-              <InfoBadge
-                title="Taker Emir Akışı"
-                content="Piyasa emriyle anlık agresif işlem yapan hacim dağılımı. Taker alış baskısı anlık yükseliş gücünü gösterir."
-              />
+      {/* 6b. AÇIK POZİSYON (OPEN INTEREST) */}
+      <div className={`lg:col-span-4 h-full p-4 bg-white border-2 border-stone-900 rounded-lg shadow-hard flex flex-col justify-between stagger-item text-xs ${staleCardClass(openInterest.freshness.isStale)}`} style={{ '--stagger-idx': 5 } as React.CSSProperties}>
+        <div>
+          <div className="text-[9px] font-black tracking-[0.18em] text-stone-400 uppercase mb-1.5">[06B // POZİSYON]</div>
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-1 text-[10px] text-stone-900 font-black uppercase">
+              <Layers className="w-3.5 h-3.5 text-indigo-600" /> Açık Poz. (OI)
             </div>
-            <div className="text-xs font-black text-stone-900">
-              %{takerVolume.buyPercent} Alış / %{takerVolume.sellPercent} Satış
-            </div>
-            <div className="w-full h-2 rounded border border-stone-900 overflow-hidden flex my-1.5">
-              <div style={{ width: `${takerVolume.buyPercent}%` }} className="bg-emerald-400" />
-              <div style={{ width: `${takerVolume.sellPercent}%` }} className="bg-rose-400" />
-            </div>
-            <span className="inline-block mt-0.5 bg-stone-100 border border-stone-900 text-stone-900 text-[8px] font-black px-1 rounded-xs">
-              {takerVolume.signal}
-            </span>
+            <InfoBadge
+              title="Açık Pozisyon (Open Interest)"
+              content={openInterest.interpretation}
+            />
           </div>
-        </div>
-
-        {/* Open Interest */}
-        <div className="p-3 bg-white border-2 border-stone-900 rounded-lg shadow-hard flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-1 text-[9px] text-stone-500 font-bold uppercase">
-                <Layers className="w-3 h-3 text-indigo-600" /> Açık Poz. (OI)
-              </div>
-              <InfoBadge
-                title="Açık Pozisyon (Open Interest)"
-                content={openInterest.interpretation}
-              />
-            </div>
-            <div className="text-xs font-black text-stone-900">
-              ${openInterest.valueUsd}B USD
-            </div>
-            <span
-              className={`inline-block mt-1 border border-stone-900 text-[8px] font-black px-1 rounded-xs ${
-                openInterest.change24hUsd >= 0
-                  ? 'bg-emerald-100 text-emerald-950'
-                  : 'bg-rose-100 text-rose-950'
-              }`}
-            >
-              24S: {openInterest.change24hUsd >= 0 ? '+' : ''}${openInterest.change24hUsd}M
-            </span>
+          <div className="text-sm font-black text-stone-900">
+            ${openInterest.valueUsd}B USD
           </div>
+          <span
+            className={`inline-block mt-1 border border-stone-900 text-[8px] font-black px-1 rounded-xs ${
+              openInterest.change24hUsd >= 0
+                ? 'bg-emerald-100 text-emerald-950'
+                : 'bg-rose-100 text-rose-950'
+            }`}
+          >
+            24S: {openInterest.change24hUsd >= 0 ? '+' : ''}${openInterest.change24hUsd}M
+          </span>
+          {openInterest.bias && (
+            <span className="inline-block mt-1 bg-stone-900 text-amber-300 text-[8px] font-black px-1 rounded-xs uppercase">
+              {openInterest.bias === 'long-buildup' ? 'Long birikimi' : openInterest.bias === 'short-buildup' ? 'Short birikimi' : openInterest.bias === 'unwinding' ? 'Kaldıraç çözülüyor' : 'Yatay OI'}
+            </span>
+          )}
+          {openInterest.freshness.isStale && <div className="mt-1.5"><StaleBadge /></div>}
         </div>
       </div>
 
-      {/* 7. BİTCOİN GÜNLÜK TEKNİK GÖSTERGE (RSI 14 & 20G ORTALAMA) */}
+      {/* 7. BTC TEKNİK RADAR — sayaç genişlik ister: tam boy, içte 2 bölme */}
       <div
-        className="p-4 bg-white border-2 border-stone-900 rounded-lg shadow-hard stagger-item"
+        className={`lg:col-span-12 h-full p-4 sm:p-5 bg-white border-2 border-stone-900 rounded-lg shadow-hard stagger-item ${staleCardClass(technicalIndicator.freshness.isStale)}`}
         style={{ '--stagger-idx': 6 } as React.CSSProperties}
       >
-        <div className="flex items-center justify-between pb-2 border-b-2 border-stone-900/40 mb-3">
-          <div className="flex items-center gap-1.5 text-xs font-black text-stone-900 uppercase">
-            <Target className="w-4 h-4 text-rose-600" />
-            <span>BTC TEKNİK RADAR (RSI 14)</span>
-          </div>
-          <div className="flex items-center gap-1.5">
+        <CardHeader
+          kicker="[07 // TEKNİK]"
+          icon={<Target className="w-4 h-4 text-rose-600" />}
+          title="BTC TEKNİK RADAR"
+          right={
             <span
               className={`text-[10px] font-black border border-stone-900 px-1.5 py-0.5 rounded shadow-hard-sm ${
                 technicalIndicator.rsiStatus === 'oversold'
@@ -716,16 +827,15 @@ export const AnalyticsView: React.FC = () => {
             >
               RSI: {technicalIndicator.rsi14}
             </span>
-            <InfoBadge
-              title="BTC Teknik Seviyeler"
-              content={`${technicalIndicator.trendLabel} (20 Günlük Basit Hareketli Ortalama: $${technicalIndicator.sma20Price.toLocaleString()}). RSI 30 altı aşırı satım, 70 üzeri aşırı alım bölgesidir.`}
-            />
-          </div>
-        </div>
+          }
+          infoTitle="BTC Teknik Seviyeler"
+          infoContent={`${technicalIndicator.trendLabel} (20 Günlük Basit Hareketli Ortalama: $${technicalIndicator.sma20Price.toLocaleString()}). RSI 30 altı aşırı satım, 70 üzeri aşırı alım bölgesidir.`}
+        />
 
-        {/* RSI Meter Bar */}
-        <div className="mb-2">
-          <div className="relative w-full h-3 rounded border-2 border-stone-900 bg-stone-100 overflow-hidden flex shadow-hard-sm">
+        {/* RSI Meter + Ortalamalar yan yana */}
+        <div className="grid sm:grid-cols-5 gap-3 items-center">
+        <div className="sm:col-span-3">
+          <div className="relative w-full h-3.5 rounded border-2 border-stone-900 bg-stone-100 overflow-hidden flex shadow-hard-sm">
             <div style={{ width: '30%' }} className="bg-emerald-200 border-r border-stone-900" title="Aşırı Satım (0-30)" />
             <div style={{ width: '40%' }} className="bg-amber-100 border-r border-stone-900" title="Dengeli Bölge (30-70)" />
             <div style={{ width: '30%' }} className="bg-rose-200" title="Aşırı Alım (70-100)" />
@@ -741,7 +851,22 @@ export const AnalyticsView: React.FC = () => {
             <span>100 (Aşırı Alım)</span>
           </div>
         </div>
+
+        {(technicalIndicator.ema50Price !== undefined || technicalIndicator.sma200Price !== undefined) && (
+          <div className="sm:col-span-2 p-2 bg-stone-50 border border-stone-900 rounded text-[10px] font-bold text-stone-700 flex flex-wrap gap-x-3 gap-y-1">
+            {technicalIndicator.ema50Price !== undefined && <span>EMA50: ${technicalIndicator.ema50Price.toLocaleString()}</span>}
+            {technicalIndicator.sma200Price !== undefined && <span>SMA200: ${technicalIndicator.sma200Price.toLocaleString()}</span>}
+            {technicalIndicator.crossSignal && <span className="text-stone-900 font-black">• {technicalIndicator.crossSignal}</span>}
+          </div>
+        )}
+        </div>
+        <SourceFooter source={technicalIndicator.freshness.source} updatedAt={technicalIndicator.freshness.updatedAt} isStale={technicalIndicator.freshness.isStale} />
       </div>
+      </div>{/* /BENTO GRID */}
+
+      <p className="mt-4 p-3 bg-white border-2 border-stone-900 rounded-lg shadow-hard-sm text-[10px] text-stone-600 font-sans leading-relaxed">
+        Bu ekran bilgilendirme amaçlıdır, <strong>yatırım tavsiyesi değildir</strong>. Türev ve on-chain göstergeler gecikmeli veya önbellekten gelebilir; sönük kartlara dayanarak işlem yapmayın.
+      </p>
     </div>
   );
 };

@@ -35,6 +35,15 @@ interface Candle {
 
 export type ChartMode = 'candle' | 'heikin' | 'volume';
 
+export type HomeInterval = '15m' | '1h' | '4h' | '1d';
+
+const HOME_INTERVALS: { label: string; value: HomeInterval }[] = [
+  { label: '15D', value: '15m' },
+  { label: '1S', value: '1h' },
+  { label: '4S', value: '4h' },
+  { label: '1G', value: '1d' },
+];
+
 const DEFAULT_4H_CANDLES: Candle[] = [
   { time: 1, open: 91400, high: 92100, low: 91100, close: 91800, volume: 3100 },
   { time: 2, open: 91800, high: 92400, low: 91500, close: 92200, volume: 2800 },
@@ -109,10 +118,24 @@ export const HomeDashboardView: React.FC = () => {
     return 'candle';
   });
 
-  // 4-Hour Candlestick Data for BTC (Read from cache or initialize with default)
+  // Home BTC timeframe: 15m | 1h | 4h | 1d (persisted, default 4h)
+  const [homeInterval, setHomeInterval] = useState<HomeInterval>(() => {
+    const saved = localStorage.getItem('tracex_home_chart_interval');
+    if (saved === '15m' || saved === '1h' || saved === '4h' || saved === '1d') {
+      return saved;
+    }
+    return '4h';
+  });
+
+  // Candlestick Data for BTC (Read from per-interval cache or initialize with default)
   const [candles4h, setCandles4h] = useState<Candle[]>(() => {
     try {
-      const raw = localStorage.getItem('tracex_btc_4h_candles');
+      const savedInterval = localStorage.getItem('tracex_home_chart_interval');
+      const key =
+        savedInterval === '15m' || savedInterval === '1h' || savedInterval === '4h' || savedInterval === '1d'
+          ? `tracex_btc_${savedInterval}_candles`
+          : 'tracex_btc_4h_candles';
+      const raw = localStorage.getItem(key);
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed) && parsed.length > 5) {
@@ -151,11 +174,23 @@ export const HomeDashboardView: React.FC = () => {
     return 58.4;
   });
 
-  // Fetch 48 candles of 4-hour Klines for BTC from Binance Public API (~8 days range)
+  // Fetch 48 candles for selected home interval (15m / 1h / 4h) from Binance Public API
   useEffect(() => {
-    fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=4h&limit=48')
+    let cancelled = false;
+    // Instant per-interval cache hit for snappy switching
+    try {
+      const raw = localStorage.getItem(`tracex_btc_${homeInterval}_candles`);
+      if (raw) {
+        const cached = JSON.parse(raw);
+        if (Array.isArray(cached) && cached.length > 5 && !cancelled) {
+          setCandles4h(cached);
+        }
+      }
+    } catch {}
+    fetch(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${homeInterval}&limit=48`)
       .then((res) => res.json())
       .then((data: [number, string, string, string, string, string][]) => {
+        if (cancelled) return;
         if (Array.isArray(data) && data.length > 0) {
           const parsed: Candle[] = data.map((d) => ({
             time: d[0],
@@ -167,12 +202,17 @@ export const HomeDashboardView: React.FC = () => {
           }));
           setCandles4h(parsed);
           try {
-            localStorage.setItem('tracex_btc_4h_candles', JSON.stringify(parsed));
+            localStorage.setItem(`tracex_btc_${homeInterval}_candles`, JSON.stringify(parsed));
           } catch {}
         }
       })
       .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [homeInterval]);
 
+  useEffect(() => {
     // Background macro sentiment refresh
     fetch('https://api.alternative.me/fng/?limit=1')
       .then((res) => res.json())
@@ -533,24 +573,26 @@ export const HomeDashboardView: React.FC = () => {
                 stroke="#1c1917"
                 strokeWidth="1"
                 strokeDasharray="2 2"
-                strokeOpacity="0.38"
+                strokeOpacity="0.25"
               />
 
-              {/* Live Price Stamp on Right Axis Rail (Clear Gap, Never Overlaps 32nd Candle) */}
+              {/* Live Price Stamp on Right Axis Rail (Minimal bordered label, no solid fill) */}
               <rect
-                x="298"
-                y={Math.max(2, Math.min(172, currentPriceY - 8))}
-                width="58"
-                height="16"
+                x="304"
+                y={Math.max(2, Math.min(174, currentPriceY - 7))}
+                width="48"
+                height="14"
                 rx="2"
-                fill="#1c1917"
+                fill="#ffffff"
+                stroke="#1c1917"
+                strokeWidth="1"
               />
               <text
-                x="327"
-                y={Math.max(2, Math.min(172, currentPriceY - 8)) + 11.5}
+                x="328"
+                y={Math.max(2, Math.min(174, currentPriceY - 7)) + 10}
                 textAnchor="middle"
-                fill="#fbbf24"
-                fontSize="8.5"
+                fill="#1c1917"
+                fontSize="7.5"
                 fontWeight="900"
                 fontFamily="monospace"
               >
@@ -587,15 +629,31 @@ export const HomeDashboardView: React.FC = () => {
           </div>
         </div>
 
-        {/* Footer: Dynamic Mode Label & 3-Mode Tactile Toggle Switch */}
-        <div className="flex items-center justify-between pt-1 border-t border-stone-900/10 gap-2">
-          <span className="text-[10px] text-stone-600 font-bold uppercase truncate">
-            {chartMode === 'candle' && '4S KLASİK MUM // 48 PERİYOT'}
-            {chartMode === 'heikin' && '4S HEIKIN-ASHI // TREND AKIŞI'}
-            {chartMode === 'volume' && '4S HACİM AĞIRLIKLI // 48 PERİYOT'}
-          </span>
+        {/* Footer: Timeframe & Style Toggle Groups */}
+        <div className="flex items-center justify-between gap-2 pt-1 border-t border-stone-900/10">
+            <div className="flex items-center bg-stone-100 p-0.5 rounded border border-stone-900 shadow-hard-xs shrink-0">
+              {HOME_INTERVALS.map((tf) => (
+                <button
+                  key={tf.value}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    triggerHaptic('light');
+                    setHomeInterval(tf.value);
+                    localStorage.setItem('tracex_home_chart_interval', tf.value);
+                  }}
+                  className={`px-2 py-0.5 text-[9px] font-black rounded transition-all cursor-pointer ${
+                    homeInterval === tf.value
+                      ? 'bg-white text-stone-900 border border-stone-900 shadow-hard-xs'
+                      : 'text-stone-500 hover:text-stone-900'
+                  }`}
+                >
+                  {tf.label}
+                </button>
+              ))}
+            </div>
 
-          <div className="flex items-center bg-stone-200/90 p-0.5 rounded border border-stone-900 shadow-hard-xs shrink-0">
+            <div className="flex items-center bg-stone-200/90 p-0.5 rounded border border-stone-900 shadow-hard-xs shrink-0">
             <button
               type="button"
               onClick={(e) => {
@@ -646,7 +704,7 @@ export const HomeDashboardView: React.FC = () => {
             >
               HACİM
             </button>
-          </div>
+            </div>
         </div>
       </div>
 
