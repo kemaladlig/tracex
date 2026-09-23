@@ -1049,7 +1049,7 @@ export const DetailChartModal: React.FC = () => {
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-[#f4f0e6] animate-sheetUp font-mono">
       {/* Top Bar / Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b-2 border-stone-900 bg-[#ede8dd] pt-safe w-full max-w-[1600px] mx-auto">
+      <div className="flex items-center justify-between px-4 py-3 border-b-2 border-stone-900 bg-[#ede8dd] pt-safe w-full max-w-400 mx-auto">
         <div className="flex items-center gap-2.5 min-w-0">
           {/* Back Button (Primary navigation) */}
           <button
@@ -1057,7 +1057,7 @@ export const DetailChartModal: React.FC = () => {
             title="Geri Dön"
             className="p-1.5 rounded-md bg-white border-2 border-stone-900 hover:bg-stone-200 shadow-hard-sm btn-hard cursor-pointer shrink-0"
           >
-            <ArrowLeft className="w-4 h-4 stroke-[3]" />
+            <ArrowLeft className="w-4 h-4 stroke-3" />
           </button>
 
           <div className="w-9 h-9 rounded-md bg-stone-900 text-amber-300 border-2 border-stone-900 flex items-center justify-center font-black text-sm shadow-hard-sm shrink-0">
@@ -1083,7 +1083,7 @@ export const DetailChartModal: React.FC = () => {
             className="p-1.5 rounded-md bg-white border-2 border-stone-900 hover:bg-stone-100 shadow-hard-sm btn-hard cursor-pointer relative flex items-center justify-center text-stone-900"
             title="Grafik ve Gösterge Ayarları"
           >
-            <SlidersHorizontal className="w-4 h-4 stroke-[2.5]" />
+            <SlidersHorizontal className="w-4 h-4 stroke-2.5" />
             {(showEMA || !showVolume || showCostLine || chartType !== 'candlestick') && (
               <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-400 border border-stone-900" />
             )}
@@ -1095,13 +1095,13 @@ export const DetailChartModal: React.FC = () => {
             title="Kapat"
             className="hidden sm:flex p-1.5 rounded-md bg-white border-2 border-stone-900 hover:bg-stone-200 shadow-hard-sm btn-hard cursor-pointer"
           >
-            <X className="w-4 h-4 stroke-[3]" />
+            <X className="w-4 h-4 stroke-3" />
           </button>
         </div>
       </div>
 
       {/* Workspace: chart column + desktop favorites rail (≥lg) */}
-      <div className="flex-1 flex min-h-0 w-full max-w-[1600px] mx-auto">
+      <div className="flex-1 flex min-h-0 w-full max-w-400 mx-auto">
       {/* Chart column */}
       <div className="flex-1 flex flex-col min-w-0 min-h-0">
       {/* Ticker Price & Stats Overview (Strictly USD for professional market analysis) */}
@@ -1127,9 +1127,9 @@ export const DetailChartModal: React.FC = () => {
                 }`}
               >
                 {hoveredData.close >= hoveredData.open ? (
-                  <ArrowUpRight className="w-3 h-3 stroke-[3]" />
+                  <ArrowUpRight className="w-3 h-3 stroke-3" />
                 ) : (
-                  <ArrowDownRight className="w-3 h-3 stroke-[3]" />
+                  <ArrowDownRight className="w-3 h-3 stroke-3" />
                 )}
                 {formatPercentage(
                   hoveredData.open > 0
@@ -1146,9 +1146,9 @@ export const DetailChartModal: React.FC = () => {
                 }`}
               >
                 {isPositive ? (
-                  <ArrowUpRight className="w-3 h-3 stroke-[3]" />
+                  <ArrowUpRight className="w-3 h-3 stroke-3" />
                 ) : (
-                  <ArrowDownRight className="w-3 h-3 stroke-[3]" />
+                  <ArrowDownRight className="w-3 h-3 stroke-3" />
                 )}
                 {formatPercentage(ticker.changePercent24h)}
               </span>
@@ -1318,7 +1318,7 @@ export const DetailChartModal: React.FC = () => {
       </div>
 
       {/* Chart Canvas Area */}
-      <div className="relative flex-1 w-full bg-[#faf7f0] overflow-hidden min-h-[300px]">
+      <div className="relative flex-1 w-full bg-[#faf7f0] overflow-hidden min-h-75">
         {isLoading && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#faf7f0]/80 backdrop-blur-xs">
             <div className="w-7 h-7 border-2 border-stone-900 border-t-amber-400 rounded-full animate-spin mb-2" />
@@ -1349,7 +1349,7 @@ export const DetailChartModal: React.FC = () => {
       <aside className="hidden lg:flex flex-col w-72 shrink-0 border-l-2 border-stone-900 bg-[#ede8dd] min-h-0">
         <div className="flex items-center justify-between px-3 py-2 border-b-2 border-stone-900 shrink-0">
           <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-stone-700">
-            <Star className="w-3.5 h-3.5 fill-amber-400 stroke-stone-900 stroke-[1.5]" />
+            <Star className="w-3.5 h-3.5 fill-amber-400 stroke-stone-900 stroke-1.5" />
             İZLEME LİSTESİ
           </span>
           <span
@@ -1407,7 +1407,7 @@ export const DetailChartModal: React.FC = () => {
               FAVORİLER ({filteredFavorites.length}
               {railQueryClean ? `/${railFavorites.length}` : ''})
             </span>
-            <Star className="w-3 h-3 fill-amber-400 stroke-stone-900 stroke-[1.5]" />
+            <Star className="w-3 h-3 fill-amber-400 stroke-stone-900 stroke-1.5" />
           </div>
 
           {railFavorites.length === 0 ? (
@@ -1439,7 +1439,7 @@ export const DetailChartModal: React.FC = () => {
       </aside>
       </div>
 
-      <div className="pb-safe bg-[#ede8dd] border-t-2 border-stone-900 w-full max-w-[1600px] mx-auto" />
+      <div className="pb-safe bg-[#ede8dd] border-t-2 border-stone-900 w-full max-w-400 mx-auto" />
 
       {/* Quick Settings Bottom Sheet Drawer */}
       {isSettingsOpen && (

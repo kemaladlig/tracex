@@ -422,7 +422,7 @@ export const HomeDashboardView: React.FC = () => {
             </div>
 
             <span className="text-[10px] font-black text-stone-900 bg-amber-300 border border-stone-900 px-1.5 py-0.5 rounded-xs flex items-center gap-0.5 shadow-hard-xs">
-              <LineChart className="w-3 h-3 stroke-[2.5]" />
+              <LineChart className="w-3 h-3 stroke-2.5" />
               GRAFİK ➔
             </span>
           </div>
@@ -446,9 +446,9 @@ export const HomeDashboardView: React.FC = () => {
                   }`}
                 >
                   {btcIsPositive ? (
-                    <ArrowUpRight className="w-3.5 h-3.5 stroke-[3]" />
+                    <ArrowUpRight className="w-3.5 h-3.5 stroke-3" />
                   ) : (
-                    <ArrowDownRight className="w-3.5 h-3.5 stroke-[3]" />
+                    <ArrowDownRight className="w-3.5 h-3.5 stroke-3" />
                   )}
                   {formatPercentage(btcChange)}
                 </span>
@@ -468,7 +468,7 @@ export const HomeDashboardView: React.FC = () => {
           </div>
 
           {/* 4-Hour Japanese Candlestick Chart (Clean craft paper background, zero haze) */}
-          <div className="w-full h-[205px] lg:h-[300px] relative pointer-events-none my-2 bg-stone-100/70 rounded border-2 border-stone-900 p-0.5 overflow-hidden shadow-inner">
+          <div className="w-full h-51.25 lg:h-75 relative pointer-events-none my-2 bg-stone-100/70 rounded border-2 border-stone-900 p-0.5 overflow-hidden shadow-inner">
             <svg
               viewBox="0 0 360 190"
               className="w-full h-full"
@@ -779,7 +779,7 @@ export const HomeDashboardView: React.FC = () => {
         >
           <div className="flex items-center gap-2.5">
             <div className={`p-1.5 rounded border border-stone-900 ${isWalletExpanded ? 'bg-amber-300 text-stone-900' : 'bg-stone-900 text-amber-300'}`}>
-              <Wallet className="w-4 h-4 stroke-[2.5]" />
+              <Wallet className="w-4 h-4 stroke-2.5" />
             </div>
             <span className="text-xs font-black text-stone-900 uppercase tracking-wider">
               CÜZDAN & VARLIKLAR
@@ -791,9 +791,9 @@ export const HomeDashboardView: React.FC = () => {
               {isWalletExpanded ? 'GİZLE' : 'GÖSTER'}
             </span>
             {isWalletExpanded ? (
-              <ChevronUp className="w-4 h-4 stroke-[2.5] text-stone-800" />
+              <ChevronUp className="w-4 h-4 stroke-2.5 text-stone-800" />
             ) : (
-              <ChevronDown className="w-4 h-4 stroke-[2.5] text-stone-800" />
+              <ChevronDown className="w-4 h-4 stroke-2.5 text-stone-800" />
             )}
           </div>
         </button>
@@ -812,7 +812,7 @@ export const HomeDashboardView: React.FC = () => {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-1.5 text-stone-700">
-                    <ShieldCheck className="w-4 h-4 text-emerald-600 stroke-[2.5]" />
+                    <ShieldCheck className="w-4 h-4 text-emerald-600 stroke-2.5" />
                     <span className="text-xs font-black uppercase tracking-wider">
                       NET PORTFÖY DEĞERİ
                     </span>
@@ -835,9 +835,9 @@ export const HomeDashboardView: React.FC = () => {
                       }`}
                     >
                       {hideBalances ? (
-                        <EyeOff className="w-3.5 h-3.5 stroke-[2.5]" />
+                        <EyeOff className="w-3.5 h-3.5 stroke-2.5" />
                       ) : (
-                        <Eye className="w-3.5 h-3.5 stroke-[2.5]" />
+                        <Eye className="w-3.5 h-3.5 stroke-2.5" />
                       )}
                     </button>
                   </div>
@@ -868,7 +868,7 @@ export const HomeDashboardView: React.FC = () => {
             <div className="bg-white border-2 border-stone-900 rounded-lg shadow-hard overflow-hidden">
               <div className="flex items-center justify-between px-3 py-2 border-b-2 border-stone-900 bg-[#ede8dd]">
                 <div className="flex items-center gap-1.5">
-                  <TrendingUp className="w-4 h-4 stroke-[2.5]" />
+                  <TrendingUp className="w-4 h-4 stroke-2.5" />
                   <span className="text-xs font-black uppercase tracking-wider">
                     VARLIKLARIM ({sortedHoldings.length})
                   </span>
@@ -882,7 +882,7 @@ export const HomeDashboardView: React.FC = () => {
                     }}
                     className="p-1 px-2 rounded bg-amber-300 border border-stone-900 hover:bg-amber-400 text-stone-900 text-[10px] font-black shadow-hard-xs btn-hard flex items-center gap-0.5 cursor-pointer"
                   >
-                    <Plus className="w-3 h-3 stroke-[3]" />
+                    <Plus className="w-3 h-3 stroke-3" />
                     <span>EKLE</span>
                   </button>
 
@@ -966,7 +966,7 @@ export const HomeDashboardView: React.FC = () => {
                                 style={{ width: `${Math.min(100, Math.max(3, assetAllocationPercent))}%` }}
                               />
                             </div>
-                            <span className="text-[10px] font-bold text-stone-600 min-w-[26px] text-right">
+                            <span className="text-[10px] font-bold text-stone-600 min-w-6.5 text-right">
                               %{assetAllocationPercent.toFixed(0)}
                             </span>
                           </div>

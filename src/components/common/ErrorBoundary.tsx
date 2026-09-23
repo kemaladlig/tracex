@@ -53,7 +53,7 @@ export class ErrorBoundary extends Component<Props, State> {
           <div className="w-full max-w-md bg-white border-2 border-stone-900 rounded-lg p-6 shadow-hard text-center">
             {/* Stamp */}
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-rose-100 border border-stone-900 rounded shadow-hard-xs mb-4">
-              <AlertTriangle className="w-4 h-4 text-rose-600 stroke-[2.5]" />
+              <AlertTriangle className="w-4 h-4 text-rose-600 stroke-2.5" />
               <span className="text-[11px] font-black tracking-wider text-stone-900 uppercase">
                 SİSTEM // KURTARMA MODU
               </span>
@@ -78,7 +78,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 onClick={this.handleReload}
                 className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-4 bg-amber-300 hover:bg-amber-400 border-2 border-stone-900 rounded-md shadow-hard-sm font-black text-xs btn-hard cursor-pointer"
               >
-                <RefreshCw className="w-3.5 h-3.5 stroke-[2.5]" />
+                <RefreshCw className="w-3.5 h-3.5 stroke-2.5" />
                 <span>Yeniden Başlat</span>
               </button>
 
@@ -86,7 +86,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 onClick={this.handleClearAndReset}
                 className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-4 bg-stone-100 hover:bg-stone-200 border-2 border-stone-900 rounded-md shadow-hard-sm font-bold text-xs btn-hard cursor-pointer text-stone-800"
               >
-                <Trash2 className="w-3.5 h-3.5 stroke-[2.5]" />
+                <Trash2 className="w-3.5 h-3.5 stroke-2.5" />
                 <span>Önbelleği Temizle</span>
               </button>
             </div>

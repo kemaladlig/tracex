@@ -243,7 +243,7 @@ export const AnalyticsView: React.FC = () => {
         <button
           onClick={() => loadData(true)}
           disabled={isRefreshing}
-          className="p-1.5 bg-stone-100 border border-stone-900 rounded shadow-hard-sm hover:bg-stone-200 active:translate-x-[1px] active:translate-y-[1px] transition-all cursor-pointer disabled:opacity-60 disabled:cursor-wait"
+          className="p-1.5 bg-stone-100 border border-stone-900 rounded shadow-hard-sm hover:bg-stone-200 active:translate-x-px active:translate-y-px transition-all cursor-pointer disabled:opacity-60 disabled:cursor-wait"
           title="Verileri Güncelle (önbelleği atla)"
         >
           <RefreshCw className={`w-3.5 h-3.5 text-stone-900 ${isRefreshing ? 'animate-spin' : ''}`} />
@@ -412,9 +412,9 @@ export const AnalyticsView: React.FC = () => {
                 }`}
               >
                 {isFngBullish ? (
-                  <TrendingUp className="w-2.5 h-2.5 stroke-[3]" />
+                  <TrendingUp className="w-2.5 h-2.5 stroke-3" />
                 ) : (
-                  <TrendingDown className="w-2.5 h-2.5 stroke-[3]" />
+                  <TrendingDown className="w-2.5 h-2.5 stroke-3" />
                 )}
                 {fngDelta >= 0 ? `+${fngDelta}` : fngDelta} PUAN
               </span>
@@ -671,10 +671,10 @@ export const AnalyticsView: React.FC = () => {
         <div>
           <div className="flex justify-between text-xs font-black mb-1">
             <span className="text-emerald-700 flex items-center gap-1">
-              <TrendingUp className="w-3.5 h-3.5 stroke-[3]" /> %{longShortRatio.longPercent} LONG
+              <TrendingUp className="w-3.5 h-3.5 stroke-3" /> %{longShortRatio.longPercent} LONG
             </span>
             <span className="text-rose-700 flex items-center gap-1">
-              %{longShortRatio.shortPercent} SHORT <TrendingDown className="w-3.5 h-3.5 stroke-[3]" />
+              %{longShortRatio.shortPercent} SHORT <TrendingDown className="w-3.5 h-3.5 stroke-3" />
             </span>
           </div>
           <div className="w-full h-3.5 rounded border-2 border-stone-900 overflow-hidden flex shadow-hard-sm">
@@ -725,7 +725,7 @@ export const AnalyticsView: React.FC = () => {
 
         {/* The Cycle Ruler Indicator */}
         <div className="my-2">
-          <div className="relative w-full h-4 rounded border-2 border-stone-900 bg-gradient-to-r from-emerald-200 via-amber-200 to-rose-300 shadow-hard-sm overflow-hidden flex items-center">
+          <div className="relative w-full h-4 rounded border-2 border-stone-900 bg-linear-to-r from-emerald-200 via-amber-200 to-rose-300 shadow-hard-sm overflow-hidden flex items-center">
             {/* Current Position Needle */}
             <div
               style={{

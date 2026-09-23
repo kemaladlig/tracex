@@ -316,7 +316,7 @@ export const MarketList: React.FC = () => {
                 sortBy !== 'default' ? 'bg-amber-200' : ''
               }`}
             >
-              <ArrowUpDown className="w-4 h-4 stroke-[2.5]" />
+              <ArrowUpDown className="w-4 h-4 stroke-2.5" />
               <span className="hidden min-[380px]:inline max-w-20 truncate">{activeSortLabel}</span>
             </button>
             {isSortMenuOpen && (
@@ -342,7 +342,7 @@ export const MarketList: React.FC = () => {
                     }`}
                   >
                     <span>{item.label}</span>
-                    {sortBy === item.id && <Check className="w-4 h-4 stroke-[3]" />}
+                    {sortBy === item.id && <Check className="w-4 h-4 stroke-3" />}
                   </button>
                 ))}
               </div>
@@ -353,7 +353,7 @@ export const MarketList: React.FC = () => {
             aria-label="Coin ekle"
             className="flex items-center justify-center gap-1 h-11 min-w-11 px-2.5 bg-amber-300 hover:bg-amber-400 border-2 border-stone-900 text-stone-900 text-xs font-mono font-bold rounded-md shadow-hard-sm btn-hard cursor-pointer shrink-0"
           >
-            <Plus className="w-4 h-4 stroke-[3]" />
+            <Plus className="w-4 h-4 stroke-3" />
             <span className="hidden min-[380px]:inline">Ekle</span>
           </button>
         </div>
@@ -381,7 +381,7 @@ export const MarketList: React.FC = () => {
                     className={`w-3.5 h-3.5 ${
                       isActive
                         ? 'fill-amber-300 stroke-amber-300'
-                        : 'fill-amber-400 stroke-stone-600 stroke-[1.5]'
+                        : 'fill-amber-400 stroke-stone-600 stroke-1.5'
                     }`}
                   />
                 )}
@@ -447,7 +447,7 @@ export const MarketList: React.FC = () => {
           <div className="text-center py-10 px-4 rounded-lg bg-white border-2 border-dashed border-stone-900/60 shadow-hard-sm my-3 font-mono">
             {category === 'favorites' ? (
               <>
-                <Star className="w-8 h-8 mx-auto text-amber-400 stroke-stone-900 mb-2 stroke-[1.5]" />
+                <Star className="w-8 h-8 mx-auto text-amber-400 stroke-stone-900 mb-2 stroke-1.5" />
                 <p className="text-stone-900 text-xs font-black uppercase mb-1">
                   Henüz favori coin eklenmedi
                 </p>
@@ -470,7 +470,7 @@ export const MarketList: React.FC = () => {
                   onClick={() => setIsAddModalOpen(true)}
                   className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-300 border-2 border-stone-900 text-stone-900 text-xs font-bold rounded-md shadow-hard-sm btn-hard cursor-pointer"
                 >
-                  <Plus className="w-4 h-4 stroke-[3]" /> Coin Ekle
+                  <Plus className="w-4 h-4 stroke-3" /> Coin Ekle
                 </button>
               </>
             )}

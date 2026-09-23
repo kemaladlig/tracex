@@ -109,9 +109,9 @@ export const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({
           >
             <span>{showDetails ? 'SADE GÖRÜNÜM' : 'DETAYLI ANALİZ'}</span>
             {showDetails ? (
-              <ChevronUp className="w-3.5 h-3.5 stroke-[2.5]" />
+              <ChevronUp className="w-3.5 h-3.5 stroke-2.5" />
             ) : (
-              <ChevronDown className="w-3.5 h-3.5 stroke-[2.5]" />
+              <ChevronDown className="w-3.5 h-3.5 stroke-2.5" />
             )}
           </button>
         </div>
@@ -134,7 +134,7 @@ export const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({
                     isProfit ? 'bg-emerald-200 text-emerald-950' : 'bg-rose-200 text-rose-950'
                   }`}
                 >
-                  {isProfit ? <ArrowUpRight className="w-3 h-3 stroke-[3]" /> : <ArrowDownRight className="w-3 h-3 stroke-[3]" />}
+                  {isProfit ? <ArrowUpRight className="w-3 h-3 stroke-3" /> : <ArrowDownRight className="w-3 h-3 stroke-3" />}
                   {formatCurrency(totalPnL, 'TRY', tryRate)} ({formatPercentage(totalPnLPercent)})
                 </span>
               )}
@@ -179,7 +179,7 @@ export const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({
               <div className="grid grid-cols-2 gap-2">
                 <div className="p-2 bg-emerald-50 border border-stone-900 rounded shadow-hard-sm">
                   <span className="text-[9px] font-bold text-emerald-900 uppercase flex items-center gap-1">
-                    <ArrowUpRight className="w-3 h-3 text-emerald-700 stroke-[3]" /> LİDER VARLIK
+                    <ArrowUpRight className="w-3 h-3 text-emerald-700 stroke-3" /> LİDER VARLIK
                   </span>
                   <div className="flex items-baseline justify-between mt-0.5">
                     <span className="text-xs font-black text-stone-900">{best.symbol}</span>
@@ -196,7 +196,7 @@ export const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({
 
                 <div className="p-2 bg-rose-50 border border-stone-900 rounded shadow-hard-sm">
                   <span className="text-[9px] font-bold text-rose-900 uppercase flex items-center gap-1">
-                    <ArrowDownRight className="w-3 h-3 text-rose-700 stroke-[3]" /> EN ÇOK GERİLEYEN
+                    <ArrowDownRight className="w-3 h-3 text-rose-700 stroke-3" /> EN ÇOK GERİLEYEN
                   </span>
                   <div className="flex items-baseline justify-between mt-0.5">
                     <span className="text-xs font-black text-stone-900">{worst.symbol}</span>
@@ -288,7 +288,7 @@ export const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({
             onClick={onAddClick}
             className="flex items-center gap-1 px-3 py-1.5 bg-amber-300 hover:bg-amber-400 active:scale-95 border-2 border-stone-900 text-stone-900 text-xs font-black rounded shadow-hard-sm btn-hard cursor-pointer"
           >
-            <Plus className="w-3.5 h-3.5 stroke-[3]" /> Varlık Ekle
+            <Plus className="w-3.5 h-3.5 stroke-3" /> Varlık Ekle
           </button>
         </div>
       </div>

@@ -27,7 +27,7 @@ export const Header: React.FC = () => {
   return (
     <>
       <header className="sticky top-0 z-30 w-full bg-[#fbf9f4]/95 backdrop-blur-sm border-b-2 border-stone-900 px-4 py-2.5 pt-safe transition-colors font-mono">
-        <div className="flex items-center justify-between max-w-lg mx-auto md:max-w-none 2xl:max-w-[1600px]">
+        <div className="flex items-center justify-between max-w-lg mx-auto md:max-w-none 2xl:max-w-400">
           {/* Brand Stamp (mobile/tablet only — desktop sidebar owns branding) */}
           <div className="flex items-center gap-2.5 lg:hidden">
             <div className="w-8 h-8 rounded-md bg-stone-900 text-amber-300 border-2 border-stone-900 flex items-center justify-center font-black text-sm shadow-hard-sm tracking-tighter shrink-0">
@@ -74,7 +74,7 @@ export const Header: React.FC = () => {
                 title="TraceX'i Ana Ekrana Ekle / İndir"
                 className="flex items-center justify-center p-2 rounded-md border-2 border-stone-900 bg-amber-300 hover:bg-amber-400 text-stone-900 shadow-hard-xs btn-hard cursor-pointer"
               >
-                <Download className="w-4 h-4 stroke-[3]" />
+                <Download className="w-4 h-4 stroke-3" />
               </button>
             )}
 
@@ -90,9 +90,9 @@ export const Header: React.FC = () => {
                 }`}
               >
                 {hideBalances ? (
-                  <EyeOff className="w-4 h-4 stroke-[2.5]" />
+                  <EyeOff className="w-4 h-4 stroke-2.5" />
                 ) : (
-                  <Eye className="w-4 h-4 stroke-[2.5]" />
+                  <Eye className="w-4 h-4 stroke-2.5" />
                 )}
               </button>
             )}
@@ -108,7 +108,7 @@ export const Header: React.FC = () => {
         variant="centered"
         title={
           <span className="flex items-center gap-1.5">
-            <Smartphone className="w-4 h-4 stroke-[2.5]" />
+            <Smartphone className="w-4 h-4 stroke-2.5" />
             ANA EKRANA EKLE (PWA)
           </span>
         }
@@ -133,7 +133,7 @@ export const Header: React.FC = () => {
             <div className="space-y-2 mb-4 text-[11px] text-stone-800">
               <div className="p-2 bg-amber-50 border border-stone-900 rounded">
                 <div className="flex items-center gap-1.5 font-black text-stone-900 mb-1">
-                  <Share className="w-3.5 h-3.5 text-amber-700 stroke-[2.5]" />
+                  <Share className="w-3.5 h-3.5 text-amber-700 stroke-2.5" />
                   <span>iOS Safari Kullanıcıları:</span>
                 </div>
                 <p className="text-[10px] text-stone-700 leading-relaxed">
@@ -144,7 +144,7 @@ export const Header: React.FC = () => {
 
               <div className="p-2 bg-emerald-50 border border-stone-900 rounded">
                 <div className="flex items-center gap-1.5 font-black text-stone-900 mb-1">
-                  <PlusSquare className="w-3.5 h-3.5 text-emerald-700 stroke-[2.5]" />
+                  <PlusSquare className="w-3.5 h-3.5 text-emerald-700 stroke-2.5" />
                   <span>Android / Chrome Kullanıcıları:</span>
                 </div>
                 <p className="text-[10px] text-stone-700 leading-relaxed">
@@ -164,7 +164,7 @@ export const Header: React.FC = () => {
                   }}
                   className="flex-1 py-2 bg-amber-300 hover:bg-amber-400 text-stone-900 text-xs font-black rounded border-2 border-stone-900 shadow-hard-sm btn-hard cursor-pointer flex items-center justify-center gap-1.5"
                 >
-                  <Download className="w-3.5 h-3.5 stroke-[3]" />
+                  <Download className="w-3.5 h-3.5 stroke-3" />
                   <span>HEMEN YÜKLE</span>
                 </button>
               )}

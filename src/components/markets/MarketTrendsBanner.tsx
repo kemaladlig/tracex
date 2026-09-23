@@ -100,7 +100,7 @@ export const MarketTrendsBanner: React.FC = () => {
               <button
                 key={coin.symbol}
                 onClick={() => handleCardClick(coin)}
-                className="flex-shrink-0 w-28 md:w-32 lg:w-40 p-2 bg-white border-2 border-stone-900 rounded-md shadow-hard-xs btn-hard text-left cursor-pointer transition-transform hover:-translate-y-0.5 hover:shadow-hard"
+                className="shrink-0 w-28 md:w-32 lg:w-40 p-2 bg-white border-2 border-stone-900 rounded-md shadow-hard-xs btn-hard text-left cursor-pointer transition-transform hover:-translate-y-0.5 hover:shadow-hard"
               >
                 <div className="flex items-center justify-between gap-1 mb-1">
                   <span className="font-mono font-extrabold text-xs text-stone-900 truncate">

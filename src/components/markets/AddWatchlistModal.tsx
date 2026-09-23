@@ -70,7 +70,7 @@ export const AddWatchlistModal: React.FC<AddWatchlistModalProps> = ({ isOpen, on
       {/* Live Notification Banner */}
       {notification && (
         <div className="bg-emerald-200 border-b-2 border-stone-900 px-4 py-2 text-xs font-mono font-bold text-emerald-950 flex items-center gap-1.5 animate-feedback">
-          <Check className="w-4 h-4 stroke-[3]" />
+          <Check className="w-4 h-4 stroke-3" />
           <span>{notification}</span>
         </div>
       )}
@@ -92,7 +92,7 @@ export const AddWatchlistModal: React.FC<AddWatchlistModalProps> = ({ isOpen, on
                 onClick={() => setQuery('')}
                 className="absolute right-3 p-0.5 text-stone-500 hover:text-stone-900 cursor-pointer"
               >
-                <X className="w-4 h-4 stroke-[3]" />
+                <X className="w-4 h-4 stroke-3" />
               </button>
             )}
           </div>
@@ -139,23 +139,23 @@ export const AddWatchlistModal: React.FC<AddWatchlistModalProps> = ({ isOpen, on
                       }`}
                     >
                       {isPositive ? (
-                        <ArrowUpRight className="w-3 h-3 stroke-[3]" />
+                        <ArrowUpRight className="w-3 h-3 stroke-3" />
                       ) : (
-                        <ArrowDownRight className="w-3 h-3 stroke-[3]" />
+                        <ArrowDownRight className="w-3 h-3 stroke-3" />
                       )}
                       {formatPercentage(coin.changePercent24h)}
                     </div>
 
                     {isAdded ? (
                       <span className="flex items-center gap-1 px-2 py-1 bg-stone-200 text-stone-700 text-xs font-mono font-bold rounded border border-stone-900">
-                        <Check className="w-3.5 h-3.5 stroke-[3]" /> EKLENDİ
+                        <Check className="w-3.5 h-3.5 stroke-3" /> EKLENDİ
                       </span>
                     ) : (
                       <button
                         onClick={() => handleAdd(coin.symbol)}
                         className="flex items-center gap-1 px-3 py-1 bg-amber-300 hover:bg-amber-400 active:scale-95 border-2 border-stone-900 text-stone-900 text-xs font-mono font-black rounded shadow-hard-sm btn-hard cursor-pointer"
                       >
-                        <Plus className="w-3.5 h-3.5 stroke-[3]" /> EKLE
+                        <Plus className="w-3.5 h-3.5 stroke-3" /> EKLE
                       </button>
                     )}
                   </div>

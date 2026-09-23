@@ -64,7 +64,7 @@ export const InfoBadge: React.FC<InfoBadgeProps> = ({ title, content, className 
         title={title || 'Bilgi'}
         className="p-1 rounded-sm text-stone-500 hover:text-stone-900 hover:bg-stone-200/60 transition-colors cursor-pointer inline-flex items-center justify-center"
       >
-        <Info className="w-3.5 h-3.5 stroke-[2.5]" />
+        <Info className="w-3.5 h-3.5 stroke-2.5" />
       </button>
 
       {isOpen && coords &&
@@ -72,7 +72,7 @@ export const InfoBadge: React.FC<InfoBadgeProps> = ({ title, content, className 
           <>
             {/* Backdrop: Outside click closes cleanly */}
             <div
-              className="fixed inset-0 z-[9998] bg-black/10 transition-opacity"
+              className="fixed inset-0 z-9998 bg-black/10 transition-opacity"
               onClick={(e) => {
                 e.stopPropagation();
                 setIsOpen(false);
@@ -88,11 +88,11 @@ export const InfoBadge: React.FC<InfoBadgeProps> = ({ title, content, className 
                 right: `${coords.right}px`,
                 width: `${coords.maxWidth}px`,
               }}
-              className="fixed z-[9999] p-3.5 bg-[#faf7f0] border-2 border-stone-900 rounded-lg shadow-hard-lg font-mono text-left animate-popIn"
+              className="fixed z-9999 p-3.5 bg-[#faf7f0] border-2 border-stone-900 rounded-lg shadow-hard-lg font-mono text-left animate-popIn"
             >
               <div className="flex items-center justify-between pb-1.5 border-b-2 border-stone-900/40 mb-2">
                 <div className="flex items-center gap-1.5 text-xs font-black text-stone-900 uppercase">
-                  <Info className="w-3.5 h-3.5 text-amber-600 stroke-[2.5]" />
+                  <Info className="w-3.5 h-3.5 text-amber-600 stroke-2.5" />
                   <span className="truncate">{title || 'BİLGİ'}</span>
                 </div>
                 <button
@@ -100,7 +100,7 @@ export const InfoBadge: React.FC<InfoBadgeProps> = ({ title, content, className 
                   onClick={() => setIsOpen(false)}
                   className="p-0.5 rounded text-stone-600 hover:text-stone-900 hover:bg-stone-200 cursor-pointer shrink-0 ml-1"
                 >
-                  <X className="w-3.5 h-3.5 stroke-[3]" />
+                  <X className="w-3.5 h-3.5 stroke-3" />
                 </button>
               </div>
               <p className="text-[11px] text-stone-700 leading-relaxed font-sans font-medium">

@@ -110,7 +110,7 @@ export const Modal: React.FC<ModalProps> = ({
 
   return createPortal(
     <div
-      className={`fixed inset-0 z-[100] flex justify-center bg-stone-900/60 backdrop-blur-xs animate-backdrop ${
+      className={`fixed inset-0 z-100 flex justify-center bg-stone-900/60 backdrop-blur-xs animate-backdrop ${
         isSheet ? 'items-end sm:items-center p-0 sm:p-4' : 'items-center p-4'
       }`}
       onMouseDown={(e) => {
@@ -147,7 +147,7 @@ export const Modal: React.FC<ModalProps> = ({
                   aria-label="Kapat"
                   className="p-1.5 rounded-md border-2 border-stone-900 bg-white hover:bg-stone-200 shadow-hard-sm btn-hard cursor-pointer"
                 >
-                  <X className="w-4 h-4 stroke-[3]" />
+                  <X className="w-4 h-4 stroke-3" />
                 </button>
               )}
             </div>

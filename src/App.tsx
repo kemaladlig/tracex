@@ -106,7 +106,7 @@ export const App: React.FC = () => {
         <PullToRefresh onRefresh={handlePullRefresh}>
           <main
             ref={mainContainerRef}
-            className="flex-1 w-full max-w-lg md:max-w-none 2xl:max-w-[1600px] mx-auto flex flex-col touch-pan-y"
+            className="flex-1 w-full max-w-lg md:max-w-none 2xl:max-w-400 mx-auto flex flex-col touch-pan-y"
           >
             <div
               key={activeTab}

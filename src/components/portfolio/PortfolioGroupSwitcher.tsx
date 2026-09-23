@@ -126,7 +126,7 @@ export const PortfolioGroupSwitcher: React.FC = () => {
       {/* Top Bar: Group Title & Backup/Restore Action Stamps */}
       <div className="flex items-center justify-between gap-2 mb-2 pb-1.5 border-b border-stone-300">
         <div className="flex items-center gap-1.5 text-xs font-black text-stone-900 uppercase">
-          <FolderKanban className="w-3.5 h-3.5 stroke-[2.5]" />
+          <FolderKanban className="w-3.5 h-3.5 stroke-2.5" />
           <span>PORTFÖY GRUPLARI</span>
           <span className="text-[10px] bg-amber-200 border border-stone-900 px-1 py-0.2 rounded-xs">
             {portfolioGroups.length}
@@ -148,7 +148,7 @@ export const PortfolioGroupSwitcher: React.FC = () => {
             title="Tüm portföyü ve takip listesini JSON olarak indir"
             className="flex items-center gap-1 px-1.5 py-0.5 rounded border border-stone-900 bg-white hover:bg-stone-200 text-stone-900 text-[10px] font-bold shadow-hard-xs btn-hard cursor-pointer"
           >
-            <Download className="w-3 h-3 stroke-[2.5]" />
+            <Download className="w-3 h-3 stroke-2.5" />
             <span>YEDEK AL</span>
           </button>
 
@@ -157,7 +157,7 @@ export const PortfolioGroupSwitcher: React.FC = () => {
             title="Daha önce indirdiğiniz TraceX JSON yedeğini yükleyin"
             className="flex items-center gap-1 px-1.5 py-0.5 rounded border border-stone-900 bg-white hover:bg-stone-200 text-stone-900 text-[10px] font-bold shadow-hard-xs btn-hard cursor-pointer"
           >
-            <Upload className="w-3 h-3 stroke-[2.5]" />
+            <Upload className="w-3 h-3 stroke-2.5" />
             <span>YÜKLE</span>
           </button>
         </div>
@@ -202,14 +202,14 @@ export const PortfolioGroupSwitcher: React.FC = () => {
                   className="p-1 bg-emerald-300 border border-stone-900 rounded hover:bg-emerald-400 cursor-pointer"
                   title="Kaydet"
                 >
-                  <Check className="w-3 h-3 stroke-[3]" />
+                  <Check className="w-3 h-3 stroke-3" />
                 </button>
                 <button
                   onClick={() => setEditingGroupId(null)}
                   className="p-1 bg-stone-200 border border-stone-900 rounded hover:bg-stone-300 cursor-pointer"
                   title="Vazgeç"
                 >
-                  <X className="w-3 h-3 stroke-[3]" />
+                  <X className="w-3 h-3 stroke-3" />
                 </button>
               </div>
             );
@@ -228,7 +228,7 @@ export const PortfolioGroupSwitcher: React.FC = () => {
                 onClick={() => switchPortfolioGroup(group.id)}
                 className="px-2.5 py-1 flex items-center gap-1.5 cursor-pointer"
               >
-                <span className="truncate max-w-[110px]">{group.name}</span>
+                <span className="truncate max-w-27.5">{group.name}</span>
                 <span
                   className={`text-[9px] px-1 py-0.2 rounded font-bold ${
                     isActive ? 'bg-amber-300 text-stone-900' : 'bg-stone-200 text-stone-700'
@@ -251,7 +251,7 @@ export const PortfolioGroupSwitcher: React.FC = () => {
                     isActive ? 'text-stone-300 hover:text-white' : 'text-stone-500 hover:text-stone-900'
                   }`}
                 >
-                  <Edit2 className="w-2.5 h-2.5 stroke-[2.5]" />
+                  <Edit2 className="w-2.5 h-2.5 stroke-2.5" />
                 </button>
                 {portfolioGroups.length > 1 && (
                   <button
@@ -261,7 +261,7 @@ export const PortfolioGroupSwitcher: React.FC = () => {
                       isActive ? 'text-rose-400 hover:text-rose-300' : 'text-stone-400 hover:text-rose-600'
                     }`}
                   >
-                    <Trash2 className="w-2.5 h-2.5 stroke-[2.5]" />
+                    <Trash2 className="w-2.5 h-2.5 stroke-2.5" />
                   </button>
                 )}
               </div>
@@ -289,7 +289,7 @@ export const PortfolioGroupSwitcher: React.FC = () => {
               className="p-1 bg-amber-300 border border-stone-900 rounded hover:bg-amber-400 cursor-pointer"
               title="Ekle"
             >
-              <Check className="w-3 h-3 stroke-[3]" />
+              <Check className="w-3 h-3 stroke-3" />
             </button>
             <button
               type="button"
@@ -300,7 +300,7 @@ export const PortfolioGroupSwitcher: React.FC = () => {
               className="p-1 bg-stone-200 border border-stone-900 rounded hover:bg-stone-300 cursor-pointer"
               title="İptal"
             >
-              <X className="w-3 h-3 stroke-[3]" />
+              <X className="w-3 h-3 stroke-3" />
             </button>
           </form>
         ) : (
@@ -309,7 +309,7 @@ export const PortfolioGroupSwitcher: React.FC = () => {
             className="flex items-center gap-1 px-2 py-1 rounded border-2 border-stone-900 bg-amber-200 hover:bg-amber-300 text-stone-900 text-xs font-black shadow-hard-xs btn-hard cursor-pointer shrink-0"
             title="Yeni Portföy Grubu Ekle"
           >
-            <Plus className="w-3 h-3 stroke-[3]" />
+            <Plus className="w-3 h-3 stroke-3" />
             <span className="text-[10px]">YENİ GRUP</span>
           </button>
         )}

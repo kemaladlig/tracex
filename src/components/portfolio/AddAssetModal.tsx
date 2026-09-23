@@ -118,7 +118,7 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({
       title={
         <span className="flex items-center gap-2">
           <span className="w-8 h-8 rounded-md bg-amber-300 border-2 border-stone-900 text-stone-900 flex items-center justify-center shadow-hard-sm shrink-0">
-            <Plus className="w-5 h-5 stroke-[3]" />
+            <Plus className="w-5 h-5 stroke-3" />
           </span>
           VARLIK GİRİŞİ
         </span>
@@ -150,7 +150,7 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({
 
               {/* Dropdown Suggestions */}
               {isDropdownOpen && filteredCoins.length > 0 && (
-                <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border-2 border-stone-900 rounded-md shadow-hard max-h-40 overflow-y-auto z-50 divide-y border-stone-900/20 no-scrollbar">
+                <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border-2 border-stone-900 rounded-md shadow-hard max-h-40 overflow-y-auto z-50 divide-y no-scrollbar">
                   {filteredCoins.map((coin) => (
                     <button
                       key={coin.symbol}
@@ -228,7 +228,7 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({
               type="submit"
               className="flex-1 py-2.5 bg-amber-300 hover:bg-amber-400 border-2 border-stone-900 text-stone-950 text-xs font-black rounded-md shadow-hard btn-hard cursor-pointer flex items-center justify-center gap-1.5"
             >
-              <Check className="w-4 h-4 stroke-[3]" /> Portföye Kaydet
+              <Check className="w-4 h-4 stroke-3" /> Portföye Kaydet
             </button>
           </div>
         </form>

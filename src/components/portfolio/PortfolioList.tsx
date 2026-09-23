@@ -101,7 +101,7 @@ export const PortfolioList: React.FC = () => {
       <div className="lg:flex lg:items-start lg:gap-4">
         {/* Portfolio Top PnL Summary */}
         <div
-          className="stagger-item lg:w-80 lg:shrink-0 lg:sticky lg:top-[70px]"
+          className="stagger-item lg:w-80 lg:shrink-0 lg:sticky lg:top-17.5"
           style={{ '--stagger-idx': 1 } as React.CSSProperties}
         >
           <PortfolioSummary
@@ -157,7 +157,7 @@ export const PortfolioList: React.FC = () => {
           ) : (
             <div className="text-center py-10 px-4 rounded-lg bg-white border-2 border-dashed border-stone-900/60 shadow-hard-sm mt-2">
               <div className="w-12 h-12 rounded-md bg-amber-200 border-2 border-stone-900 text-stone-900 flex items-center justify-center mx-auto mb-3 shadow-hard-sm">
-                <Coins className="w-6 h-6 stroke-[2.5]" />
+                <Coins className="w-6 h-6 stroke-2.5" />
               </div>
               <h3 className="text-sm font-black text-stone-900 mb-1">HENÜZ VARLIK BULUNMUYOR</h3>
               <p className="text-xs text-stone-600 mb-4 max-w-xs mx-auto">
@@ -174,7 +174,7 @@ export const PortfolioList: React.FC = () => {
                   onClick={handleOpenAdd}
                   className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-300 border-2 border-stone-900 text-stone-900 text-xs font-black rounded shadow-hard-sm btn-hard cursor-pointer"
                 >
-                  <Plus className="w-4 h-4 stroke-[3]" /> Tek Varlık Ekle
+                  <Plus className="w-4 h-4 stroke-3" /> Tek Varlık Ekle
                 </button>
               </div>
             </div>

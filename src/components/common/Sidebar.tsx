@@ -68,7 +68,7 @@ export const Sidebar: React.FC = () => {
                   : 'bg-white/80 text-stone-600 border-transparent hover:border-stone-900/30 hover:text-stone-900'
               }`}
             >
-              <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'stroke-[2.5]' : 'stroke-2'}`} />
+              <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'stroke-2.5' : 'stroke-2'}`} />
               <span>{item.label}</span>
             </button>
           );

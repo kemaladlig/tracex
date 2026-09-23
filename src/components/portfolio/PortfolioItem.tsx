@@ -91,7 +91,7 @@ const PortfolioItemInner: React.FC<PortfolioItemProps> = ({
 
       {/* Middle Row: Cost (USD) & Net PnL (TRY) (Only displayed in Detailed View) */}
       {showPnL && (
-        <div className={`flex items-center justify-between py-2 border-b border-stone-200 animate-in fade-in duration-100 transition-opacity duration-500 ${isStale ? 'opacity-60 saturate-[.65]' : 'opacity-100'}`}>
+        <div className={`flex items-center justify-between py-2 border-b border-stone-200 animate-in fade-in transition-opacity duration-500 ${isStale ? 'opacity-60 saturate-[.65]' : 'opacity-100'}`}>
           <div className="text-xs">
             <span className="text-[10px] text-stone-500 block uppercase font-bold">Ort. Alış Maliyeti</span>
             <span className="text-stone-900 font-bold">
@@ -109,7 +109,7 @@ const PortfolioItemInner: React.FC<PortfolioItemProps> = ({
                   isProfit ? 'bg-emerald-200 text-emerald-950' : 'bg-rose-200 text-rose-950'
                 }`}
               >
-                {isProfit ? <ArrowUpRight className="w-3.5 h-3.5 stroke-[3]" /> : <ArrowDownRight className="w-3.5 h-3.5 stroke-[3]" />}
+                {isProfit ? <ArrowUpRight className="w-3.5 h-3.5 stroke-3" /> : <ArrowDownRight className="w-3.5 h-3.5 stroke-3" />}
                 {formatCurrency(pnlAmount, 'TRY', tryRate)} ({formatPercentage(pnlPercent)})
               </span>
             )}
@@ -126,7 +126,7 @@ const PortfolioItemInner: React.FC<PortfolioItemProps> = ({
             className="flex items-center gap-1 px-2.5 py-1 bg-emerald-200 hover:bg-emerald-300 border-2 border-stone-900 text-stone-900 text-xs font-bold rounded shadow-hard-sm btn-hard cursor-pointer"
             title="DCA ile pozisyona ek alım yap"
           >
-            <Plus className="w-3.5 h-3.5 stroke-[3]" /> Al
+            <Plus className="w-3.5 h-3.5 stroke-3" /> Al
           </button>
 
           {/* Sell Button */}
@@ -135,7 +135,7 @@ const PortfolioItemInner: React.FC<PortfolioItemProps> = ({
             className="flex items-center gap-1 px-2.5 py-1 bg-rose-200 hover:bg-rose-300 border-2 border-stone-900 text-stone-900 text-xs font-bold rounded shadow-hard-sm btn-hard cursor-pointer"
             title="Kısmi veya tam satış yap"
           >
-            <Minus className="w-3.5 h-3.5 stroke-[3]" /> Sat
+            <Minus className="w-3.5 h-3.5 stroke-3" /> Sat
           </button>
         </div>
 
@@ -145,7 +145,7 @@ const PortfolioItemInner: React.FC<PortfolioItemProps> = ({
             title="Canlı Grafiği Aç"
             className="p-1.5 text-stone-700 hover:text-stone-950 bg-stone-100 hover:bg-stone-200 border-2 border-stone-900 rounded shadow-hard-sm btn-hard cursor-pointer"
           >
-            <BarChart2 className="w-4 h-4 stroke-[2.5]" />
+            <BarChart2 className="w-4 h-4 stroke-2.5" />
           </button>
           <button
             onClick={handleDelete}

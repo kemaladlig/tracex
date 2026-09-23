@@ -61,7 +61,7 @@ export const SellAssetModal: React.FC<SellAssetModalProps> = ({ asset, isOpen, o
       title={
         <span className="flex items-center gap-2">
           <span className="w-8 h-8 rounded-md bg-rose-200 border-2 border-stone-900 text-stone-900 flex items-center justify-center shadow-hard-sm shrink-0">
-            <MinusCircle className="w-5 h-5 stroke-[2.5]" />
+            <MinusCircle className="w-5 h-5 stroke-2.5" />
           </span>
           POZİSYON SATIŞI // {base}
         </span>
@@ -137,7 +137,7 @@ export const SellAssetModal: React.FC<SellAssetModalProps> = ({ asset, isOpen, o
                       isProfit ? 'text-emerald-700' : 'text-rose-700'
                     }`}
                   >
-                    {isProfit ? <ArrowUpRight className="w-3.5 h-3.5 stroke-[3]" /> : <ArrowDownRight className="w-3.5 h-3.5 stroke-[3]" />}
+                    {isProfit ? <ArrowUpRight className="w-3.5 h-3.5 stroke-3" /> : <ArrowDownRight className="w-3.5 h-3.5 stroke-3" />}
                     {formatCurrency(pnlAmount)} ({formatPercentage(pnlPercent)})
                   </span>
                 </div>
@@ -160,7 +160,7 @@ export const SellAssetModal: React.FC<SellAssetModalProps> = ({ asset, isOpen, o
               type="submit"
               className="flex-1 py-2.5 bg-rose-300 hover:bg-rose-400 border-2 border-stone-900 text-stone-950 text-xs font-black rounded-md shadow-hard btn-hard cursor-pointer flex items-center justify-center gap-1.5"
             >
-              <Check className="w-4 h-4 stroke-[3]" /> Satışı Gerçekleştir
+              <Check className="w-4 h-4 stroke-3" /> Satışı Gerçekleştir
             </button>
           </div>
         </form>

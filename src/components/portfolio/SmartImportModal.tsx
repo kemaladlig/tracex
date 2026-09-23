@@ -164,7 +164,7 @@ export const SmartImportModal: React.FC<SmartImportModalProps> = ({ isOpen, onCl
                 </span>
               </div>
 
-              <div className="border-2 border-stone-900 rounded bg-white divide-y border-stone-900 max-h-56 overflow-y-auto shadow-hard-sm">
+              <div className="border-2 border-stone-900 rounded bg-white divide-y max-h-56 overflow-y-auto shadow-hard-sm">
                 {drafts.map((asset, idx) => {
                   const livePrice = tickers[asset.symbol]?.price;
                   return (
@@ -215,7 +215,7 @@ export const SmartImportModal: React.FC<SmartImportModalProps> = ({ isOpen, onCl
 
           {feedbackMessage && (
             <div className="p-2.5 bg-emerald-100 border-2 border-stone-900 rounded text-center font-bold text-xs text-emerald-900 flex items-center justify-center gap-1.5 shadow-hard-sm">
-              <Check className="w-4 h-4 stroke-[3]" />
+              <Check className="w-4 h-4 stroke-3" />
               <span>{feedbackMessage}</span>
             </div>
           )}
@@ -240,7 +240,7 @@ export const SmartImportModal: React.FC<SmartImportModalProps> = ({ isOpen, onCl
             }`}
           >
             <span>{drafts.length} Varlığı Portföye Aktar</span>
-            <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+            <ArrowRight className="w-4 h-4 stroke-2.5" />
           </button>
         </div>
     </Modal>

@@ -27,7 +27,7 @@ export const BottomNav: React.FC = () => {
                   : 'bg-white/80 text-stone-600 border-transparent hover:border-stone-900/30'
               }`}
             >
-              <Icon className={`w-4 h-4 ${isActive ? 'stroke-[2.5]' : 'stroke-2'}`} />
+              <Icon className={`w-4 h-4 ${isActive ? 'stroke-2.5' : 'stroke-2'}`} />
               <span className="tracking-wider text-[11px]">{item.label}</span>
             </button>
           );

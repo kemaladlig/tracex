@@ -99,11 +99,11 @@ const MarketItemInner: React.FC<MarketItemProps> = ({
       onDrop={(e) => onDrop?.(index, e)}
       onDragEnd={onDragEnd}
       data-drag-index={index}
-      className={`group grid grid-cols-[auto_1fr_auto_44px] items-center gap-3 min-h-[60px] px-3 py-2 bg-white border-2 border-stone-900 rounded-lg shadow-hard-sm cursor-pointer select-none transition-[background-color,box-shadow,transform] duration-150 hover:bg-stone-50 hover:shadow-hard lg:hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-amber-500 focus-visible:outline-offset-2 ${
+      className={`group grid grid-cols-[auto_1fr_auto_44px] items-center gap-3 min-h-15 px-3 py-2 bg-white border-2 border-stone-900 rounded-lg shadow-hard-sm cursor-pointer select-none transition-[background-color,box-shadow,transform] duration-150 hover:bg-stone-50 hover:shadow-hard lg:hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-amber-500 focus-visible:outline-offset-2 ${
         isDragging
           ? 'opacity-40 border-dashed border-amber-500 bg-amber-50/60'
           : isDragOver
-          ? 'bg-amber-50/60 outline-2 outline-amber-500 outline-offset-[-2px]'
+          ? 'bg-amber-50/60 outline-2 outline-amber-500 -outline-offset-2'
           : ''
       }`}
     >
@@ -120,7 +120,7 @@ const MarketItemInner: React.FC<MarketItemProps> = ({
             title="Sıralamak için tutup sürükleyin"
             aria-hidden="true"
           >
-            <GripVertical className="w-4 h-4 stroke-[2.5]" />
+            <GripVertical className="w-4 h-4 stroke-2.5" />
           </div>
         )}
         <div className="relative w-9 h-9 rounded-md bg-stone-100 border-2 border-stone-900 flex items-center justify-center font-mono font-black text-[13px] text-stone-900 shadow-hard-xs shrink-0">
@@ -154,7 +154,7 @@ const MarketItemInner: React.FC<MarketItemProps> = ({
 
       {/* Col 3: Fixed-width price block, right aligned */}
       <div
-        className={`min-w-[112px] text-right tabular-nums transition-opacity duration-500 ${
+        className={`min-w-28 text-right tabular-nums transition-opacity duration-500 ${
           isStale ? 'opacity-60 saturate-[.65]' : 'opacity-100'
         }`}
       >
@@ -170,16 +170,16 @@ const MarketItemInner: React.FC<MarketItemProps> = ({
         <div className="flex items-center justify-end mt-0.5">
           {ticker ? (
             <span
-              className={`inline-flex items-center justify-center gap-0.5 min-w-[72px] text-xs font-mono font-black px-1.5 py-0.5 rounded border border-stone-900 ${
+              className={`inline-flex items-center justify-center gap-0.5 min-w-18 text-xs font-mono font-black px-1.5 py-0.5 rounded border border-stone-900 ${
                 isPositive
                   ? 'bg-emerald-200 text-emerald-950'
                   : 'bg-rose-200 text-rose-950'
               }`}
             >
               {isPositive ? (
-                <ArrowUpRight className="w-3 h-3 stroke-[3]" />
+                <ArrowUpRight className="w-3 h-3 stroke-3" />
               ) : (
-                <ArrowDownRight className="w-3 h-3 stroke-[3]" />
+                <ArrowDownRight className="w-3 h-3 stroke-3" />
               )}
               {formatPercentage(ticker.changePercent24h)}
             </span>
@@ -204,8 +204,8 @@ const MarketItemInner: React.FC<MarketItemProps> = ({
         <Star
           className={`w-5 h-5 transition-transform active:scale-125 ${
             isFavorite
-              ? 'fill-amber-400 stroke-stone-900 stroke-[2]'
-              : 'stroke-stone-400 stroke-[2] hover:stroke-amber-500'
+              ? 'fill-amber-400 stroke-stone-900 stroke-2'
+              : 'stroke-stone-400 stroke-2 hover:stroke-amber-500'
           }`}
         />
       </button>
