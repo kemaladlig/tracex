@@ -1,10 +1,9 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { Plus, Search, BookmarkCheck, ArrowUpDown, Star, Compass } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { Plus, Search, BookmarkCheck, ArrowUpDown, Star, Compass, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { useCryptoStore } from '../../store/useCryptoStore';
 import { MarketItem } from './MarketItem';
 import { AddWatchlistModal } from './AddWatchlistModal';
 import { MarketTrendsBanner } from './MarketTrendsBanner';
-import { AddAssetModal } from '../portfolio/AddAssetModal';
 import {
   getCategoryCoins,
   fetchAllUsdtPairs,
@@ -25,6 +24,16 @@ const CATEGORY_TABS: { id: MarketCategory; label: string; hasStar?: boolean }[] 
   { id: 'defi', label: 'DEFI' },
 ];
 
+const SORT_OPTIONS: { id: SortOption; label: string }[] = [
+  { id: 'default', label: 'Varsayılan' },
+  { id: 'gainers', label: 'En Çok Artan' },
+  { id: 'losers', label: 'En Çok Düşen' },
+  { id: 'volume', label: 'Hacim' },
+  { id: 'name', label: 'A-Z' },
+];
+
+const TRENDS_COLLAPSE_KEY = 'tracex-trends-collapsed';
+
 export const MarketList: React.FC = () => {
   const watchlist = useCryptoStore((state) => state.watchlist);
   const tickers = useCryptoStore((state) => state.tickers);
@@ -36,7 +45,15 @@ export const MarketList: React.FC = () => {
   const [sortBy, setSortBy] = useState<SortOption>('default');
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [quickAddSymbol, setQuickAddSymbol] = useState<string | null>(null);
+  const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
+  const [isTrendsCollapsed, setIsTrendsCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(TRENDS_COLLAPSE_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+  const sortMenuRef = useRef<HTMLDivElement>(null);
 
   // Market coins cache & active category 25-coin list
   const [allMarketCoins, setAllMarketCoins] = useState<CoinSearchResult[]>([]);
@@ -46,6 +63,29 @@ export const MarketList: React.FC = () => {
   // Drag and drop state for custom favorites reordering
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
+
+  // Close sort menu on outside click
+  useEffect(() => {
+    if (!isSortMenuOpen) return;
+    const handlePointerDown = (e: PointerEvent) => {
+      if (sortMenuRef.current && !sortMenuRef.current.contains(e.target as Node)) {
+        setIsSortMenuOpen(false);
+      }
+    };
+    window.addEventListener('pointerdown', handlePointerDown);
+    return () => window.removeEventListener('pointerdown', handlePointerDown);
+  }, [isSortMenuOpen]);
+
+  const toggleTrends = () => {
+    setIsTrendsCollapsed((prev) => {
+      try {
+        localStorage.setItem(TRENDS_COLLAPSE_KEY, prev ? '0' : '1');
+      } catch {
+        // ignore
+      }
+      return !prev;
+    });
+  };
 
   // Preload all Binance USDT pairs for instant searching and categorization
   useEffect(() => {
@@ -207,144 +247,160 @@ export const MarketList: React.FC = () => {
   };
 
   const currentTabInfo = CATEGORY_TABS.find((t) => t.id === category);
+  const activeSortLabel = SORT_OPTIONS.find((o) => o.id === sortBy)?.label ?? 'Varsayılan';
 
   return (
-    <div className="flex flex-col pb-28 px-4 max-w-lg mx-auto w-full font-mono">
-      {/* 24h Top Gainers & Losers Banner */}
-      <div className="stagger-item" style={{ '--stagger-idx': 0 } as React.CSSProperties}>
-        <MarketTrendsBanner />
-      </div>
-
-      {/* Search & Add Action Bar */}
-      <div
-        className="flex items-center gap-2.5 my-2 stagger-item"
-        style={{ '--stagger-idx': 1 } as React.CSSProperties}
-      >
-        <div className="relative flex-1 flex items-center">
-          <Search className="absolute left-3 w-4 h-4 text-stone-500" />
-          <input
-            type="text"
-            placeholder="Tüm piyasada coin veya sembol ara..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 bg-white border-2 border-stone-900 rounded-md text-stone-900 text-xs font-mono placeholder-stone-400 shadow-hard-sm focus:outline-none focus:bg-stone-50"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-2.5 text-[10px] bg-stone-200 hover:bg-stone-300 text-stone-700 font-bold px-1.5 py-0.5 rounded cursor-pointer"
-            >
-              TEMİZLE
-            </button>
-          )}
-        </div>
+    <div className="flex flex-col pb-28 px-4 max-w-lg mx-auto w-full font-mono animate-tabEnter">
+      {/* 24h Top Gainers & Losers Banner (collapsible) */}
+      <div className="my-2">
         <button
-          onClick={() => setIsAddModalOpen(true)}
-          className="flex items-center gap-1.5 px-3 py-2 bg-amber-300 hover:bg-amber-400 border-2 border-stone-900 text-stone-900 text-xs font-mono font-bold rounded-md shadow-hard btn-hard cursor-pointer shrink-0"
+          onClick={toggleTrends}
+          aria-expanded={!isTrendsCollapsed}
+          className="flex items-center gap-1 text-[10px] font-mono font-bold text-stone-500 hover:text-stone-900 uppercase tracking-wider px-1 py-1 cursor-pointer"
         >
-          <Plus className="w-4 h-4 stroke-[3]" /> Ekle
-        </button>
-      </div>
-
-      {/* Category Pills Bar (Favorites, All, L1, L2, Meme, AI, DeFi) */}
-      <div
-        className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 mb-1 font-mono text-[11px] stagger-item"
-        style={{ '--stagger-idx': 2 } as React.CSSProperties}
-      >
-        {CATEGORY_TABS.map((item) => {
-          const isActive = category === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => {
-                triggerHaptic('light');
-                setCategory(item.id);
-              }}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md font-bold whitespace-nowrap border cursor-pointer transition-all ${
-                isActive
-                  ? 'bg-stone-900 text-amber-300 border-stone-900 shadow-hard-sm'
-                  : 'bg-white text-stone-700 border-stone-900/40 hover:bg-stone-100'
-              }`}
-            >
-              {item.hasStar && (
-                <Star
-                  className={`w-3.5 h-3.5 ${
-                    isActive
-                      ? 'fill-amber-300 stroke-stone-900 stroke-[2]'
-                      : 'fill-amber-400 stroke-stone-600 stroke-[1.5]'
-                  }`}
-                />
-              )}
-              <span>{item.label}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Sort Chips Bar */}
-      <div
-        className="flex items-center justify-between px-1 my-1.5 font-mono text-[10px] stagger-item"
-        style={{ '--stagger-idx': 3 } as React.CSSProperties}
-      >
-        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
-          <ArrowUpDown className="w-3 h-3 text-stone-500 mr-0.5 shrink-0" />
-          {(
-            [
-              { id: 'default', label: category === 'favorites' ? 'Varsayılan' : 'Hacim Sıralı' },
-              { id: 'gainers', label: 'En Çok Artan' },
-              { id: 'losers', label: 'En Çok Düşen' },
-              { id: 'volume', label: 'Hacim' },
-              { id: 'name', label: 'A-Z' },
-            ] as { id: SortOption; label: string }[]
-          ).map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setSortBy(item.id)}
-              className={`px-2 py-0.5 rounded font-bold border transition-all whitespace-nowrap cursor-pointer ${
-                sortBy === item.id
-                  ? 'bg-amber-300 text-stone-950 border-stone-900 font-black shadow-hard-sm'
-                  : 'bg-white text-stone-600 border-stone-300 hover:bg-stone-100'
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* List Header */}
-      <div
-        className="flex items-center justify-between px-1 my-2 stagger-item"
-        style={{ '--stagger-idx': 4 } as React.CSSProperties}
-      >
-        <div className="flex items-center gap-1.5 text-xs font-mono font-black text-stone-900 uppercase tracking-wider">
-          {searchQuery.trim() ? (
-            <>
-              <Search className="w-3.5 h-3.5 text-amber-600" />
-              <span>ARAMA SONUÇLARI ({displaySymbols.length})</span>
-            </>
-          ) : category === 'favorites' ? (
-            <>
-              <BookmarkCheck className="w-3.5 h-3.5" />
-              <span>FAVORİLERİM ({displaySymbols.length})</span>
-            </>
+          {isTrendsCollapsed ? (
+            <ChevronDown className="w-3.5 h-3.5" />
           ) : (
-            <>
-              <Compass className="w-3.5 h-3.5 text-amber-600" />
-              <span>
-                {currentTabInfo?.label} ({displaySymbols.length})
-              </span>
-            </>
+            <ChevronUp className="w-3.5 h-3.5" />
           )}
+          <span>24S Piyasa Bülteni</span>
+        </button>
+        {!isTrendsCollapsed && <MarketTrendsBanner />}
+      </div>
+
+      {/* Sticky slim toolbar: search + sort menu + add */}
+      <div className="sticky top-0 z-10 -mx-4 px-4 py-2 bg-[#f4f0e6]/95 backdrop-blur-sm">
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1 flex items-center">
+            <Search className="absolute left-3 w-4 h-4 text-stone-500 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Tüm piyasada coin veya sembol ara..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              aria-label="Coin ara"
+              className="w-full h-11 pl-9 pr-3 py-2 bg-white border-2 border-stone-900 rounded-md text-stone-900 text-xs font-mono placeholder-stone-400 shadow-hard-sm focus:outline-none focus:bg-stone-50"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 text-[10px] bg-stone-200 hover:bg-stone-300 text-stone-700 font-bold px-1.5 py-0.5 rounded cursor-pointer"
+              >
+                TEMİZLE
+              </button>
+            )}
+          </div>
+          <div ref={sortMenuRef} className="relative shrink-0">
+            <button
+              onClick={() => setIsSortMenuOpen((v) => !v)}
+              aria-haspopup="listbox"
+              aria-expanded={isSortMenuOpen}
+              title={`Sıralama: ${activeSortLabel}`}
+              className={`flex items-center gap-1 h-11 px-2.5 bg-white border-2 border-stone-900 text-stone-900 text-[11px] font-mono font-bold rounded-md shadow-hard-sm btn-hard cursor-pointer ${
+                sortBy !== 'default' ? 'bg-amber-200' : ''
+              }`}
+            >
+              <ArrowUpDown className="w-4 h-4 stroke-[2.5]" />
+              <span className="hidden min-[380px]:inline max-w-20 truncate">{activeSortLabel}</span>
+            </button>
+            {isSortMenuOpen && (
+              <div
+                role="listbox"
+                aria-label="Sıralama seç"
+                className="absolute right-0 mt-1.5 w-44 bg-white border-2 border-stone-900 rounded-md shadow-hard overflow-hidden z-20 animate-popIn"
+              >
+                {SORT_OPTIONS.map((item) => (
+                  <button
+                    key={item.id}
+                    role="option"
+                    aria-selected={sortBy === item.id}
+                    onClick={() => {
+                      triggerHaptic('light');
+                      setSortBy(item.id);
+                      setIsSortMenuOpen(false);
+                    }}
+                    className={`flex items-center justify-between w-full px-3 h-11 text-xs font-mono font-bold cursor-pointer transition-colors ${
+                      sortBy === item.id
+                        ? 'bg-amber-200 text-stone-950'
+                        : 'text-stone-700 hover:bg-stone-100'
+                    }`}
+                  >
+                    <span>{item.label}</span>
+                    {sortBy === item.id && <Check className="w-4 h-4 stroke-[3]" />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            aria-label="Coin ekle"
+            className="flex items-center justify-center gap-1 h-11 min-w-11 px-2.5 bg-amber-300 hover:bg-amber-400 border-2 border-stone-900 text-stone-900 text-xs font-mono font-bold rounded-md shadow-hard-sm btn-hard cursor-pointer shrink-0"
+          >
+            <Plus className="w-4 h-4 stroke-[3]" />
+            <span className="hidden min-[380px]:inline">Ekle</span>
+          </button>
         </div>
-        <div className="text-[10px] font-mono text-stone-600 font-bold uppercase">
-          FİYAT / 24S DEĞİŞİM
+
+        {/* Category Pills Bar (Favorites, All, L1, L2, Meme, AI, DeFi) */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-2 font-mono text-[11px]">
+          {CATEGORY_TABS.map((item) => {
+            const isActive = category === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => {
+                  triggerHaptic('light');
+                  setCategory(item.id);
+                }}
+                aria-pressed={isActive}
+                className={`flex items-center gap-1.5 px-2.5 h-9 rounded-md font-bold whitespace-nowrap border-2 cursor-pointer transition-all shrink-0 ${
+                  isActive
+                    ? 'bg-stone-900 text-amber-300 border-stone-900 shadow-hard-xs'
+                    : 'bg-white text-stone-700 border-stone-900/30 hover:bg-stone-100'
+                }`}
+              >
+                {item.hasStar && (
+                  <Star
+                    className={`w-3.5 h-3.5 ${
+                      isActive
+                        ? 'fill-amber-300 stroke-amber-300'
+                        : 'fill-amber-400 stroke-stone-600 stroke-[1.5]'
+                    }`}
+                  />
+                )}
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
         </div>
+      </div>
+
+      {/* List count line */}
+      <div className="flex items-center gap-1.5 px-1 pt-1 pb-2 text-xs font-mono font-black text-stone-900 uppercase tracking-wider">
+        {searchQuery.trim() ? (
+          <>
+            <Search className="w-3.5 h-3.5 text-amber-600" />
+            <span className="tabular-nums">Arama Sonuçları • {displaySymbols.length}</span>
+          </>
+        ) : category === 'favorites' ? (
+          <>
+            <BookmarkCheck className="w-3.5 h-3.5" />
+            <span className="tabular-nums">Favorilerim • {displaySymbols.length}</span>
+          </>
+        ) : (
+          <>
+            <Compass className="w-3.5 h-3.5 text-amber-600" />
+            <span className="tabular-nums">
+              {currentTabInfo?.label} • {displaySymbols.length}
+            </span>
+          </>
+        )}
       </div>
 
       {/* Loading indicator for category switch */}
       {isLoadingCategory && category !== 'favorites' && displaySymbols.length === 0 && (
-        <div className="p-8 text-center bg-white border-2 border-stone-900 rounded-lg shadow-hard my-2">
+        <div className="p-8 text-center bg-white border-2 border-stone-900 rounded-lg shadow-hard-sm my-2">
           <div className="w-6 h-6 border-2 border-stone-900 border-t-amber-400 rounded-full animate-spin mx-auto mb-2" />
           <p className="text-xs font-bold text-stone-700">Piyasa verileri yükleniyor...</p>
         </div>
@@ -352,13 +408,12 @@ export const MarketList: React.FC = () => {
 
       {/* Market Items List */}
       {displaySymbols.length > 0 ? (
-        <div className="flex flex-col">
+        <div className="flex flex-col gap-2">
           {displaySymbols.map((symbol, idx) => (
             <MarketItem
               key={symbol}
               symbol={symbol}
               index={idx}
-              onQuickAdd={(sym) => setQuickAddSymbol(sym)}
               canReorder={isCustomOrder}
               isDragging={draggedIndex === idx}
               isDragOver={overIndex === idx}
@@ -411,13 +466,6 @@ export const MarketList: React.FC = () => {
       <AddWatchlistModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
-      />
-
-      {/* Quick Add Asset to Portfolio Modal */}
-      <AddAssetModal
-        isOpen={Boolean(quickAddSymbol)}
-        initialSymbol={quickAddSymbol ?? ''}
-        onClose={() => setQuickAddSymbol(null)}
       />
     </div>
   );

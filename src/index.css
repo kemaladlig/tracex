@@ -228,6 +228,13 @@
     opacity: 1 !important;
     transform: none !important;
   }
+  .flash-up,
+  .flash-down {
+    animation: none !important;
+  }
+  .animate-livePulse {
+    animation: none !important;
+  }
 }
 
 /* No scrollbar utility */

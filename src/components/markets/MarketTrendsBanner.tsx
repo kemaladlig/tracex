@@ -52,30 +52,34 @@ export const MarketTrendsBanner: React.FC = () => {
   };
 
   return (
-    <div className="my-3 p-3 bg-[#ede7d8] border-2 border-stone-900 rounded-lg shadow-hard-sm">
+    <div className="p-2.5 bg-[#ede7d8] border-2 border-stone-900 rounded-lg shadow-hard-xs">
       {/* Header Tabs */}
-      <div className="flex items-center justify-between pb-2 border-b border-stone-900/40 mb-2.5">
-        <div className="flex items-center gap-1.5 text-xs font-mono font-bold uppercase tracking-wider text-stone-900">
+      <div className="flex items-center justify-between pb-2 border-b border-stone-900/40 mb-2">
+        <div className="flex items-center gap-1.5 text-[11px] font-mono font-bold uppercase tracking-wider text-stone-900">
           <Flame className="w-3.5 h-3.5 text-amber-600" />
-          <span>24S PİYASA BÜLTENİ</span>
+          <span>24S Piyasa Bülteni</span>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1" role="tablist" aria-label="Trend yönü">
           <button
+            role="tab"
+            aria-selected={activeTrend === 'gainers'}
             onClick={() => setActiveTrend('gainers')}
-            className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold border border-stone-900 btn-hard cursor-pointer ${
+            className={`h-7 px-2 rounded text-[10px] font-mono font-bold border border-stone-900 btn-hard cursor-pointer ${
               activeTrend === 'gainers'
-                ? 'bg-emerald-300 text-emerald-950 shadow-hard-sm'
+                ? 'bg-emerald-300 text-emerald-950 shadow-hard-xs'
                 : 'bg-white/80 text-stone-700'
             }`}
           >
             YÜKSELENLER
           </button>
           <button
+            role="tab"
+            aria-selected={activeTrend === 'losers'}
             onClick={() => setActiveTrend('losers')}
-            className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold border border-stone-900 btn-hard cursor-pointer ${
+            className={`h-7 px-2 rounded text-[10px] font-mono font-bold border border-stone-900 btn-hard cursor-pointer ${
               activeTrend === 'losers'
-                ? 'bg-rose-300 text-rose-950 shadow-hard-sm'
+                ? 'bg-rose-300 text-rose-950 shadow-hard-xs'
                 : 'bg-white/80 text-stone-700'
             }`}
           >
@@ -97,14 +101,14 @@ export const MarketTrendsBanner: React.FC = () => {
               <button
                 key={coin.symbol}
                 onClick={() => handleCardClick(coin)}
-                className="flex-shrink-0 w-32 p-2 bg-white border-2 border-stone-900 rounded-md shadow-hard-sm btn-hard text-left cursor-pointer transition-transform"
+                className="flex-shrink-0 w-28 p-2 bg-white border-2 border-stone-900 rounded-md shadow-hard-xs btn-hard text-left cursor-pointer transition-transform"
               >
-                <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center justify-between gap-1 mb-1">
                   <span className="font-mono font-extrabold text-xs text-stone-900 truncate">
                     {coin.baseAsset}
                   </span>
                   <span
-                    className={`inline-flex items-center text-[10px] font-mono font-black ${
+                    className={`inline-flex items-center shrink-0 text-[10px] font-mono font-black tabular-nums ${
                       isPositive ? 'text-emerald-700' : 'text-rose-700'
                     }`}
                   >
@@ -112,7 +116,7 @@ export const MarketTrendsBanner: React.FC = () => {
                     {formatPercentage(coin.changePercent24h)}
                   </span>
                 </div>
-                <div className="font-mono font-bold text-xs text-stone-800">
+                <div className="font-mono font-bold text-xs text-stone-800 tabular-nums truncate">
                   {formatCurrency(coin.price, 'USD', 1)}
                 </div>
               </button>
