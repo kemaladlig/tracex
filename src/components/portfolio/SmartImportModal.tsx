@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { X, ArrowRight, Check, Trash2, HelpCircle, FileText, Zap } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { ArrowRight, Check, Trash2, HelpCircle, FileText, Zap } from 'lucide-react';
 import { useCryptoStore } from '../../store/useCryptoStore';
 import { parsePortfolioText, type ParsedAssetDraft } from '../../utils/portfolioParser';
 import { formatCurrency } from '../../utils/formatters';
+import { Modal } from '../common/Modal';
 
 interface SmartImportModalProps {
   isOpen: boolean;
@@ -16,7 +16,11 @@ interface EditableDraftAsset extends ParsedAssetDraft {
 
 export const SmartImportModal: React.FC<SmartImportModalProps> = ({ isOpen, onClose }) => {
   const [rawText, setRawText] = useState('');
-  const [draftAssets, setDraftAssets] = useState<EditableDraftAsset[]>([]);
+  // User edits layered over the parse result: price overrides + removals, both keyed by symbol.
+  // This keeps edits alive across textarea keystrokes and lets live prices fill in purely by derivation —
+  // no effects, so no sync setState and no missed ticker updates.
+  const [priceOverrides, setPriceOverrides] = useState<Record<string, string>>({});
+  const [removedSymbols, setRemovedSymbols] = useState<string[]>([]);
   const [useLivePriceDefault, setUseLivePriceDefault] = useState(true);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
 
@@ -26,62 +30,45 @@ export const SmartImportModal: React.FC<SmartImportModalProps> = ({ isOpen, onCl
   const tryRate = useCryptoStore((state) => state.tryRate);
   const activeRate = currency === 'TRY' ? tryRate : 1;
 
-  // Whenever user pastes or edits raw text, parse it
-  useEffect(() => {
-    if (!rawText.trim()) {
-      setDraftAssets([]);
-      return;
-    }
-
-    const parsed = parsePortfolioText(rawText);
-    setDraftAssets(
-      parsed.map((p) => {
-        const livePrice = tickers[p.symbol]?.price;
-        const initialPrice = p.buyPrice ?? (useLivePriceDefault && livePrice ? livePrice : undefined);
-        return {
-          ...p,
-          priceInput: initialPrice !== undefined ? String(initialPrice) : (livePrice ? String(livePrice) : ''),
-        };
-      })
-    );
-  }, [rawText, useLivePriceDefault]);
-
-  // If live tickers arrive after text was pasted and priceInput is empty, fill it
-  useEffect(() => {
-    if (!useLivePriceDefault || draftAssets.length === 0) return;
-    setDraftAssets((prev) =>
-      prev.map((item) => {
-        if (!item.priceInput && tickers[item.symbol]?.price) {
-          return { ...item, priceInput: String(tickers[item.symbol]?.price) };
+  // Parse + price resolution derived from raw text, edits, toggle, and live tickers
+  const drafts: EditableDraftAsset[] = useMemo(() => {
+    if (!rawText.trim()) return [];
+    return parsePortfolioText(rawText)
+      .filter((p) => !removedSymbols.includes(p.symbol))
+      .map((p) => {
+        const override = priceOverrides[p.symbol];
+        let priceInput = override ?? (p.buyPrice !== undefined ? String(p.buyPrice) : '');
+        if (!priceInput && useLivePriceDefault) {
+          const livePrice = tickers[p.symbol]?.price;
+          if (livePrice) priceInput = String(livePrice);
         }
-        return item;
-      })
-    );
-  }, [tickers, useLivePriceDefault]);
+        return { ...p, priceInput };
+      });
+  }, [rawText, removedSymbols, priceOverrides, useLivePriceDefault, tickers]);
 
   if (!isOpen) return null;
 
   const handlePriceChange = (index: number, val: string) => {
-    setDraftAssets((prev) => {
-      const next = [...prev];
-      next[index] = { ...next[index], priceInput: val };
-      return next;
-    });
+    const symbol = drafts[index]?.symbol;
+    if (!symbol) return;
+    setPriceOverrides((prev) => ({ ...prev, [symbol]: val }));
   };
 
   const handleRemoveItem = (index: number) => {
-    setDraftAssets((prev) => prev.filter((_, i) => i !== index));
+    const symbol = drafts[index]?.symbol;
+    if (!symbol) return;
+    setRemovedSymbols((prev) => (prev.includes(symbol) ? prev : [...prev, symbol]));
   };
 
-  const totalCalculatedValue = draftAssets.reduce((sum, item) => {
+  const totalCalculatedValue = drafts.reduce((sum, item) => {
     const price = parseFloat(item.priceInput) || tickers[item.symbol]?.price || 0;
     return sum + item.amount * price;
   }, 0);
 
   const handleImportAll = () => {
-    if (draftAssets.length === 0) return;
+    if (drafts.length === 0) return;
 
-    const payload = draftAssets.map((item) => {
+    const payload = drafts.map((item) => {
       const livePrice = tickers[item.symbol]?.price || 0;
       const parsedPrice = parseFloat(item.priceInput);
       const buyPrice = !isNaN(parsedPrice) && parsedPrice > 0 ? parsedPrice : (livePrice > 0 ? livePrice : 1);
@@ -99,35 +86,26 @@ export const SmartImportModal: React.FC<SmartImportModalProps> = ({ isOpen, onCl
     setTimeout(() => {
       setFeedbackMessage(null);
       setRawText('');
-      setDraftAssets([]);
+      setPriceOverrides({});
+      setRemovedSymbols([]);
       onClose();
     }, 900);
   };
 
-  return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 bg-stone-900/70 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="bg-[#faf7f0] border-2 border-stone-900 rounded-lg shadow-hard max-w-lg w-full max-h-[88vh] flex flex-col overflow-hidden font-mono">
-        {/* Header */}
-        <div className="flex items-center justify-between p-3 border-b-2 border-stone-900 bg-amber-300">
-          <div className="flex items-center gap-2">
-            <Zap className="w-5 h-5 text-stone-900 fill-stone-900" />
-            <div>
-              <h2 className="text-xs font-black text-stone-900 uppercase tracking-wider">
-                Akıllı Portföy İçe Aktar
-              </h2>
-              <span className="text-[10px] text-stone-800 font-bold block">
-                Binance TR / Web Kopyasını Yapıştırın
-              </span>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1 border border-stone-900 bg-white hover:bg-stone-100 rounded text-stone-900 shadow-hard-sm cursor-pointer"
-          >
-            <X className="w-4 h-4 stroke-[2.5]" />
-          </button>
-        </div>
-
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      size="lg"
+      variant="centered"
+      title={
+        <span className="flex items-center gap-2">
+          <Zap className="w-5 h-5 fill-stone-900 shrink-0" />
+          AKILLI PORTFÖY İÇE AKTAR
+        </span>
+      }
+      subtitle="Binance TR / Web Kopyasını Yapıştırın"
+    >
         {/* Scrollable Body */}
         <div className="p-3.5 overflow-y-auto space-y-3.5 text-xs flex-1">
           {/* Info Hint */}
@@ -145,9 +123,9 @@ export const SmartImportModal: React.FC<SmartImportModalProps> = ({ isOpen, onCl
           <div>
             <div className="flex items-center justify-between mb-1 text-[11px] font-bold text-stone-900">
               <span>Borsa Metnini veya Listeyi Yapıştırın:</span>
-              {draftAssets.length > 0 && (
+              {drafts.length > 0 && (
                 <span className="text-emerald-700 font-black">
-                  ✓ {draftAssets.length} Varlık Tespit Edildi
+                  ✓ {drafts.length} Varlık Tespit Edildi
                 </span>
               )}
             </div>
@@ -177,17 +155,17 @@ export const SmartImportModal: React.FC<SmartImportModalProps> = ({ isOpen, onCl
           </div>
 
           {/* Parsed Assets Preview Table */}
-          {draftAssets.length > 0 ? (
+          {drafts.length > 0 ? (
             <div className="space-y-1.5">
               <div className="flex items-center justify-between text-[11px] font-black text-stone-900 uppercase">
-                <span>Algılanan Varlıklar ({draftAssets.length})</span>
+                <span>Algılanan Varlıklar ({drafts.length})</span>
                 <span className="text-stone-600">
                   Tahmini Toplam: {formatCurrency(totalCalculatedValue, currency, activeRate)}
                 </span>
               </div>
 
               <div className="border-2 border-stone-900 rounded bg-white divide-y border-stone-900 max-h-56 overflow-y-auto shadow-hard-sm">
-                {draftAssets.map((asset, idx) => {
+                {drafts.map((asset, idx) => {
                   const livePrice = tickers[asset.symbol]?.price;
                   return (
                     <div
@@ -254,19 +232,17 @@ export const SmartImportModal: React.FC<SmartImportModalProps> = ({ isOpen, onCl
 
           <button
             onClick={handleImportAll}
-            disabled={draftAssets.length === 0}
+            disabled={drafts.length === 0}
             className={`flex items-center gap-1.5 px-4 py-2 border-2 border-stone-900 text-xs font-black rounded shadow-hard-sm btn-hard cursor-pointer ${
-              draftAssets.length > 0
+              drafts.length > 0
                 ? 'bg-amber-300 hover:bg-amber-400 text-stone-900'
                 : 'bg-stone-200 text-stone-400 cursor-not-allowed border-stone-400 shadow-none'
             }`}
           >
-            <span>{draftAssets.length} Varlığı Portföye Aktar</span>
+            <span>{drafts.length} Varlığı Portföye Aktar</span>
             <ArrowRight className="w-4 h-4 stroke-[2.5]" />
           </button>
         </div>
-      </div>
-    </div>,
-    document.body
+    </Modal>
   );
 };

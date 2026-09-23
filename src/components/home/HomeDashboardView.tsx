@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, Suspense, lazy } from 'react';
 import {
   ArrowUpRight,
   ArrowDownRight,
@@ -17,7 +17,11 @@ import {
 import { useCryptoStore } from '../../store/useCryptoStore';
 import { formatCurrency, formatPercentage, cleanSymbol } from '../../utils/formatters';
 import { triggerHaptic } from '../../utils/haptics';
-import { AddAssetModal } from '../portfolio/AddAssetModal';
+
+// Add-asset dialog is heavy — load its chunk only when the user actually opens it
+const AddAssetModal = lazy(() =>
+  import('../portfolio/AddAssetModal').then((m) => ({ default: m.AddAssetModal }))
+);
 
 interface FngState {
   value: number;
@@ -106,6 +110,7 @@ export const HomeDashboardView: React.FC = () => {
   const connectionStatus = useCryptoStore((state) => state.connectionStatus);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const handleAddClose = useCallback(() => setIsAddModalOpen(false), []);
   // Default wallet collapsible state: collapsed by default for public privacy
   const [isWalletExpanded, setIsWalletExpanded] = useState<boolean>(false);
 
@@ -174,19 +179,11 @@ export const HomeDashboardView: React.FC = () => {
     return 58.4;
   });
 
-  // Fetch 48 candles for selected home interval (15m / 1h / 4h) from Binance Public API
+  // Fetch 48 candles for selected home interval (15m / 1h / 4h) from Binance Public API.
+  // Cache reads happen in the useState initializer and in the timeframe click handler (event),
+  // so this effect only does the async network fill — no sync setState.
   useEffect(() => {
     let cancelled = false;
-    // Instant per-interval cache hit for snappy switching
-    try {
-      const raw = localStorage.getItem(`tracex_btc_${homeInterval}_candles`);
-      if (raw) {
-        const cached = JSON.parse(raw);
-        if (Array.isArray(cached) && cached.length > 5 && !cancelled) {
-          setCandles4h(cached);
-        }
-      }
-    } catch {}
     fetch(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${homeInterval}&limit=48`)
       .then((res) => res.json())
       .then((data: [number, string, string, string, string, string][]) => {
@@ -378,27 +375,24 @@ export const HomeDashboardView: React.FC = () => {
     };
   }, [liveCandles, heikinCandles, chartMode]);
 
-  // Calculate Net Portfolio Value in USD
-  let totalUSD = 0;
-  let totalCostUSD = 0;
-
-  const enrichedHoldings = portfolio.map((asset) => {
-    const livePriceUSD = tickers[asset.symbol]?.price ?? asset.buyPrice;
-    const valUSD = asset.amount * livePriceUSD;
-    const costUSD = asset.amount * asset.buyPrice;
-    totalUSD += valUSD;
-    totalCostUSD += costUSD;
-    return {
-      ...asset,
-      livePriceUSD,
-      valUSD,
-      costUSD,
-      pnlUSD: valUSD - costUSD,
-      pnlPct: costUSD > 0 ? ((valUSD - costUSD) / costUSD) * 100 : 0,
-    };
-  });
-
-
+  // Calculate Net Portfolio Value in USD — single memo so totals never mutate during render
+  const { enrichedHoldings, totalUSD } = useMemo(() => {
+    const enriched = portfolio.map((asset) => {
+      const livePriceUSD = tickers[asset.symbol]?.price ?? asset.buyPrice;
+      const valUSD = asset.amount * livePriceUSD;
+      const costUSD = asset.amount * asset.buyPrice;
+      return {
+        ...asset,
+        livePriceUSD,
+        valUSD,
+        costUSD,
+        pnlUSD: valUSD - costUSD,
+        pnlPct: costUSD > 0 ? ((valUSD - costUSD) / costUSD) * 100 : 0,
+      };
+    });
+    const total = enriched.reduce((sum, holding) => sum + holding.valUSD, 0);
+    return { enrichedHoldings: enriched, totalUSD: total };
+  }, [portfolio, tickers]);
 
   // Sort holdings by valuation descending
   const sortedHoldings = useMemo(() => {
@@ -406,14 +400,14 @@ export const HomeDashboardView: React.FC = () => {
   }, [enrichedHoldings]);
 
   return (
-    <div className="flex-1 w-full px-4 py-3 space-y-3 pb-36 sm:pb-40 font-mono">
+    <div className="flex-1 w-full px-4 md:px-6 py-3 space-y-3 pb-36 lg:pb-10 font-mono lg:grid lg:grid-cols-3 lg:gap-3 lg:items-start lg:space-y-0">
       {/* 1. HERO COCKPIT: BITCOIN PRICE, 4H CANDLESTICK CHART & MARKET MODE */}
       <div
         onClick={() => {
           triggerHaptic('medium');
           setSelectedCoinForChart('BTCUSDT');
         }}
-        className="border-2 border-stone-900 rounded-lg p-3.5 shadow-hard btn-hard cursor-pointer relative bg-white animate-sheetUp flex flex-col justify-between"
+        className="lg:col-span-2 border-2 border-stone-900 rounded-lg p-3.5 shadow-hard btn-hard cursor-pointer relative bg-white animate-sheetUp flex flex-col justify-between"
       >
         <div>
           {/* Header Row: Symbol / Name on Left, Chart Navigation on Right */}
@@ -474,7 +468,7 @@ export const HomeDashboardView: React.FC = () => {
           </div>
 
           {/* 4-Hour Japanese Candlestick Chart (Clean craft paper background, zero haze) */}
-          <div className="w-full h-[205px] relative pointer-events-none my-2 bg-stone-100/70 rounded border-2 border-stone-900 p-0.5 overflow-hidden shadow-inner">
+          <div className="w-full h-[205px] lg:h-[300px] relative pointer-events-none my-2 bg-stone-100/70 rounded border-2 border-stone-900 p-0.5 overflow-hidden shadow-inner">
             <svg
               viewBox="0 0 360 190"
               className="w-full h-full"
@@ -639,6 +633,16 @@ export const HomeDashboardView: React.FC = () => {
                   onClick={(e) => {
                     e.stopPropagation();
                     triggerHaptic('light');
+                    // Instant per-interval cache hit (event handler — keeps effects free of sync setState)
+                    try {
+                      const raw = localStorage.getItem(`tracex_btc_${tf.value}_candles`);
+                      if (raw) {
+                        const cached = JSON.parse(raw);
+                        if (Array.isArray(cached) && cached.length > 5) {
+                          setCandles4h(cached);
+                        }
+                      }
+                    } catch {}
                     setHomeInterval(tf.value);
                     localStorage.setItem('tracex_home_chart_interval', tf.value);
                   }}
@@ -716,7 +720,7 @@ export const HomeDashboardView: React.FC = () => {
           triggerHaptic('light');
           setActiveTab('analytics');
         }}
-        className="grid grid-cols-3 gap-2 text-stone-900 cursor-pointer animate-sheetUp [animation-delay:60ms]"
+        className="grid grid-cols-3 gap-2 text-stone-900 cursor-pointer animate-sheetUp [animation-delay:60ms] lg:grid-cols-1 lg:self-start"
         title="Tüm Analizleri Aç"
       >
         <div className="bg-white border-2 border-stone-900 rounded-md p-2 shadow-hard-xs hover:bg-stone-50 transition-colors">
@@ -763,7 +767,7 @@ export const HomeDashboardView: React.FC = () => {
       {/* ========================================================================= */}
       {/* 3. KİŞİSEL CÜZDAN & VARLIKLAR (TOPLULUK KORUMASI / AKORDİYON KASA)         */}
       {/* ========================================================================= */}
-      <div className="space-y-2.5 animate-sheetUp [animation-delay:120ms]">
+      <div className="space-y-2.5 animate-sheetUp [animation-delay:120ms] lg:col-span-2">
         {/* Accordion Privacy Trigger Bar */}
         <button
           type="button"
@@ -977,11 +981,12 @@ export const HomeDashboardView: React.FC = () => {
         )}
       </div>
 
-      {/* Add Asset Modal */}
-      <AddAssetModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-      />
+      {/* Add Asset Modal — mounted (and chunk fetched) only while open */}
+      {isAddModalOpen && (
+        <Suspense fallback={null}>
+          <AddAssetModal isOpen onClose={handleAddClose} />
+        </Suspense>
+      )}
     </div>
   );
 };

@@ -34,11 +34,14 @@ import {
   SlidersHorizontal,
   CandlestickChart,
   TrendingUp,
+  Star,
+  Search,
 } from 'lucide-react';
 import { useCryptoStore } from '../../store/useCryptoStore';
 import { fetchHistoricalKlines } from '../../services/binanceApi';
 import { cleanSymbol, formatCurrency, formatPercentage } from '../../utils/formatters';
 import { triggerHaptic } from '../../utils/haptics';
+import { Modal } from '../common/Modal';
 import { VolumeCandleSeriesView, type VolumeCandleData } from './volumeCandleSeries';
 
 export type ModalChartType = 'candlestick' | 'heikin' | 'volume' | 'area';
@@ -121,12 +124,79 @@ const calculateHeikinAshi = (
 type PriceLineHandle = ReturnType<ISeriesApi<'Candlestick'>['createPriceLine']>;
 type CustomVolumeSeriesApi = ISeriesApi<'Custom', Time, VolumeCandleData | WhitespaceData<Time>, CustomSeriesOptions>;
 
+interface RailRowProps {
+  symbol: string;
+  isActive: boolean;
+  onSwitch: (sym: string) => void;
+  rowRef?: React.RefObject<HTMLButtonElement | null>;
+}
+
+/** One live row in the desktop rail — subscribes its own ticker so the rail never re-renders as a whole map. */
+const RailRow: React.FC<RailRowProps> = React.memo(function RailRow({
+  symbol,
+  isActive,
+  onSwitch,
+  rowRef,
+}) {
+  const t = useCryptoStore((state) => state.tickers[symbol]);
+  const pct = t?.changePercent24h ?? 0;
+  const up = pct >= 0;
+  return (
+    <button
+      ref={rowRef}
+      type="button"
+      onClick={() => onSwitch(symbol)}
+      aria-pressed={isActive}
+      title={`${symbol} grafiğine geç`}
+      className={`w-full flex items-center justify-between gap-2 pl-2 pr-3 py-2.5 text-left border-b border-b-stone-900/15 border-l-4 cursor-pointer transition-colors ${
+        isActive
+          ? 'bg-stone-900 border-l-amber-400'
+          : 'bg-white border-l-transparent hover:bg-amber-50'
+      }`}
+    >
+      <div className="min-w-0">
+        <div className={`text-xs font-black truncate ${isActive ? 'text-amber-300' : 'text-stone-900'}`}>
+          {cleanSymbol(symbol).base}
+        </div>
+        <div className={`text-[10px] font-bold tabular-nums ${isActive ? 'text-stone-400' : 'text-stone-500'}`}>
+          {t ? formatCurrency(t.price, 'USD', 1) : '--'}
+        </div>
+      </div>
+      <span
+        className={`text-[11px] font-black tabular-nums shrink-0 ${
+          up
+            ? isActive
+              ? 'text-emerald-300'
+              : 'text-emerald-700'
+            : isActive
+            ? 'text-rose-300'
+            : 'text-rose-700'
+        }`}
+      >
+        {t ? formatPercentage(pct) : '--'}
+      </span>
+    </button>
+  );
+});
+
 export const DetailChartModal: React.FC = () => {
   const selectedSymbol = useCryptoStore((state) => state.selectedCoinForChart);
   const setSelectedSymbol = useCryptoStore((state) => state.setSelectedCoinForChart);
   const ticker = useCryptoStore((state) => (selectedSymbol ? state.tickers[selectedSymbol] : undefined));
+  const watchlist = useCryptoStore((state) => state.watchlist);
   const portfolio = useCryptoStore((state) => state.portfolio);
   const connectionStatus = useCryptoStore((state) => state.connectionStatus);
+
+  // Desktop rail: stable watchlist order — clicking a row never re-sorts the list
+  const railFavorites = useMemo(
+    () => Array.from(new Set(watchlist.map((s) => s.toUpperCase()))),
+    [watchlist]
+  );
+  const activeRailSymbol = useMemo(() => {
+    if (!selectedSymbol) return null;
+    const u = selectedSymbol.toUpperCase();
+    return railFavorites.includes(u) ? null : u;
+  }, [selectedSymbol, railFavorites]);
 
   // Flexible symbol matching for portfolio holdings (e.g. BTC vs BTCUSDT)
   const userAsset = useMemo(() => {
@@ -180,6 +250,11 @@ export const DetailChartModal: React.FC = () => {
     return true;
   });
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const settingsOpenRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    settingsOpenRef.current = isSettingsOpen;
+  }, [isSettingsOpen]);
   const [showCostLine, setShowCostLine] = useState<boolean>(() => {
     try {
       const saved = localStorage.getItem(CHART_COST_LINE_KEY);
@@ -200,6 +275,7 @@ export const DetailChartModal: React.FC = () => {
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryNonce, setRetryNonce] = useState<number>(0);
 
   const [hoveredData, setHoveredData] = useState<{
     open: number;
@@ -634,7 +710,7 @@ export const DetailChartModal: React.FC = () => {
       lastAreaPointRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSymbol, interval]);
+  }, [selectedSymbol, interval, retryNonce]);
 
   // Dedicated Portfolio Cost Line update callback
   const updateCostLine = useCallback(() => {
@@ -862,7 +938,7 @@ export const DetailChartModal: React.FC = () => {
         volume: last.volume ?? 1,
       });
     }
-  }, [ticker, interval]);
+  }, [ticker, interval, chartType]);
 
   const handleClose = () => {
     if (window.history.state?.modal === 'chart') {
@@ -872,20 +948,101 @@ export const DetailChartModal: React.FC = () => {
     }
   };
 
-  // Support device/browser back button (popstate) and Escape key
-  useEffect(() => {
-    if (!selectedSymbol) return;
+  // Side rail: switch chart symbol in place (no modal close, no history spam)
+  const handleSwitchSymbol = useCallback(
+    (sym: string) => {
+      if (sym === selectedSymbol) return;
+      triggerHaptic('light');
+      setHoveredData(null);
+      setVisibleRangeStats(null);
+      setSelectedSymbol(sym);
+    },
+    [selectedSymbol, setSelectedSymbol]
+  );
 
-    // Push a state into browser history so hardware/browser back button closes modal
-    window.history.pushState({ modal: 'chart', symbol: selectedSymbol }, '');
+  // Active row scroll-once helper (used by RailRow via rowRef)
+  const activeRowRef = useRef<HTMLButtonElement | null>(null);
+  const didInitialRailScrollRef = useRef(false);
+
+  // Open the rail at the active row ONCE; rail clicks never scroll-jump
+  useEffect(() => {
+    if (!selectedSymbol) {
+      didInitialRailScrollRef.current = false;
+      return;
+    }
+    if (didInitialRailScrollRef.current) return;
+    didInitialRailScrollRef.current = true;
+    const t = window.setTimeout(() => {
+      activeRowRef.current?.scrollIntoView({ block: 'nearest' });
+    }, 60);
+    return () => window.clearTimeout(t);
+  }, [selectedSymbol]);
+
+  // Rail search + ArrowUp/Down navigation target order (stable: watchlist order preserved)
+  const [railQuery, setRailQuery] = useState('');
+  const railQueryClean = railQuery.trim().toUpperCase();
+  const filteredFavorites = useMemo(() => {
+    if (!railQueryClean) return railFavorites;
+    return railFavorites.filter((s) => s.includes(railQueryClean));
+  }, [railFavorites, railQueryClean]);
+  const showActiveGroup = !!activeRailSymbol && (!railQueryClean || activeRailSymbol.includes(railQueryClean));
+  const railNavList = useMemo(
+    () => [...(showActiveGroup && activeRailSymbol ? [activeRailSymbol] : []), ...filteredFavorites],
+    [showActiveGroup, activeRailSymbol, filteredFavorites]
+  );
+
+  // Support device/browser back button (popstate) and Escape key
+  const historyPushedRef = useRef(false);
+
+  useEffect(() => {
+    if (!selectedSymbol) {
+      historyPushedRef.current = false;
+      return;
+    }
+
+    // ONE history entry per modal session: rail switches replace it, back still closes once
+    if (!historyPushedRef.current) {
+      historyPushedRef.current = true;
+      window.history.pushState({ modal: 'chart', symbol: selectedSymbol }, '');
+    } else {
+      window.history.replaceState({ modal: 'chart', symbol: selectedSymbol }, '');
+    }
 
     const handlePopState = () => {
+      historyPushedRef.current = false;
       setSelectedSymbol(null);
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      // Settings dialog handles its own Escape — don't close the chart underneath
+      if (e.key === 'Escape' && !settingsOpenRef.current) {
         handleClose();
+        return;
+      }
+
+      // Rail keyboard navigation: glob arrows hop between visible rows (skip text inputs)
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        if (settingsOpenRef.current) return;
+        const tgt = e.target as HTMLElement | null;
+        if (
+          tgt &&
+          (tgt.tagName === 'INPUT' ||
+            tgt.tagName === 'TEXTAREA' ||
+            tgt.tagName === 'SELECT' ||
+            tgt.isContentEditable)
+        ) {
+          return;
+        }
+        if (railNavList.length === 0) return;
+        e.preventDefault();
+        const idx = railNavList.indexOf(selectedSymbol);
+        const nextIdx =
+          e.key === 'ArrowDown'
+            ? (idx + 1) % railNavList.length
+            : idx <= 0
+            ? railNavList.length - 1
+            : idx - 1;
+        handleSwitchSymbol(railNavList[nextIdx]);
       }
     };
 
@@ -897,7 +1054,7 @@ export const DetailChartModal: React.FC = () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSymbol]);
+  }, [selectedSymbol, railNavList, handleSwitchSymbol]);
 
   if (!selectedSymbol) return null;
 
@@ -908,7 +1065,7 @@ export const DetailChartModal: React.FC = () => {
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-[#f4f0e6] animate-sheetUp font-mono">
       {/* Top Bar / Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b-2 border-stone-900 bg-[#ede8dd] pt-safe">
+      <div className="flex items-center justify-between px-4 py-3 border-b-2 border-stone-900 bg-[#ede8dd] pt-safe w-full max-w-[1600px] mx-auto">
         <div className="flex items-center gap-2.5 min-w-0">
           {/* Back Button (Primary navigation) */}
           <button
@@ -959,6 +1116,10 @@ export const DetailChartModal: React.FC = () => {
         </div>
       </div>
 
+      {/* Workspace: chart column + desktop favorites rail (≥lg) */}
+      <div className="flex-1 flex min-h-0 w-full max-w-[1600px] mx-auto">
+      {/* Chart column */}
+      <div className="flex-1 flex flex-col min-w-0 min-h-0">
       {/* Ticker Price & Stats Overview (Strictly USD for professional market analysis) */}
       <div className="px-4 py-2.5 bg-[#faf7f0] border-b-2 border-stone-900">
         <div className="flex items-baseline justify-between mb-2">
@@ -1199,7 +1360,10 @@ export const DetailChartModal: React.FC = () => {
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-4 text-center">
             <p className="text-xs text-rose-700 font-bold mb-2">{error}</p>
             <button
-              onClick={() => setInterval((prev) => prev)}
+              onClick={() => {
+                setError(null);
+                setRetryNonce((n) => n + 1);
+              }}
               className="px-3 py-1 bg-amber-300 border-2 border-stone-900 text-stone-900 rounded text-xs font-bold shadow-hard-sm btn-hard cursor-pointer"
             >
               Tekrar Dene
@@ -1209,37 +1373,117 @@ export const DetailChartModal: React.FC = () => {
 
         <div ref={chartContainerRef} className="w-full h-full" />
       </div>
+      </div>
 
-      <div className="pb-safe bg-[#ede8dd] border-t-2 border-stone-900" />
+      {/* Desktop side rail: live favorites — click to switch chart without closing */}
+      <aside className="hidden lg:flex flex-col w-72 shrink-0 border-l-2 border-stone-900 bg-[#ede8dd] min-h-0">
+        <div className="flex items-center justify-between px-3 py-2 border-b-2 border-stone-900 shrink-0">
+          <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-stone-700">
+            <Star className="w-3.5 h-3.5 fill-amber-400 stroke-stone-900 stroke-[1.5]" />
+            İZLEME LİSTESİ
+          </span>
+          <span
+            className={`w-2 h-2 rounded-full border border-stone-900 ${
+              connectionStatus === 'connected' ? 'bg-emerald-400' : 'bg-rose-400'
+            }`}
+            title={connectionStatus === 'connected' ? 'Canlı veri bağlı' : 'Veri bağlantısı yok'}
+          />
+        </div>
+
+        {/* Rail search (desktop) */}
+        <div className="px-2.5 py-2 border-b-2 border-stone-900 shrink-0">
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-500 pointer-events-none" />
+            <input
+              type="text"
+              value={railQuery}
+              onChange={(e) => setRailQuery(e.target.value)}
+              placeholder="Sembol ara..."
+              aria-label="İzleme listesinde sembol ara"
+              className="w-full h-8 pl-7 pr-7 bg-white border-2 border-stone-900 rounded text-[11px] font-bold text-stone-900 placeholder:text-stone-400 focus:outline-none focus:bg-amber-50/60 shadow-hard-xs"
+            />
+            {railQuery && (
+              <button
+                onClick={() => setRailQuery('')}
+                aria-label="Aramayı temizle"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-900 cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto no-scrollbar">
+          {/* Current symbol outside watchlist lives in its own stable group */}
+          {showActiveGroup && activeRailSymbol && (
+            <div className="border-b-2 border-stone-900">
+              <div className="px-3 pt-2 pb-1 bg-[#faf7f0] text-[9px] font-black uppercase tracking-[0.18em] text-stone-500 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 border border-stone-900" />
+                AKTİF SEMBOL
+              </div>
+              <RailRow
+                symbol={activeRailSymbol}
+                isActive={activeRailSymbol === selectedSymbol}
+                onSwitch={handleSwitchSymbol}
+                rowRef={activeRailSymbol === selectedSymbol ? activeRowRef : undefined}
+              />
+            </div>
+          )}
+
+          {/* Favorites keep watchlist order forever — selection never re-sorts */}
+          <div className="sticky top-0 z-10 px-3 py-1.5 bg-[#ede8dd] border-b border-stone-900/25 flex items-center justify-between text-[9px] font-black uppercase tracking-[0.18em] text-stone-500">
+            <span>
+              FAVORİLER ({filteredFavorites.length}
+              {railQueryClean ? `/${railFavorites.length}` : ''})
+            </span>
+            <Star className="w-3 h-3 fill-amber-400 stroke-stone-900 stroke-[1.5]" />
+          </div>
+
+          {railFavorites.length === 0 ? (
+            <div className="p-4 text-center">
+              <Star className="w-6 h-6 mx-auto text-stone-400 mb-2" />
+              <p className="text-[11px] font-bold text-stone-600 leading-relaxed font-sans">
+                Favori listeniz boş. Piyasa sekmesinden yıldızlayın; anında buraya düşer.
+              </p>
+            </div>
+          ) : filteredFavorites.length === 0 ? (
+            <div className="p-4 text-center">
+              <Search className="w-5 h-5 mx-auto text-stone-400 mb-2" />
+              <p className="text-[11px] font-bold text-stone-600 leading-relaxed font-sans">
+                "{railQuery}" için eşleşme bulunamadı.
+              </p>
+            </div>
+          ) : (
+            filteredFavorites.map((sym) => (
+              <RailRow
+                key={sym}
+                symbol={sym}
+                isActive={sym === selectedSymbol}
+                onSwitch={handleSwitchSymbol}
+                rowRef={sym === selectedSymbol ? activeRowRef : undefined}
+              />
+            ))
+          )}
+        </div>
+      </aside>
+      </div>
+
+      <div className="pb-safe bg-[#ede8dd] border-t-2 border-stone-900 w-full max-w-[1600px] mx-auto" />
 
       {/* Quick Settings Bottom Sheet Drawer */}
       {isSettingsOpen && (
-        <div
-          className="fixed inset-0 z-60 flex items-end justify-center bg-stone-900/60 backdrop-blur-xs p-0 sm:p-4 animate-fadeIn"
-          onClick={() => setIsSettingsOpen(false)}
+        <Modal
+          isOpen={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
+          title={
+            <span className="flex items-center gap-2">
+              <SlidersHorizontal className="w-4 h-4 shrink-0" />
+              GRAFİK & GÖSTERGE AYARLARI
+            </span>
+          }
         >
-          <div
-            className="w-full max-w-lg bg-[#faf7f0] border-t-2 sm:border-2 border-stone-900 rounded-t-xl sm:rounded-xl p-4 shadow-hard flex flex-col gap-3.5 animate-sheetUp max-h-[85dvh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Drawer Header */}
-            <div className="flex items-center justify-between pb-2 border-b-2 border-stone-900">
-              <div className="flex items-center gap-2">
-                <SlidersHorizontal className="w-4 h-4 text-stone-900" />
-                <span className="text-xs font-black text-stone-900 uppercase tracking-wider">
-                  GRAFİK & GÖSTERGE AYARLARI
-                </span>
-              </div>
-              <button
-                onClick={() => {
-                  triggerHaptic('light');
-                  setIsSettingsOpen(false);
-                }}
-                className="p-1 rounded bg-white border border-stone-900 hover:bg-stone-200 cursor-pointer shadow-hard-xs"
-              >
-                <X className="w-4 h-4 stroke-[3]" />
-              </button>
-            </div>
+          <div className="p-4 flex flex-col gap-3.5 overflow-y-auto flex-1 no-scrollbar">
 
             {/* 1. Grafik Modeli (Chart Style) */}
             <div>
@@ -1477,7 +1721,7 @@ export const DetailChartModal: React.FC = () => {
               TAMAMLA VE GRAFİĞE DÖN
             </button>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

@@ -47,6 +47,51 @@ export const classifyFng = (v: number): string => {
   return 'Nötr';
 };
 
+export interface FearGreedSnapshot {
+  value: number;
+  classification: string;
+}
+
+const FNG_QUICK_KEY = 'tracex_fng_quick';
+const FNG_QUICK_TTL_MS = 12 * 60 * 60 * 1000;
+
+/**
+ * Single latest Fear & Greed value with localStorage TTL cache —
+ * lightweight enough for the sidebar mini widget (no full analytics run).
+ */
+export const fetchFearGreed = async (): Promise<FearGreedSnapshot | null> => {
+  try {
+    const raw = localStorage.getItem(FNG_QUICK_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed?.snapshot?.value && Date.now() - (parsed.t ?? 0) < FNG_QUICK_TTL_MS) {
+        return parsed.snapshot as FearGreedSnapshot;
+      }
+    }
+  } catch {
+    // fall through to network
+  }
+
+  try {
+    const res = await fetch('https://api.alternative.me/fng/?limit=1');
+    const data = await res.json();
+    const item = data?.data?.[0];
+    if (!item?.value) return null;
+    const snapshot: FearGreedSnapshot = {
+      value: parseInt(item.value, 10),
+      classification: typeof item.value_classification === 'string' ? item.value_classification : classifyFng(parseInt(item.value, 10)),
+    };
+    try {
+      localStorage.setItem(FNG_QUICK_KEY, JSON.stringify({ t: Date.now(), snapshot }));
+    } catch {
+      // quota — next call refetches
+    }
+    return snapshot;
+  } catch {
+    return null;
+  }
+};
+
 /**
  * Standard Wilder's RSI calculation from candle closes
  */

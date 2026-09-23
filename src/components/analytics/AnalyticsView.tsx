@@ -33,7 +33,7 @@ const StaleBadge: React.FC<{ label?: string }> = ({ label }) => (
 );
 
 const SourceFooter: React.FC<{ source: string; updatedAt: number; isStale: boolean }> = ({ source, updatedAt, isStale }) => (
-  <div className="mt-3 pt-2 border-t border-dashed border-stone-300 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[8px] font-bold text-stone-500 uppercase">
+  <div className="mt-2 pt-1.5 border-t border-dashed border-stone-300 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[8px] font-bold text-stone-500 uppercase">
     <span className="truncate min-w-0 flex-1">Kaynak: {source}</span>
     <span className="flex flex-wrap items-center justify-end gap-1.5">
       {isStale && <StaleBadge />}
@@ -55,9 +55,9 @@ const CardHeader: React.FC<{
   infoTitle?: string;
   infoContent?: string;
 }> = ({ kicker, icon, title, right, infoTitle, infoContent }) => (
-  <div className="mb-3">
-    <div className="text-[9px] font-black tracking-[0.18em] text-stone-400 uppercase mb-1.5">{kicker}</div>
-    <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 pb-2.5 border-b-2 border-stone-900/40">
+  <div className="mb-2">
+    <div className="text-[9px] font-black tracking-[0.18em] text-stone-400 uppercase mb-1">{kicker}</div>
+    <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 pb-1.5 border-b-2 border-stone-900/40">
       <div className="flex items-center gap-1.5 text-xs font-black text-stone-900 uppercase min-w-0 flex-1">
         {icon}
         <span className="truncate">{title}</span>
@@ -79,7 +79,6 @@ export const AnalyticsView: React.FC = () => {
 
   const loadData = (forceFresh: boolean = false) => {
     if (forceFresh) setIsRefreshing(true);
-    else setIsLoading(true);
     fetchComprehensiveAnalytics(forceFresh).then((data) => {
       setAnalyticsData(data);
       setIsLoading(false);
@@ -87,13 +86,22 @@ export const AnalyticsView: React.FC = () => {
     });
   };
 
+  // Initial load: async setState only inside .then — skeleton comes from the initial `!analyticsData` state
   useEffect(() => {
-    loadData(false);
-  }, []);
+    let alive = true;
+    fetchComprehensiveAnalytics(false).then((data) => {
+      if (!alive) return;
+      setAnalyticsData(data);
+      setIsLoading(false);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [setAnalyticsData]);
 
   if (isLoading || !analyticsData) {
     return (
-      <div className="pb-24 pt-2 px-3 font-mono max-w-4xl mx-auto">
+    <div className="pb-24 lg:pb-10 pt-2 px-3 md:px-6 font-mono max-w-4xl xl:max-w-5xl mx-auto">
         {/* Title Bar (Solid frame, zero layout shift) */}
         <div className="flex items-center justify-between mb-3 border-b-2 border-stone-900 pb-2">
           <div>
@@ -220,9 +228,9 @@ export const AnalyticsView: React.FC = () => {
   );
 
   return (
-    <div className="pb-24 pt-2 px-3 font-mono max-w-4xl mx-auto">
+      <div className="pb-24 lg:pb-10 pt-2 px-3 md:px-6 font-mono max-w-4xl xl:max-w-5xl mx-auto">
       {/* Title & Refresh */}
-      <div className="flex items-center justify-between mb-3 border-b-2 border-stone-900 pb-2">
+      <div className="flex items-center justify-between mb-2 border-b-2 border-stone-900 pb-1.5">
         <div>
           <h2 className="text-sm font-black uppercase tracking-wider text-stone-950 flex items-center gap-1.5">
             <BarChart3 className="w-4 h-4 text-amber-600" />
@@ -244,7 +252,7 @@ export const AnalyticsView: React.FC = () => {
 
       {/* Kısmi stale uyarısı: hangi bölümler önbellek açıkça yazılır */}
       {analyticsData.meta.isPartiallyStale && (
-        <div className="mb-3 p-2.5 bg-stone-800 text-amber-200 border-2 border-stone-900 rounded-lg shadow-hard-sm text-[10px] font-bold leading-relaxed">
+        <div className="mb-2.5 p-2.5 bg-stone-800 text-amber-200 border-2 border-stone-900 rounded-lg shadow-hard-sm text-[10px] font-bold leading-relaxed">
           <span className="font-black uppercase">Bazı veriler güncellenemedi: </span>
           {analyticsData.meta.staleSections.join(' • ')} önbellekten gösteriliyor ve kartlar sönük bırakıldı. Güncelmiş gibi işlem yapmayın.
         </div>
@@ -252,14 +260,14 @@ export const AnalyticsView: React.FC = () => {
 
       {/* 1. MAKRO FAZ & RİSK SKORU — hero kart, hükmün kanıtları chiplerde */}
       <div
-        className="p-4 sm:p-5 bg-stone-900 text-stone-100 border-2 border-stone-900 rounded-lg shadow-hard mb-3 stagger-item"
+        className="p-3.5 sm:p-5 bg-stone-900 text-stone-100 border-2 border-stone-900 rounded-lg shadow-hard mb-2.5 stagger-item"
         style={{ '--stagger-idx': 0 } as React.CSSProperties}
       >
-        <div className="flex items-center gap-1.5 text-[9px] font-black tracking-[0.18em] text-stone-500 uppercase mb-2">
+        <div className="flex items-center gap-1.5 text-[9px] font-black tracking-[0.18em] text-stone-500 uppercase mb-1.5">
           <Activity className="w-3.5 h-3.5 text-amber-400" />
           [01 // GENEL HÜKÜM]
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-stone-800 mb-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 pb-1.5 border-b border-stone-800 mb-2">
           <span className="text-sm sm:text-base tracking-wide text-stone-50 font-black uppercase">
             {macroPhase.title}
           </span>
@@ -293,8 +301,8 @@ export const AnalyticsView: React.FC = () => {
           </div>
         </div>
 
-        <div className="mb-2.5">
-          <div className="mb-1.5 flex items-center gap-1.5 flex-wrap">
+        <div className="mb-2">
+          <div className="mb-1 flex items-center gap-1.5 flex-wrap">
             <span
               className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded border text-[11px] font-black uppercase ${
                 macroPhase.riskScore >= 7
@@ -315,7 +323,7 @@ export const AnalyticsView: React.FC = () => {
 
         {/* Hükmün dayanakları: hangi sinyaller ateşlendi, hangileri sakin */}
         {macroPhase.signals.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mb-3">
+          <div className="flex flex-wrap gap-1.5 mb-2">
             {macroPhase.signals.map((sig) => (
               <span
                 key={sig}
@@ -349,11 +357,11 @@ export const AnalyticsView: React.FC = () => {
       </div>
 
       {/* BENTO GRID: mobilde tek sütun, desktop'ta 12 kolon */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 sm:gap-4 items-start">
 
       {/* 2. KORKU & AÇGÖZLÜLÜK — grafik genişlik ister: tam boy */}
       <div
-        className={`lg:col-span-12 h-full p-4 sm:p-5 bg-white border-2 border-stone-900 rounded-lg shadow-hard stagger-item ${staleCardClass(fearAndGreed.freshness.isStale)}`}
+        className={`lg:col-span-12 h-full p-3.5 sm:p-5 bg-white border-2 border-stone-900 rounded-lg shadow-hard stagger-item ${staleCardClass(fearAndGreed.freshness.isStale)}`}
         style={{ '--stagger-idx': 1 } as React.CSSProperties}
       >
         <CardHeader
@@ -364,8 +372,10 @@ export const AnalyticsView: React.FC = () => {
           infoContent="Piyasadaki aşırı korku yatırımcıların gereksiz paniklediğini (alım fırsatı), aşırı açgözlülük ise piyasanın bir düzeltmeye hazır olduğunu (satış uyarısı) gösterir."
         />
 
+        {/* Desktop: comparison boxes beside the wave (keeps SVG stretch near 1:1) */}
+        <div className="lg:flex lg:gap-4 lg:items-start">
         {/* 4 Multi-period Comparison Boxes (Today, Yesterday, Last Week, Last Month) */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 gap-2 mb-2.5 lg:mb-0 lg:w-72 lg:shrink-0">
           {/* Today */}
           <div className="p-2 bg-amber-50 border-2 border-stone-900 rounded shadow-hard-sm text-center">
             <span className="text-[9px] font-bold text-stone-600 uppercase block">ŞU AN</span>
@@ -404,8 +414,8 @@ export const AnalyticsView: React.FC = () => {
         </div>
 
         {/* 14-Day Micro Historical Trend Chart with hover inspection */}
-        <div className="mt-2 pt-3 border-t border-stone-200">
-          <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 text-[10px] font-bold mb-2">
+        <div className="mt-1.5 pt-2 border-t border-stone-200 lg:mt-0 lg:pt-0 lg:border-t-0 lg:flex-1 lg:min-w-0">
+          <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[10px] font-bold mb-1.5">
             <div className="flex flex-wrap items-center gap-1.5 text-stone-700">
               <span className="uppercase">14 GÜNLÜK DUYGU DALGASI</span>
               <span
@@ -568,11 +578,12 @@ export const AnalyticsView: React.FC = () => {
           </div>
           <SourceFooter source={fearAndGreed.freshness.source} updatedAt={fearAndGreed.freshness.updatedAt} isStale={fearAndGreed.freshness.isStale} />
         </div>
+        </div>
       </div>
 
       {/* 3. KRİPTO PAZAR HAKİMİYETİ & ALTCOİN RADARI */}
       <div
-        className={`lg:col-span-4 h-full p-4 sm:p-5 bg-white border-2 border-stone-900 rounded-lg shadow-hard stagger-item ${staleCardClass(marketDominance.freshness.isStale)}`}
+        className={`lg:col-span-4 h-full p-3.5 sm:p-5 bg-white border-2 border-stone-900 rounded-lg shadow-hard stagger-item ${staleCardClass(marketDominance.freshness.isStale)}`}
         style={{ '--stagger-idx': 2 } as React.CSSProperties}
       >
         <CardHeader
@@ -589,7 +600,7 @@ export const AnalyticsView: React.FC = () => {
         />
 
         {/* 3-Segment Stacked Bar */}
-        <div className="mb-2.5">
+        <div className="mb-2">
           <div className="flex flex-wrap justify-between gap-x-2 gap-y-0.5 text-[11px] font-black mb-1.5">
             <span className="text-amber-800">BTC: %{marketDominance.btcD}</span>
             <span className="text-indigo-800">ETH: %{marketDominance.ethD}</span>
@@ -614,8 +625,8 @@ export const AnalyticsView: React.FC = () => {
           </div>
         </div>
 
-        {/* Global Market Overview — dar kutuda alt alta daha rahat */}
-        <div className="grid grid-cols-1 gap-1.5 mt-2.5 p-2 bg-stone-50 border border-stone-900 rounded text-xs">
+        {/* Global Market Overview — mobilde 2 sütun, dar desktop kartında alt alta */}
+        <div className="grid grid-cols-2 lg:grid-cols-1 gap-1.5 mt-2 p-2 bg-stone-50 border border-stone-900 rounded text-xs">
           <div>
             <span className="text-[9px] text-stone-500 uppercase font-bold block">Toplam Kripto Değeri</span>
             <span className="font-black text-stone-900">
@@ -635,7 +646,7 @@ export const AnalyticsView: React.FC = () => {
             <span className="font-black text-stone-900">${marketDominance.totalVolume24hUsd}B</span>
           </div>
         </div>
-        <p className="mt-2 text-[10px] text-stone-500 font-sans leading-relaxed">
+        <p className="mt-1.5 text-[10px] text-stone-500 font-sans leading-relaxed">
           Not: "Diğerleri" dilimi stablecoin'leri de içerir; tek başına alt-sezon sinyali değildir.
         </p>
         <SourceFooter source={marketDominance.freshness.source} updatedAt={marketDominance.freshness.updatedAt} isStale={marketDominance.freshness.isStale} />
@@ -643,7 +654,7 @@ export const AnalyticsView: React.FC = () => {
 
       {/* 4. VADELİ LONG / SHORT & FONLAMA — barlar + fonlama kutusu yan yana */}
       <div
-        className={`lg:col-span-8 h-full p-4 sm:p-5 bg-white border-2 border-stone-900 rounded-lg shadow-hard stagger-item ${staleCardClass(longShortRatio.freshness.isStale || fundingRate.freshness.isStale)}`}
+        className={`lg:col-span-8 h-full p-3.5 sm:p-5 bg-white border-2 border-stone-900 rounded-lg shadow-hard stagger-item ${staleCardClass(longShortRatio.freshness.isStale || fundingRate.freshness.isStale)}`}
         style={{ '--stagger-idx': 3 } as React.CSSProperties}
       >
         <CardHeader
@@ -667,7 +678,7 @@ export const AnalyticsView: React.FC = () => {
         />
 
         {/* Geniş kartta bar ve fonlama yan yana: içerik nefes alır */}
-        <div className="grid sm:grid-cols-2 gap-3 items-center">
+        <div className="grid sm:grid-cols-2 gap-2.5 sm:gap-3 items-center">
         {/* Dual Bar (Long vs Short) */}
         <div>
           <div className="flex justify-between text-xs font-black mb-1">
@@ -708,7 +719,7 @@ export const AnalyticsView: React.FC = () => {
 
       {/* 5. MVRV — kompakt gösterge: dar kutu, dikey istif */}
       <div
-        className={`lg:col-span-4 h-full p-4 sm:p-5 bg-white border-2 border-stone-900 rounded-lg shadow-hard stagger-item ${staleCardClass(mvrvRatio.freshness.isStale)}`}
+        className={`lg:col-span-4 h-full p-3.5 sm:p-5 bg-white border-2 border-stone-900 rounded-lg shadow-hard stagger-item ${staleCardClass(mvrvRatio.freshness.isStale)}`}
         style={{ '--stagger-idx': 4 } as React.CSSProperties}
       >
         <CardHeader
@@ -746,9 +757,9 @@ export const AnalyticsView: React.FC = () => {
       </div>
 
       {/* 6a. GERÇEK EMİR AKIŞI (TAKER VOLUME) */}
-      <div className={`lg:col-span-4 h-full p-4 bg-white border-2 border-stone-900 rounded-lg shadow-hard flex flex-col justify-between stagger-item text-xs ${staleCardClass(takerVolume.freshness.isStale)}`} style={{ '--stagger-idx': 5 } as React.CSSProperties}>
+      <div className={`lg:col-span-4 h-full p-3 sm:p-4 bg-white border-2 border-stone-900 rounded-lg shadow-hard flex flex-col justify-between stagger-item text-xs ${staleCardClass(takerVolume.freshness.isStale)}`} style={{ '--stagger-idx': 5 } as React.CSSProperties}>
         <div>
-          <div className="text-[9px] font-black tracking-[0.18em] text-stone-400 uppercase mb-1.5">[06A // AKIŞ]</div>
+          <div className="text-[9px] font-black tracking-[0.18em] text-stone-400 uppercase mb-1">[06A // AKIŞ]</div>
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-1 text-[10px] text-stone-900 font-black uppercase">
               <BarChart3 className="w-3.5 h-3.5 text-emerald-600" /> Taker Akışı
@@ -773,9 +784,9 @@ export const AnalyticsView: React.FC = () => {
       </div>
 
       {/* 6b. AÇIK POZİSYON (OPEN INTEREST) */}
-      <div className={`lg:col-span-4 h-full p-4 bg-white border-2 border-stone-900 rounded-lg shadow-hard flex flex-col justify-between stagger-item text-xs ${staleCardClass(openInterest.freshness.isStale)}`} style={{ '--stagger-idx': 5 } as React.CSSProperties}>
+      <div className={`lg:col-span-4 h-full p-3 sm:p-4 bg-white border-2 border-stone-900 rounded-lg shadow-hard flex flex-col justify-between stagger-item text-xs ${staleCardClass(openInterest.freshness.isStale)}`} style={{ '--stagger-idx': 5 } as React.CSSProperties}>
         <div>
-          <div className="text-[9px] font-black tracking-[0.18em] text-stone-400 uppercase mb-1.5">[06B // POZİSYON]</div>
+          <div className="text-[9px] font-black tracking-[0.18em] text-stone-400 uppercase mb-1">[06B // POZİSYON]</div>
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-1 text-[10px] text-stone-900 font-black uppercase">
               <Layers className="w-3.5 h-3.5 text-indigo-600" /> Açık Poz. (OI)
@@ -808,7 +819,7 @@ export const AnalyticsView: React.FC = () => {
 
       {/* 7. BTC TEKNİK RADAR — sayaç genişlik ister: tam boy, içte 2 bölme */}
       <div
-        className={`lg:col-span-12 h-full p-4 sm:p-5 bg-white border-2 border-stone-900 rounded-lg shadow-hard stagger-item ${staleCardClass(technicalIndicator.freshness.isStale)}`}
+        className={`lg:col-span-12 h-full p-3.5 sm:p-5 bg-white border-2 border-stone-900 rounded-lg shadow-hard stagger-item ${staleCardClass(technicalIndicator.freshness.isStale)}`}
         style={{ '--stagger-idx': 6 } as React.CSSProperties}
       >
         <CardHeader
@@ -833,7 +844,7 @@ export const AnalyticsView: React.FC = () => {
         />
 
         {/* RSI Meter + Ortalamalar yan yana */}
-        <div className="grid sm:grid-cols-5 gap-3 items-center">
+        <div className="grid sm:grid-cols-5 gap-2.5 sm:gap-3 items-center">
         <div className="sm:col-span-3">
           <div className="relative w-full h-3.5 rounded border-2 border-stone-900 bg-stone-100 overflow-hidden flex shadow-hard-sm">
             <div style={{ width: '30%' }} className="bg-emerald-200 border-r border-stone-900" title="Aşırı Satım (0-30)" />
@@ -864,7 +875,7 @@ export const AnalyticsView: React.FC = () => {
       </div>
       </div>{/* /BENTO GRID */}
 
-      <p className="mt-4 p-3 bg-white border-2 border-stone-900 rounded-lg shadow-hard-sm text-[10px] text-stone-600 font-sans leading-relaxed">
+      <p className="mt-3 p-2.5 sm:p-3 bg-white border-2 border-stone-900 rounded-lg shadow-hard-sm text-[10px] text-stone-600 font-sans leading-relaxed">
         Bu ekran bilgilendirme amaçlıdır, <strong>yatırım tavsiyesi değildir</strong>. Türev ve on-chain göstergeler gecikmeli veya önbellekten gelebilir; sönük kartlara dayanarak işlem yapmayın.
       </p>
     </div>

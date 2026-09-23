@@ -3,8 +3,8 @@ import { useCryptoStore } from '../store/useCryptoStore';
 import { formatCurrency } from '../utils/formatters';
 
 export function useDynamicPwaTitle() {
-  const tickers = useCryptoStore((state) => state.tickers);
-  const btcTicker = tickers['BTCUSDT'];
+  // Per-symbol selector: App must NOT subscribe the whole tickers map (it changes every WS flush)
+  const btcTicker = useCryptoStore((state) => state.tickers['BTCUSDT']);
 
   useEffect(() => {
     if (!btcTicker || !btcTicker.price) {
@@ -32,5 +32,5 @@ export function useDynamicPwaTitle() {
     return () => {
       document.title = 'TraceX - Kripto & Portföy';
     };
-  }, [btcTicker?.price, btcTicker?.changePercent24h]);
+  }, [btcTicker]);
 }

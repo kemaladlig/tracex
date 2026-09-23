@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { createPortal } from 'react-dom';
-import { ArrowDownRight, ArrowUpRight, Check, MinusCircle, X } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, Check, MinusCircle } from 'lucide-react';
 import type { PortfolioAsset } from '../../types/crypto';
 import { useCryptoStore } from '../../store/useCryptoStore';
 import { cleanSymbol, formatCurrency, formatPercentage } from '../../utils/formatters';
+import { Modal } from '../common/Modal';
 
 interface SellAssetModalProps {
   asset: PortfolioAsset | null;
@@ -52,32 +52,22 @@ export const SellAssetModal: React.FC<SellAssetModalProps> = ({ asset, isOpen, o
     onClose();
   };
 
-  return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-stone-900/70 backdrop-blur-xs animate-backdrop">
-      <div className="w-full max-w-md bg-[#faf7f0] border-2 border-stone-900 rounded-lg shadow-hard font-mono animate-sheetUp max-h-[88vh] flex flex-col overflow-hidden">
-        {/* Modal Header (Fixed at top) */}
-        <div className="flex items-center justify-between p-4 pb-3 border-b-2 border-stone-900 shrink-0 bg-[#faf7f0]">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-md bg-rose-200 border-2 border-stone-900 text-stone-900 flex items-center justify-center shadow-hard-sm">
-              <MinusCircle className="w-5 h-5 stroke-[2.5]" />
-            </div>
-            <div>
-              <h2 className="text-base font-mono font-black text-stone-900 tracking-tight">
-                POZİSYON SATIŞI // {base}
-              </h2>
-              <span className="text-[10px] font-mono text-stone-600 font-bold">
-                Mevcut: {asset.amount} {base}
-              </span>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-md border-2 border-stone-900 bg-white hover:bg-stone-200 shadow-hard-sm btn-hard cursor-pointer"
-          >
-            <X className="w-4 h-4 stroke-[3]" />
-          </button>
-        </div>
-
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      size="md"
+      variant="centered"
+      title={
+        <span className="flex items-center gap-2">
+          <span className="w-8 h-8 rounded-md bg-rose-200 border-2 border-stone-900 text-stone-900 flex items-center justify-center shadow-hard-sm shrink-0">
+            <MinusCircle className="w-5 h-5 stroke-[2.5]" />
+          </span>
+          POZİSYON SATIŞI // {base}
+        </span>
+      }
+      subtitle={`Mevcut: ${asset.amount} ${base}`}
+    >
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 font-mono">
           {/* Scrollable Form Body */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3.5 no-scrollbar">
@@ -174,8 +164,6 @@ export const SellAssetModal: React.FC<SellAssetModalProps> = ({ asset, isOpen, o
             </button>
           </div>
         </form>
-      </div>
-    </div>,
-    document.body
+    </Modal>
   );
 };

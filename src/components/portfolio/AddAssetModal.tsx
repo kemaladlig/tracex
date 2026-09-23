@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { createPortal } from 'react-dom';
-import { Plus, X, Sparkles, Search, Check } from 'lucide-react';
+import { Plus, Sparkles, Search, Check } from 'lucide-react';
 import { useCryptoStore } from '../../store/useCryptoStore';
 import { fetchAllUsdtPairs } from '../../services/binanceApi';
 import type { CoinSearchResult } from '../../services/binanceApi';
 import { formatCurrency } from '../../utils/formatters';
+import { Modal } from '../common/Modal';
 
 interface AddAssetModalProps {
   isOpen: boolean;
@@ -17,7 +17,10 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({
   initialSymbol = '',
   onClose,
 }) => {
-  const [symbol, setSymbol] = useState('');
+  // Mounted-on-open by the parent — form state initializes straight from props (no sync setState in effects)
+  const [symbol, setSymbol] = useState(() =>
+    initialSymbol ? initialSymbol.replace('USDT', '') : ''
+  );
   const [amount, setAmount] = useState('');
   const [buyPrice, setBuyPrice] = useState('');
   const [error, setError] = useState('');
@@ -27,19 +30,16 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({
   const tickers = useCryptoStore((state) => state.tickers);
   const addPortfolioAsset = useCryptoStore((state) => state.addPortfolioAsset);
 
+  // Coin universe loads async after mount; loading state is derived from allCoins, never set synchronously here
   useEffect(() => {
-    if (isOpen) {
-      fetchAllUsdtPairs().then(setAllCoins);
-      if (initialSymbol) {
-        setSymbol(initialSymbol.replace('USDT', ''));
-      }
-    } else {
-      setSymbol('');
-      setAmount('');
-      setBuyPrice('');
-      setError('');
-    }
-  }, [isOpen, initialSymbol]);
+    let alive = true;
+    fetchAllUsdtPairs().then((res) => {
+      if (alive) setAllCoins(res);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const currentFormattedSymbol = useMemo(() => {
     let s = symbol.trim().toUpperCase();
@@ -109,32 +109,22 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({
     onClose();
   };
 
-  return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-stone-900/70 backdrop-blur-xs animate-backdrop">
-      <div className="w-full max-w-md bg-[#faf7f0] border-2 border-stone-900 rounded-lg shadow-hard font-mono animate-sheetUp max-h-[88vh] flex flex-col overflow-hidden">
-        {/* Modal Header (Fixed at top) */}
-        <div className="flex items-center justify-between p-4 pb-3 border-b-2 border-stone-900 shrink-0 bg-[#faf7f0]">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-md bg-amber-300 border-2 border-stone-900 text-stone-900 flex items-center justify-center shadow-hard-sm">
-              <Plus className="w-5 h-5 stroke-[3]" />
-            </div>
-            <div>
-              <h2 className="text-base font-black text-stone-900 tracking-tight">
-                VARLIK GİRİŞİ
-              </h2>
-              <span className="text-[10px] text-stone-500 font-bold">
-                Aynı coin varsa ortalama maliyet (DCA) hesaplanır
-              </span>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-md border-2 border-stone-900 bg-white hover:bg-stone-200 shadow-hard-sm btn-hard cursor-pointer"
-          >
-            <X className="w-4 h-4 stroke-[3]" />
-          </button>
-        </div>
-
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      size="md"
+      variant="centered"
+      title={
+        <span className="flex items-center gap-2">
+          <span className="w-8 h-8 rounded-md bg-amber-300 border-2 border-stone-900 text-stone-900 flex items-center justify-center shadow-hard-sm shrink-0">
+            <Plus className="w-5 h-5 stroke-[3]" />
+          </span>
+          VARLIK GİRİŞİ
+        </span>
+      }
+      subtitle="Aynı coin varsa ortalama maliyet (DCA) hesaplanır"
+    >
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
           {/* Scrollable Form Body */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3.5 no-scrollbar">
@@ -242,8 +232,6 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({
             </button>
           </div>
         </form>
-      </div>
-    </div>,
-    document.body
+    </Modal>
   );
 };

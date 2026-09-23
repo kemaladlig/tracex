@@ -1,24 +1,16 @@
 import React from 'react';
-import { LayoutDashboard, Newspaper, Compass, Wallet } from 'lucide-react';
 import { useCryptoStore } from '../../store/useCryptoStore';
-import type { TabType } from '../../types/crypto';
+import { NAV_ITEMS } from './navItems';
 import { triggerHaptic } from '../../utils/haptics';
 
 export const BottomNav: React.FC = () => {
   const activeTab = useCryptoStore((state) => state.activeTab);
   const setActiveTab = useCryptoStore((state) => state.setActiveTab);
 
-  const navItems: { id: TabType; label: string; icon: React.FC<{ className?: string }> }[] = [
-    { id: 'home', label: 'ÖZET', icon: LayoutDashboard },
-    { id: 'markets', label: 'PİYASA', icon: Newspaper },
-    { id: 'analytics', label: 'ANALİZ', icon: Compass },
-    { id: 'portfolio', label: 'CÜZDAN', icon: Wallet },
-  ];
-
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#faf8f5]/95 backdrop-blur-sm border-t-2 border-stone-900 pb-safe font-mono">
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#faf8f5]/95 backdrop-blur-sm border-t-2 border-stone-900 pb-safe font-mono">
       <div className="max-w-lg mx-auto flex items-center justify-around px-3 py-2">
-        {navItems.map((item) => {
+        {NAV_ITEMS.map((item) => {
           const isActive = activeTab === item.id;
           const Icon = item.icon;
 

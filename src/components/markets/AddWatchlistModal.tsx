@@ -4,6 +4,7 @@ import { useCryptoStore } from '../../store/useCryptoStore';
 import { fetchAllUsdtPairs } from '../../services/binanceApi';
 import type { CoinSearchResult } from '../../services/binanceApi';
 import { formatCurrency, formatPercentage } from '../../utils/formatters';
+import { Modal } from '../common/Modal';
 
 interface AddWatchlistModalProps {
   isOpen: boolean;
@@ -13,29 +14,30 @@ interface AddWatchlistModalProps {
 export const AddWatchlistModal: React.FC<AddWatchlistModalProps> = ({ isOpen, onClose }) => {
   const [query, setQuery] = useState('');
   const [coins, setCoins] = useState<CoinSearchResult[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [coinsLoaded, setCoinsLoaded] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
 
   const watchlist = useCryptoStore((state) => state.watchlist);
   const addToWatchlist = useCryptoStore((state) => state.addToWatchlist);
 
+  // Fetch the coin universe once per session (service also caches 1min) — loading is derived, never set synchronously in the effect
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || coinsLoaded) return;
 
     let isMounted = true;
-    setLoading(true);
-
     fetchAllUsdtPairs().then((res) => {
       if (isMounted) {
         setCoins(res);
-        setLoading(false);
+        setCoinsLoaded(true);
       }
     });
 
     return () => {
       isMounted = false;
     };
-  }, [isOpen]);
+  }, [isOpen, coinsLoaded]);
+
+  const loading = isOpen && !coinsLoaded;
 
   const filteredCoins = useMemo(() => {
     const clean = query.trim().toUpperCase();
@@ -58,31 +60,20 @@ export const AddWatchlistModal: React.FC<AddWatchlistModalProps> = ({ isOpen, on
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-stone-900/60 backdrop-blur-xs animate-backdrop">
-      <div className="w-full max-w-lg bg-[#faf7f0] border-2 border-stone-900 rounded-t-xl sm:rounded-xl flex flex-col max-h-[85dvh] shadow-hard-lg pb-safe animate-sheetUp">
-        {/* Modal Header */}
-        <div className="flex items-center justify-between p-4 border-b-2 border-stone-900 bg-[#ede8dd] shrink-0">
-          <div>
-            <h2 className="text-base font-mono font-black text-stone-900 uppercase tracking-tight">
-              Coin Ekle
-            </h2>
-            <p className="text-[11px] font-mono text-stone-600">Binance 400+ spot paritesi</p>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-md border-2 border-stone-900 bg-white hover:bg-stone-200 shadow-hard-sm btn-hard cursor-pointer"
-          >
-            <X className="w-4 h-4 stroke-[3]" />
-          </button>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Coin Ekle"
+      subtitle="Binance 400+ spot paritesi"
+      size="lg"
+    >
+      {/* Live Notification Banner */}
+      {notification && (
+        <div className="bg-emerald-200 border-b-2 border-stone-900 px-4 py-2 text-xs font-mono font-bold text-emerald-950 flex items-center gap-1.5 animate-feedback">
+          <Check className="w-4 h-4 stroke-[3]" />
+          <span>{notification}</span>
         </div>
-
-        {/* Live Notification Banner */}
-        {notification && (
-          <div className="bg-emerald-200 border-b-2 border-stone-900 px-4 py-2 text-xs font-mono font-bold text-emerald-950 flex items-center gap-1.5 animate-feedback">
-            <Check className="w-4 h-4 stroke-[3]" />
-            <span>{notification}</span>
-          </div>
-        )}
+      )}
 
         {/* Search Bar Input */}
         <div className="p-4 pb-2 shrink-0">
@@ -177,7 +168,6 @@ export const AddWatchlistModal: React.FC<AddWatchlistModalProps> = ({ isOpen, on
             </div>
           )}
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 };

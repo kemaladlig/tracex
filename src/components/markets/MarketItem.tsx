@@ -6,8 +6,10 @@ import {
   Star,
 } from 'lucide-react';
 import { useCryptoStore } from '../../store/useCryptoStore';
+import { fetchSparklineCloses } from '../../services/binanceApi';
 import { cleanSymbol, formatCurrency, formatPercentage } from '../../utils/formatters';
 import { triggerHaptic } from '../../utils/haptics';
+import { Sparkline } from './Sparkline';
 
 interface MarketItemProps {
   symbol: string;
@@ -17,11 +19,12 @@ interface MarketItemProps {
   canReorder?: boolean;
   isDragging?: boolean;
   isDragOver?: boolean;
-  onDragStart?: (e: React.DragEvent) => void;
-  onDragOver?: (e: React.DragEvent) => void;
-  onDragLeave?: (e: React.DragEvent) => void;
-  onDrop?: (e: React.DragEvent) => void;
-  onDragEnd?: (e: React.DragEvent) => void;
+  /** Drag handlers receive the row index so the parent can pass ONE stable callback (React.memo-safe). */
+  onDragStart?: (index: number, e: React.DragEvent) => void;
+  onDragOver?: (index: number, e: React.DragEvent) => void;
+  onDragLeave?: () => void;
+  onDrop?: (index: number, e: React.DragEvent) => void;
+  onDragEnd?: () => void;
   onTouchStartHandle?: (e: React.TouchEvent, index: number) => void;
 }
 
@@ -50,6 +53,18 @@ const MarketItemInner: React.FC<MarketItemProps> = ({
   const [flashClass, setFlashClass] = useState<string>('');
   const prevPriceRef = useRef<number | undefined>(ticker?.price);
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [sparkline, setSparkline] = useState<number[] | null>(null);
+
+  // 24h closes for the desktop sparkline — service-level cache dedupes remounts & category switches
+  useEffect(() => {
+    let alive = true;
+    fetchSparklineCloses(symbol).then((closes) => {
+      if (alive) setSparkline(closes.length >= 2 ? closes : null);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [symbol]);
 
   useEffect(() => {
     const prev = prevPriceRef.current;
@@ -92,13 +107,13 @@ const MarketItemInner: React.FC<MarketItemProps> = ({
       tabIndex={0}
       aria-label={`${base} grafiğini aç`}
       draggable={canReorder}
-      onDragStart={onDragStart}
-      onDragOver={onDragOver}
+      onDragStart={(e) => onDragStart?.(index, e)}
+      onDragOver={(e) => onDragOver?.(index, e)}
       onDragLeave={onDragLeave}
-      onDrop={onDrop}
+      onDrop={(e) => onDrop?.(index, e)}
       onDragEnd={onDragEnd}
       data-drag-index={index}
-      className={`group grid grid-cols-[auto_1fr_auto_44px] items-center gap-3 min-h-[60px] px-3 py-2 bg-white border-2 border-stone-900 rounded-lg shadow-hard-sm cursor-pointer select-none transition-colors duration-150 hover:bg-stone-50 focus-visible:outline-2 focus-visible:outline-amber-500 focus-visible:outline-offset-2 ${
+      className={`group grid grid-cols-[auto_1fr_auto_44px] md:grid-cols-[auto_1fr_auto_auto_44px] items-center gap-3 min-h-[60px] px-3 py-2 bg-white border-2 border-stone-900 rounded-lg shadow-hard-sm cursor-pointer select-none transition-[background-color,box-shadow,transform] duration-150 hover:bg-stone-50 hover:shadow-hard lg:hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-amber-500 focus-visible:outline-offset-2 ${
         isDragging
           ? 'opacity-40 border-dashed border-amber-500 bg-amber-50/60'
           : isDragOver
@@ -151,7 +166,12 @@ const MarketItemInner: React.FC<MarketItemProps> = ({
         </div>
       </div>
 
-      {/* Col 3: Fixed-width price block, right aligned */}
+      {/* Col 3 (md+): 24h sparkline — desktop grid density */}
+      <div className="hidden md:flex items-center shrink-0">
+        <Sparkline values={sparkline} positive={isPositive} />
+      </div>
+
+      {/* Col 4: Fixed-width price block, right aligned */}
       <div
         className={`min-w-[112px] text-right tabular-nums transition-opacity duration-500 ${
           isStale ? 'opacity-60 saturate-[.65]' : 'opacity-100'
@@ -188,7 +208,7 @@ const MarketItemInner: React.FC<MarketItemProps> = ({
         </div>
       </div>
 
-      {/* Col 4: Fixed 44px star rail — identical x-position on every row */}
+      {/* Col 5: Fixed 44px star rail — identical x-position on every row */}
       <button
         onClick={handleToggleFavorite}
         title={isFavorite ? 'Favorilerden Çıkar' : 'Favorilere Ekle'}

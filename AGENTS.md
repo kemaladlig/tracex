@@ -29,11 +29,14 @@ src/
 │   │   └── AnalyticsView.tsx
 │   ├── chart/            # TradingView Lightweight Charts & Technical Overlays
 │   │   └── DetailChartModal.tsx (Code-split with React.lazy)
-│   ├── common/           # Navigation, Header, Offline Banner, PullToRefresh
-│   │   ├── BottomNav.tsx
+│   ├── common/           # Navigation, Header, Shell, Shared Modal, Banners
+│   │   ├── BottomNav.tsx   (mobile <1024px)
+│   │   ├── Sidebar.tsx     (desktop ≥1024px)
+│   │   ├── Modal.tsx       (ONLY overlay pattern — portal, Esc/backdrop close, scroll lock)
 │   │   ├── Header.tsx
 │   │   ├── OfflineBanner.tsx
-│   │   └── PullToRefresh.tsx
+│   │   ├── PullToRefresh.tsx
+│   │   └── navItems.ts     (single source of truth for tab nav items)
 │   ├── markets/          # Watchlist, Search, Categories, Sort Chips, Sparklines
 │   │   ├── AddWatchlistModal.tsx
 │   │   ├── MarketItem.tsx
@@ -46,8 +49,10 @@ src/
 │       ├── PortfolioSummary.tsx
 │       └── SellAssetModal.tsx
 ├── hooks/
-│   ├── useBinanceWebSocket.ts # 120ms batched stream + visibility pause
-│   └── useNetworkStatus.ts    # Online/offline connection monitor
+│   ├── useBinanceWebSocket.ts # Batched stream + visibility pause
+│   ├── useNetworkStatus.ts    # Online/offline connection monitor
+│   ├── useSwipeNavigation.ts  # Touch-only tab swipe (mobile)
+│   └── useTabHotkeys.ts       # Desktop keys 1-4 switch tabs
 ├── services/
 │   ├── binanceApi.ts     # Spot REST endpoints (Klines, Search)
 │   └── onChainApi.ts     # Multi-period FNG, MVRV, Dominance, Taker Vol, RSI
@@ -83,7 +88,19 @@ All UI elements must strictly adhere to the brutalist Craft Paper aesthetic:
 
 ---
 
-## 4. Coding Standards
+## 4. Responsive Layout (Mobile ↔ Desktop)
+
+- **Breakpoints (Tailwind):** `md: 768px` = tablet width/unclamp, `lg: 1024px` = desktop shell, `xl/2xl` = density steps. Mobile keeps `max-w-lg` centered column; from `md:` the shell unclamps (`App.tsx <main>`); `2xl` caps at `1600px`.
+- **Navigation:** shared `NAV_ITEMS` in `navItems.ts`. `BottomNav` renders `<lg` only; `Sidebar` renders `≥lg` only. Never duplicate the tab list.
+- **Shell width is controlled only in `App.tsx` + `Header.tsx` inner** (`max-w-lg md:max-w-none 2xl:max-w-[1600px] mx-auto`). Views must NOT set their own `max-w-* mx-auto` on their root (they add padding `px-4 md:px-6` only).
+- **Lists → grids:** Markets/Portfolio switch to `md:grid-cols-2 xl:grid-cols-3`; Home uses a `lg:grid-cols-3` cockpit (hero+wallet left 2/3, barometer right); Portfolio puts a sticky summary beside the grid at `lg:`.
+- **Modals:** always `components/common/Modal.tsx` (`variant="sheet"` default → bottom sheet on mobile, centered from `sm:`; `variant="centered"` for forms). Sizes scale wider at `lg:`. No hand-rolled `fixed inset-0` overlays.
+- **Desktop affordances:** hover lift/feedback (`lg:hover:-translate-y-0.5`), `:focus-visible` ink ring (index.css), text selection enabled `≥lg`, keys `1–4` tab switch, `Esc` closes topmost dialog only.
+- **Motion:** transform/opacity only, 150–300ms, `prefers-reduced-motion` kills all keyframe animations (index.css).
+
+---
+
+## 5. Coding Standards
 
 - **Strict TypeScript:** No `any`. Explicit interfaces for all data structures and component props.
 - **Functional Paradigm:** Pure functional components and React Hooks.
@@ -92,4 +109,4 @@ All UI elements must strictly adhere to the brutalist Craft Paper aesthetic:
   - Heavy libraries (like chart engines) must remain lazy-loaded with `React.lazy()` and `Suspense`.
   - WebSocket ticker updates must be batched (never update Zustand on every single raw WebSocket packet).
   - Background tabs must suspend WebSocket connections to preserve device battery.
-- **Mobile First:** Ensure all touch targets are $\ge 44\text{px}$, notch safe-area paddings (`pt-safe`, `pb-safe`) are respected, and overscroll handles smoothly.
+- **Mobile First:** Ensure all touch targets are $\ge 44\text{px}$, notch safe-area paddings (`pt-safe`, `pb-safe`) are respected, and overscroll handles smoothly — then verify the same screen at `md:`/`lg:`/`xl:` (multi-column, no dead bottom-nav padding).

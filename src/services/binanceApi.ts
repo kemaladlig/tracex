@@ -118,6 +118,44 @@ export const fetchAllUsdtPairs = async (): Promise<CoinSearchResult[]> => {
 
 export type MarketCategory = 'favorites' | 'all' | 'l1' | 'l2' | 'meme' | 'ai' | 'defi';
 
+const SPARKLINE_TTL_MS = 5 * 60 * 1000;
+const sparklineCache = new Map<string, { at: number; closes: number[] }>();
+const sparklineInflight = new Map<string, Promise<number[]>>();
+
+/**
+ * Closes for the last `limit` 1h candles (24h trend) — cached with in-flight dedupe
+ * so every market row can request its own sparkline without hammering Binance.
+ */
+export const fetchSparklineCloses = (symbol: string, limit: number = 24): Promise<number[]> => {
+  const upper = symbol.toUpperCase();
+  const key = `${upper}:${limit}`;
+  const cached = sparklineCache.get(key);
+  if (cached && Date.now() - cached.at < SPARKLINE_TTL_MS) {
+    return Promise.resolve(cached.closes);
+  }
+  const pending = sparklineInflight.get(key);
+  if (pending) return pending;
+
+  const request = fetch(`${BINANCE_REST_BASE}/klines?symbol=${upper}&interval=1h&limit=${limit}`)
+    .then((res) => {
+      if (!res.ok) throw new Error(`Binance klines error: ${res.status}`);
+      return res.json();
+    })
+    .then((rows: (string | number)[][]) => {
+      if (!Array.isArray(rows) || rows.length < 2) throw new Error('empty klines');
+      const closes = rows.map((r) => parseFloat(r[4] as string));
+      sparklineCache.set(key, { at: Date.now(), closes });
+      return closes;
+    })
+    .catch(() => cached?.closes ?? [])
+    .finally(() => {
+      sparklineInflight.delete(key);
+    });
+
+  sparklineInflight.set(key, request);
+  return request;
+};
+
 export const CATEGORY_TAGS: Record<Exclude<MarketCategory, 'favorites' | 'all'>, string[]> = {
   l1: [
     'BTC', 'ETH', 'SOL', 'BNB', 'ADA', 'AVAX', 'SUI', 'TON', 'DOT', 'NEAR',

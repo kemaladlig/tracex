@@ -4,12 +4,12 @@ import {
   EyeOff,
   Download,
   Smartphone,
-  X,
   Share,
   PlusSquare,
 } from 'lucide-react';
 import { useCryptoStore } from '../../store/useCryptoStore';
 import { usePWAInstall } from '../../hooks/usePWAInstall';
+import { Modal } from './Modal';
 
 export const Header: React.FC = () => {
   const connectionStatus = useCryptoStore((state) => state.connectionStatus);
@@ -27,9 +27,9 @@ export const Header: React.FC = () => {
   return (
     <>
       <header className="sticky top-0 z-30 w-full bg-[#fbf9f4]/95 backdrop-blur-sm border-b-2 border-stone-900 px-4 py-2.5 pt-safe transition-colors font-mono">
-        <div className="flex items-center justify-between max-w-lg mx-auto">
-          {/* Brand Stamp */}
-          <div className="flex items-center gap-2.5">
+        <div className="flex items-center justify-between max-w-lg mx-auto md:max-w-none 2xl:max-w-[1600px]">
+          {/* Brand Stamp (mobile/tablet only — desktop sidebar owns branding) */}
+          <div className="flex items-center gap-2.5 lg:hidden">
             <div className="w-8 h-8 rounded-md bg-stone-900 text-amber-300 border-2 border-stone-900 flex items-center justify-center font-black text-sm shadow-hard-sm tracking-tighter shrink-0">
               TX
             </div>
@@ -66,7 +66,7 @@ export const Header: React.FC = () => {
           </div>
 
           {/* Action Stamps */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 ml-auto">
             {/* PWA Install / Home Screen Shortcut Button (Hidden when running as standalone app) */}
             {!isStandalone && (
               <button
@@ -101,23 +101,19 @@ export const Header: React.FC = () => {
       </header>
 
       {/* PWA Home Screen Install Modal Guide */}
-      {showInstallGuide && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs font-mono animate-backdrop">
-          <div className="bg-[#faf7f0] border-2 border-stone-900 rounded-lg p-4 max-w-sm w-full shadow-hard-lg animate-sheetUp">
-            {/* Modal Top Bar */}
-            <div className="flex items-center justify-between pb-2 border-b-2 border-stone-900 mb-3">
-              <div className="flex items-center gap-1.5 text-xs font-black text-stone-900 uppercase">
-                <Smartphone className="w-4 h-4 stroke-[2.5]" />
-                <span>ANA EKRANA EKLE (PWA)</span>
-              </div>
-              <button
-                onClick={() => setShowInstallGuide(false)}
-                className="p-1 rounded hover:bg-stone-200 border border-stone-900 text-stone-900 cursor-pointer"
-              >
-                <X className="w-3.5 h-3.5 stroke-[3]" />
-              </button>
-            </div>
-
+      <Modal
+        isOpen={showInstallGuide}
+        onClose={() => setShowInstallGuide(false)}
+        size="sm"
+        variant="centered"
+        title={
+          <span className="flex items-center gap-1.5">
+            <Smartphone className="w-4 h-4 stroke-[2.5]" />
+            ANA EKRANA EKLE (PWA)
+          </span>
+        }
+      >
+        <div className="p-4 overflow-y-auto no-scrollbar">
             {/* App Branding Info */}
             <div className="flex items-center gap-3 p-2.5 bg-white border-2 border-stone-900 rounded-md mb-3 shadow-hard-xs">
               <img
@@ -182,9 +178,8 @@ export const Header: React.FC = () => {
                 ANLADIM
               </button>
             </div>
-          </div>
         </div>
-      )}
+      </Modal>
     </>
   );
 };

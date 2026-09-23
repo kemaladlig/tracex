@@ -3,16 +3,17 @@ import { WifiOff, Wifi } from 'lucide-react';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 
 export const OfflineBanner: React.FC = () => {
-  const { isOnline, wasOffline } = useNetworkStatus();
-  const [showRestored, setShowRestored] = useState(false);
+  const { isOnline, reconnectNonce } = useNetworkStatus();
+  const [dismissedNonce, setDismissedNonce] = useState(0);
+
+  // Derived visibility: no sync setState in effects — hide runs purely from the timeout callback
+  const showRestored = isOnline && reconnectNonce > 0 && reconnectNonce !== dismissedNonce;
 
   useEffect(() => {
-    if (isOnline && wasOffline) {
-      setShowRestored(true);
-      const timer = setTimeout(() => setShowRestored(false), 3500);
-      return () => clearTimeout(timer);
-    }
-  }, [isOnline, wasOffline]);
+    if (!showRestored) return;
+    const timer = setTimeout(() => setDismissedNonce(reconnectNonce), 3500);
+    return () => clearTimeout(timer);
+  }, [showRestored, reconnectNonce]);
 
   if (!isOnline) {
     return (

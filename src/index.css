@@ -15,6 +15,20 @@
     -webkit-tap-highlight-color: transparent;
     overflow-x: hidden;
   }
+
+  /* Desktop: allow text selection (readable/copyable data) */
+  @media (min-width: 1024px) {
+    body {
+      user-select: auto;
+      -webkit-user-select: auto;
+    }
+  }
+
+  /* Brutalist focus ring for keyboard navigation */
+  :focus-visible {
+    outline: 2px solid #1c1917;
+    outline-offset: 2px;
+  }
 }
 
 /* Hard Paper Shadows & Brutalist Borders */
@@ -229,11 +243,19 @@
     transform: none !important;
   }
   .flash-up,
-  .flash-down {
+  .flash-down,
+  .animate-livePulse,
+  .animate-slide-left,
+  .animate-slide-right,
+  .animate-tabEnter,
+  .animate-sheetUp,
+  .animate-backdrop,
+  .animate-popIn,
+  .animate-feedback {
     animation: none !important;
   }
-  .animate-livePulse {
-    animation: none !important;
+  .btn-hard {
+    transition: none;
   }
 }
 

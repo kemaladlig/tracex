@@ -3,19 +3,25 @@ import { useCryptoStore } from './store/useCryptoStore';
 import { useBinanceWebSocket } from './hooks/useBinanceWebSocket';
 import { useSwipeNavigation } from './hooks/useSwipeNavigation';
 import { useDynamicPwaTitle } from './hooks/useDynamicPwaTitle';
+import { useTabHotkeys } from './hooks/useTabHotkeys';
 import { Header } from './components/common/Header';
 import { BottomNav } from './components/common/BottomNav';
+import { Sidebar } from './components/common/Sidebar';
 import { OfflineBanner } from './components/common/OfflineBanner';
 import { PullToRefresh } from './components/common/PullToRefresh';
 import { MarketList } from './components/markets/MarketList';
 import { PortfolioList } from './components/portfolio/PortfolioList';
-import { AnalyticsView } from './components/analytics/AnalyticsView';
 import { HomeDashboardView } from './components/home/HomeDashboardView';
 import { fetchComprehensiveAnalytics } from './services/onChainApi';
 
 // Code-split heavyweight lightweight-charts bundle (~250kb) to accelerate First Contentful Paint
 const DetailChartModal = lazy(() =>
   import('./components/chart/DetailChartModal').then((m) => ({ default: m.DetailChartModal }))
+);
+
+// Analytics bento is heavy too — pull it into its own chunk, fetched only when the tab opens
+const AnalyticsView = lazy(() =>
+  import('./components/analytics/AnalyticsView').then((m) => ({ default: m.AnalyticsView }))
 );
 
 import type { TabType } from './types/crypto';
@@ -28,6 +34,9 @@ export const App: React.FC = () => {
 
   // Activate dynamic live BTC price title and PWA Badging
   useDynamicPwaTitle();
+
+  // Desktop: keys 1-4 switch tabs
+  useTabHotkeys();
 
   const mainContainerRef = useRef<HTMLElement | null>(null);
   // Activate smooth horizontal swipe gestures between tabs
@@ -62,32 +71,48 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f4f0e6] text-stone-900 flex flex-col selection:bg-amber-200">
-      {/* Top Mobile Header */}
-      <Header />
+    <div className="min-h-screen bg-[#f4f0e6] text-stone-900 flex flex-col lg:flex-row selection:bg-amber-200">
+      {/* Desktop Left Sidebar (≥1024px) */}
+      <Sidebar />
 
-      {/* Network Disconnection / Reconnection Banner */}
-      <OfflineBanner />
+      {/* Content Column */}
+      <div className="flex-1 min-w-0 flex flex-col lg:pl-56">
+        {/* Top Header */}
+        <Header />
 
-      {/* Main Content View with Pull-to-Refresh & Swipe Navigation */}
-      <PullToRefresh onRefresh={handlePullRefresh}>
-        <main
-          ref={mainContainerRef}
-          className="flex-1 w-full max-w-lg mx-auto flex flex-col min-h-[calc(100vh-130px)] touch-pan-y"
-        >
-          <div
-            key={activeTab}
-            className={`w-full flex flex-col flex-1 ${
-              slideDirection === 'left' ? 'animate-slide-left' : 'animate-slide-right'
-            }`}
+        {/* Network Disconnection / Reconnection Banner */}
+        <OfflineBanner />
+
+        {/* Main Content View with Pull-to-Refresh & Swipe Navigation */}
+        <PullToRefresh onRefresh={handlePullRefresh}>
+          <main
+            ref={mainContainerRef}
+            className="flex-1 w-full max-w-lg md:max-w-none 2xl:max-w-[1600px] mx-auto flex flex-col touch-pan-y"
           >
-            {activeTab === 'home' && <HomeDashboardView />}
-            {activeTab === 'markets' && <MarketList />}
-            {activeTab === 'analytics' && <AnalyticsView />}
-            {activeTab === 'portfolio' && <PortfolioList />}
-          </div>
-        </main>
-      </PullToRefresh>
+            <div
+              key={activeTab}
+              className={`w-full flex flex-col flex-1 ${
+                slideDirection === 'left' ? 'animate-slide-left' : 'animate-slide-right'
+              }`}
+            >
+              {activeTab === 'home' && <HomeDashboardView />}
+              {activeTab === 'markets' && <MarketList />}
+              {activeTab === 'analytics' && (
+                <Suspense
+                  fallback={
+                    <div className="p-10 flex justify-center font-mono">
+                      <div className="w-6 h-6 border-2 border-stone-900 border-t-amber-400 rounded-full animate-spin" />
+                    </div>
+                  }
+                >
+                  <AnalyticsView />
+                </Suspense>
+              )}
+              {activeTab === 'portfolio' && <PortfolioList />}
+            </div>
+          </main>
+        </PullToRefresh>
+      </div>
 
       {/* Lazy-loaded Fullscreen Chart Modal with Skeleton Fallback */}
       {selectedCoinForChart && (
@@ -107,7 +132,7 @@ export const App: React.FC = () => {
         </Suspense>
       )}
 
-      {/* Mobile-First Bottom Navigation Bar */}
+      {/* Mobile Bottom Navigation Bar (<1024px) */}
       <BottomNav />
     </div>
   );

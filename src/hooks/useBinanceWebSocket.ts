@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useCryptoStore } from '../store/useCryptoStore';
 import type { TickerData } from '../types/crypto';
 
@@ -16,16 +16,19 @@ export const useBinanceWebSocket = () => {
   );
   const flushIntervalRef = useRef<number | null>(null);
 
-  // Combine unique symbols from watchlist, portfolio, and currently active category in markets
-  const allSymbols = Array.from(
-    new Set([
-      ...watchlist.map((s) => s.toUpperCase()),
-      ...portfolio.map((p) => p.symbol.toUpperCase()),
-      ...activeMarketSymbols.map((m) => m.toUpperCase()),
-    ])
-  ).filter(Boolean);
-
-  const symbolsKey = allSymbols.sort().join(',');
+  // Combine unique symbols from watchlist, portfolio, and currently active category in markets.
+  // useMemo keeps identity stable across renders so the effect below only re-runs on real changes.
+  const allSymbols = useMemo(
+    () =>
+      Array.from(
+        new Set([
+          ...watchlist.map((s) => s.toUpperCase()),
+          ...portfolio.map((p) => p.symbol.toUpperCase()),
+          ...activeMarketSymbols.map((m) => m.toUpperCase()),
+        ])
+      ).filter(Boolean),
+    [watchlist, portfolio, activeMarketSymbols]
+  );
 
   useEffect(() => {
     if (allSymbols.length === 0) {
@@ -188,5 +191,5 @@ export const useBinanceWebSocket = () => {
         socketRef.current = null;
       }
     };
-  }, [symbolsKey, allSymbols.length, setConnectionStatus, updateTickersBatch]);
+  }, [allSymbols, setConnectionStatus, updateTickersBatch]);
 };

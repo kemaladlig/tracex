@@ -12,7 +12,7 @@ interface PortfolioItemProps {
   onBuyMoreClick: (symbol: string) => void;
 }
 
-export const PortfolioItem: React.FC<PortfolioItemProps> = ({
+const PortfolioItemInner: React.FC<PortfolioItemProps> = ({
   asset,
   index = 0,
   showPnL = false,
@@ -51,7 +51,7 @@ export const PortfolioItem: React.FC<PortfolioItemProps> = ({
   return (
     <div
       style={{ '--stagger-idx': Math.min(index, 8) } as React.CSSProperties}
-      className={`relative flex flex-col p-3.5 mb-3 bg-white border-2 border-stone-900 rounded-lg shadow-hard font-mono transition-all duration-150 stagger-item ${isStale ? 'border-dashed' : ''}`}
+      className={`relative flex flex-col p-3.5 bg-white border-2 border-stone-900 rounded-lg shadow-hard font-mono transition-[box-shadow,transform] duration-150 stagger-item lg:hover:-translate-y-0.5 lg:hover:shadow-hard-lg ${isStale ? 'border-dashed' : ''}`}
     >
       {isStale && (
         <span
@@ -159,3 +159,5 @@ export const PortfolioItem: React.FC<PortfolioItemProps> = ({
     </div>
   );
 };
+
+export const PortfolioItem = React.memo(PortfolioItemInner);

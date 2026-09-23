@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Plus, Search, BookmarkCheck, ArrowUpDown, Star, Compass, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { useCryptoStore } from '../../store/useCryptoStore';
 import { MarketItem } from './MarketItem';
@@ -58,7 +58,9 @@ export const MarketList: React.FC = () => {
   // Market coins cache & active category 25-coin list
   const [allMarketCoins, setAllMarketCoins] = useState<CoinSearchResult[]>([]);
   const [categoryCoins, setCategoryCoins] = useState<CoinSearchResult[]>([]);
-  const [isLoadingCategory, setIsLoadingCategory] = useState(false);
+  // Derived loading: true only while the requested category has not been loaded yet (no sync setState in effects)
+  const [loadedCategory, setLoadedCategory] = useState<string | null>(null);
+  const isLoadingCategory = category !== 'favorites' && loadedCategory !== category;
 
   // Drag and drop state for custom favorites reordering
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -94,18 +96,18 @@ export const MarketList: React.FC = () => {
     });
   }, []);
 
-  // Fetch top 25 coins when category changes
+  // Fetch top coins when category changes (async setState only inside .then)
   useEffect(() => {
     if (category === 'favorites') {
       setActiveMarketSymbols([]);
-      setCategoryCoins([]);
       return;
     }
 
-    setIsLoadingCategory(true);
+    let cancelled = false;
     getCategoryCoins(category).then((coins) => {
+      if (cancelled) return;
       setCategoryCoins(coins);
-      setIsLoadingCategory(false);
+      setLoadedCategory(category);
 
       // Subscribe live WebSocket stream to these symbols
       const symbols = coins.map((c) => c.symbol);
@@ -126,6 +128,9 @@ export const MarketList: React.FC = () => {
       }));
       updateTickersBatch(initialBatch, 'rest');
     });
+    return () => {
+      cancelled = true;
+    };
   }, [category, setActiveMarketSymbols, updateTickersBatch]);
 
   // Compute final filtered and sorted symbols
@@ -177,80 +182,91 @@ export const MarketList: React.FC = () => {
   const isCustomOrder = category === 'favorites' && sortBy === 'default' && !searchQuery.trim();
 
   // Desktop Drag & Drop Handlers (Only active in custom Favorites order)
-  const handleDragStart = (idx: number, e: React.DragEvent) => {
-    if (!isCustomOrder) return;
-    e.dataTransfer.setData('text/plain', String(idx));
-    e.dataTransfer.effectAllowed = 'move';
-    setDraggedIndex(idx);
-  };
+  // Stable identities (useCallback + index-passing props) so React.memo on MarketItem actually works
+  const handleDragStart = useCallback(
+    (idx: number, e: React.DragEvent) => {
+      if (!isCustomOrder) return;
+      e.dataTransfer.setData('text/plain', String(idx));
+      e.dataTransfer.effectAllowed = 'move';
+      setDraggedIndex(idx);
+    },
+    [isCustomOrder]
+  );
 
-  const handleDragOver = (idx: number, e: React.DragEvent) => {
-    if (!isCustomOrder) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    if (overIndex !== idx) {
-      setOverIndex(idx);
-    }
-  };
+  const handleDragOver = useCallback(
+    (idx: number, e: React.DragEvent) => {
+      if (!isCustomOrder) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      setOverIndex((prev) => (prev === idx ? prev : idx));
+    },
+    [isCustomOrder]
+  );
 
-  const handleDrop = (targetIdx: number, e: React.DragEvent) => {
-    if (!isCustomOrder) return;
-    e.preventDefault();
-    const sourceIdxStr = e.dataTransfer.getData('text/plain');
-    const sourceIdx = parseInt(sourceIdxStr, 10);
-    if (!isNaN(sourceIdx) && sourceIdx !== targetIdx) {
-      reorderWatchlist(sourceIdx, targetIdx);
-    }
-    setDraggedIndex(null);
-    setOverIndex(null);
-  };
-
-  const handleDragEnd = () => {
-    setDraggedIndex(null);
-    setOverIndex(null);
-  };
-
-  // Mobile Touch Drag & Drop Handler
-  const handleTouchStartHandle = (_e: React.TouchEvent, startIndex: number) => {
-    if (!isCustomOrder) return;
-    setDraggedIndex(startIndex);
-    let currentTargetIdx = startIndex;
-
-    const handleTouchMove = (moveEvt: TouchEvent) => {
-      if (moveEvt.cancelable) {
-        moveEvt.preventDefault();
-      }
-      const touch = moveEvt.touches[0];
-      const el = document.elementFromPoint(touch.clientX, touch.clientY);
-      const itemEl = el?.closest('[data-drag-index]') as HTMLElement | null;
-      if (itemEl && itemEl.dataset.dragIndex !== undefined) {
-        const hoverIdx = parseInt(itemEl.dataset.dragIndex, 10);
-        if (!isNaN(hoverIdx) && hoverIdx !== currentTargetIdx) {
-          currentTargetIdx = hoverIdx;
-          setOverIndex(hoverIdx);
-        }
-      }
-    };
-
-    const handleTouchEnd = () => {
-      if (currentTargetIdx !== startIndex) {
-        reorderWatchlist(startIndex, currentTargetIdx);
+  const handleDrop = useCallback(
+    (targetIdx: number, e: React.DragEvent) => {
+      if (!isCustomOrder) return;
+      e.preventDefault();
+      const sourceIdxStr = e.dataTransfer.getData('text/plain');
+      const sourceIdx = parseInt(sourceIdxStr, 10);
+      if (!isNaN(sourceIdx) && sourceIdx !== targetIdx) {
+        reorderWatchlist(sourceIdx, targetIdx);
       }
       setDraggedIndex(null);
       setOverIndex(null);
-      window.removeEventListener('touchmove', handleTouchMove);
-      window.removeEventListener('touchend', handleTouchEnd);
-    };
+    },
+    [isCustomOrder, reorderWatchlist]
+  );
 
-    window.addEventListener('touchmove', handleTouchMove, { passive: false });
-    window.addEventListener('touchend', handleTouchEnd);
-  };
+  const handleDragEnd = useCallback(() => {
+    setDraggedIndex(null);
+    setOverIndex(null);
+  }, []);
+
+  // Mobile Touch Drag & Drop Handler
+  const handleTouchStartHandle = useCallback(
+    (_e: React.TouchEvent, startIndex: number) => {
+      if (!isCustomOrder) return;
+      setDraggedIndex(startIndex);
+      let currentTargetIdx = startIndex;
+
+      const handleTouchMove = (moveEvt: TouchEvent) => {
+        if (moveEvt.cancelable) {
+          moveEvt.preventDefault();
+        }
+        const touch = moveEvt.touches[0];
+        const el = document.elementFromPoint(touch.clientX, touch.clientY);
+        const itemEl = el?.closest('[data-drag-index]') as HTMLElement | null;
+        if (itemEl && itemEl.dataset.dragIndex !== undefined) {
+          const hoverIdx = parseInt(itemEl.dataset.dragIndex, 10);
+          if (!isNaN(hoverIdx) && hoverIdx !== currentTargetIdx) {
+            currentTargetIdx = hoverIdx;
+            setOverIndex(hoverIdx);
+          }
+        }
+      };
+
+      const handleTouchEnd = () => {
+        if (currentTargetIdx !== startIndex) {
+          reorderWatchlist(startIndex, currentTargetIdx);
+        }
+        setDraggedIndex(null);
+        setOverIndex(null);
+        window.removeEventListener('touchmove', handleTouchMove);
+        window.removeEventListener('touchend', handleTouchEnd);
+      };
+
+      window.addEventListener('touchmove', handleTouchMove, { passive: false });
+      window.addEventListener('touchend', handleTouchEnd);
+    },
+    [isCustomOrder, reorderWatchlist]
+  );
 
   const currentTabInfo = CATEGORY_TABS.find((t) => t.id === category);
   const activeSortLabel = SORT_OPTIONS.find((o) => o.id === sortBy)?.label ?? 'Varsayılan';
 
   return (
-    <div className="flex flex-col pb-28 px-4 max-w-lg mx-auto w-full font-mono animate-tabEnter">
+    <div className="flex flex-col pb-28 lg:pb-10 px-4 md:px-6 w-full font-mono animate-tabEnter">
       {/* 24h Top Gainers & Losers Banner (collapsible) */}
       <div className="my-2">
         <button
@@ -343,7 +359,7 @@ export const MarketList: React.FC = () => {
         </div>
 
         {/* Category Pills Bar (Favorites, All, L1, L2, Meme, AI, DeFi) */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-2 font-mono text-[11px]">
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-2 font-mono text-[11px] md:flex-wrap md:overflow-visible">
           {CATEGORY_TABS.map((item) => {
             const isActive = category === item.id;
             return (
@@ -399,7 +415,7 @@ export const MarketList: React.FC = () => {
       </div>
 
       {/* Loading indicator for category switch */}
-      {isLoadingCategory && category !== 'favorites' && displaySymbols.length === 0 && (
+      {isLoadingCategory && displaySymbols.length === 0 && (
         <div className="p-8 text-center bg-white border-2 border-stone-900 rounded-lg shadow-hard-sm my-2">
           <div className="w-6 h-6 border-2 border-stone-900 border-t-amber-400 rounded-full animate-spin mx-auto mb-2" />
           <p className="text-xs font-bold text-stone-700">Piyasa verileri yükleniyor...</p>
@@ -408,7 +424,7 @@ export const MarketList: React.FC = () => {
 
       {/* Market Items List */}
       {displaySymbols.length > 0 ? (
-        <div className="flex flex-col gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-2 md:gap-3 content-start">
           {displaySymbols.map((symbol, idx) => (
             <MarketItem
               key={symbol}
@@ -417,10 +433,10 @@ export const MarketList: React.FC = () => {
               canReorder={isCustomOrder}
               isDragging={draggedIndex === idx}
               isDragOver={overIndex === idx}
-              onDragStart={(e) => handleDragStart(idx, e)}
-              onDragOver={(e) => handleDragOver(idx, e)}
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
               onDragLeave={handleDragEnd}
-              onDrop={(e) => handleDrop(idx, e)}
+              onDrop={handleDrop}
               onDragEnd={handleDragEnd}
               onTouchStartHandle={handleTouchStartHandle}
             />
