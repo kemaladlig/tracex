@@ -6,6 +6,7 @@ export const useBinanceWebSocket = () => {
   const watchlist = useCryptoStore((state) => state.watchlist);
   const portfolio = useCryptoStore((state) => state.portfolio);
   const activeMarketSymbols = useCryptoStore((state) => state.activeMarketSymbols);
+  const selectedCoinForChart = useCryptoStore((state) => state.selectedCoinForChart);
   const updateTickersBatch = useCryptoStore((state) => state.updateTickersBatch);
   const setConnectionStatus = useCryptoStore((state) => state.setConnectionStatus);
 
@@ -16,18 +17,25 @@ export const useBinanceWebSocket = () => {
   );
   const flushIntervalRef = useRef<number | null>(null);
 
-  // Combine unique symbols from watchlist, portfolio, and currently active category in markets.
-  // useMemo keeps identity stable across renders so the effect below only re-runs on real changes.
+  // A string signature reconnects only when the subscribed symbol set changes,
+  // not when portfolio amounts or watchlist ordering mutate.
+  const symbolSignature = Array.from(
+    new Set([
+      'BTCUSDT',
+      ...(selectedCoinForChart ? [selectedCoinForChart] : []),
+      ...watchlist,
+      ...portfolio.map((position) => position.symbol),
+      ...activeMarketSymbols,
+    ])
+  )
+    .map((symbol) => symbol.toUpperCase())
+    .filter(Boolean)
+    .sort()
+    .join('|');
+
   const allSymbols = useMemo(
-    () =>
-      Array.from(
-        new Set([
-          ...watchlist.map((s) => s.toUpperCase()),
-          ...portfolio.map((p) => p.symbol.toUpperCase()),
-          ...activeMarketSymbols.map((m) => m.toUpperCase()),
-        ])
-      ).filter(Boolean),
-    [watchlist, portfolio, activeMarketSymbols]
+    () => symbolSignature.split('|').filter(Boolean),
+    [symbolSignature]
   );
 
   useEffect(() => {
@@ -88,7 +96,6 @@ export const useBinanceWebSocket = () => {
         }
       };
 
-      let loggedWindowProbe = false;
       ws.onmessage = (event: MessageEvent) => {
         lastMessageAtRef.current = Date.now();
         try {
@@ -103,24 +110,6 @@ export const useBinanceWebSocket = () => {
             const volume = parseFloat(data.v);
             const quoteVolume = parseFloat(data.q);
             const sym = data.s.toUpperCase();
-
-            // Test probe: rolling-24h window proof (O -> C must be ~24h, not midnight).
-            // Compare with Binance spot UI at the same second to verify % match.
-            if (!loggedWindowProbe && (sym === 'BTCUSDT' || tickerBufferRef.current.size === 0)) {
-              loggedWindowProbe = true;
-              try {
-                const openT = Number(data.O);
-                const closeT = Number(data.C);
-                if (openT && closeT) {
-                  const windowH = (closeT - openT) / 3600000;
-                  console.info(
-                    `[TraceX][24h-probe] ${sym} P=${data.P}% o=${data.o} c=${data.c} window=${windowH.toFixed(2)}h O=${new Date(openT).toLocaleTimeString()} C=${new Date(closeT).toLocaleTimeString()}`
-                  );
-                }
-              } catch {
-                // ignore probe errors
-              }
-            }
 
             // Buffer the update in map
             tickerBufferRef.current.set(sym, {

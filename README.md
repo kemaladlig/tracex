@@ -2,14 +2,14 @@
 
 TraceX; React 19, TypeScript, Vite 8, Tailwind CSS v4, Zustand ve TradingView Lightweight Charts mimarisi üzerine kurulu, mobil öncelikli (Mobile-First), sıfır arka uçlu (zero-backend) profesyonel bir Kripto Takip, Teknik Analiz ve Portföy yönetim uygulamasıdır.
 
-Uygulama harici bir sunucuya ihtiyaç duymadan doğrudan **Binance Public WebSocket/REST API'leri**, **Bitcoin On-Chain MVRV**, **Coinlore Global Verileri** ve **Alternative.me Duygu Endeksi** üzerinden gerçek zamanlı çalışır. Kullanıcı verileri tarayıcının yerel kasasında (`localStorage`) saklanır. Capacitor ile doğrudan yerel Android (APK) veya iOS uygulamasına paketlenebilir.
+Uygulama harici bir sunucuya ihtiyaç duymadan doğrudan **Binance Public WebSocket/REST API'leri**, **Bitcoin On-Chain MVRV**, **Coinlore Global Verileri**, **DefiLlama Stablecoin Arzı** ve **Alternative.me Duygu Endeksi** üzerinden gerçek zamanlı çalışır. Kullanıcı verileri tarayıcının yerel kasasında (`localStorage`) saklanır. Capacitor ile doğrudan yerel Android (APK) veya iOS uygulamasına paketlenebilir.
 
 ---
 
 ## Öne Çıkan Özellikler
 
 ### 1. Piyasalar & Takip Listesi
-- **Tamponlanmış Canlı WebSocket (120ms Batching):** Takip listesindeki tüm kripto paralar tek bir Binance WebSocket akışı üzerinden anlık güncellenir; render yükü %85 azaltılarak 120Hz ekranlarda bile 60-120 FPS akıcılık sağlanır.
+- **Tamponlanmış Canlı WebSocket:** Takip listesindeki tüm kripto paralar tek bir Binance WebSocket akışı üzerinden anlık güncellenir; paketler yaklaşık 1 saniyelik gruplar halinde React durumuna aktarılır.
 - **Mikro Sparkline Eğrileri:** Her coin satırında günün yönünü gösteren kompakt 28x12px vektörel trend eğrisi.
 - **Kategori Filtreleme:** `TÜMÜ`, `LAYER 1`, `MEME`, `YAPAY ZEKA`, `DEFI` segmentlerine göre tek tıkla listeleme.
 - **Hızlı Sıralama:** `Varsayılan`, `En Çok Artan`, `En Çok Düşen`, `Hacim`, `A-Z` sıralama çipleri.
@@ -17,13 +17,15 @@ Uygulama harici bir sunucuya ihtiyaç duymadan doğrudan **Binance Public WebSoc
 - **Hızlı Cüzdana Ekleme:** Takip listesindeki coinin yanındaki `[+]` butonuyla tek hamlede portföye alış ekleme.
 
 ### 2. Canlı Makro & Zincir Üstü Analiz Terminali
+- **Piyasa Kapısı:** Trend, pazar genişliği, volatilite ve likidite verilerini `PİYASA AÇIK / TEMKİNLİ / YÜKSEK RİSK / TEYİT BEKLE` durumunda birleştirir.
+- **Pazar Genişliği:** En yüksek hacimli 20 USDT paritenin 20G ve 50G günlük ortalamalarının üzerinde olma oranını izler.
+- **Volatilite Rejimi:** Binance günlük mumlarından hesaplanan BTC ATR14 yüzdesiyle sakin, normal, aktif ve yüksek risk bantlarını gösterir.
+- **Stablecoin Likiditesi:** DefiLlama global USD-pegged stablecoin arzını toplam değer, 7 günlük ve 30 günlük değişimle izler.
 - **Korku & Açgözlülük Çoklu Zaman Karşılaştırması:** `Şu An (Bugün)`, `Dün`, `Geçen Hafta`, `Geçen Ay` metrikleri ve 14 günlük interaktif SVG trend çizgisi.
-- **Pazar Hakimiyeti (BTC Dominance):** BTC (%59.0), ETH (%11.5) ve Altcoin (%29.5) pazar payı dağılım barı ve $2.5T+ global piyasa değeri.
-- **Bitcoin MVRV Döngü Isıtıcısı:** `bitcoin-data.com` üzerinden canlı çekilen MVRV skoru ve renkli döngü cetveli.
-- **Binance Taker Hacim Baskısı:** Son 24 saatteki agresif piyasa emri Alış vs Satış oranı (%48.7 Alış / %51.3 Satış).
-- **Vadeli Açık Pozisyon (Open Interest):** Vadeli piyasada açık duran $8.1B+ sözleşme hacmi ve 24 saatlik para girişi.
-- **Bitcoin Günlük RSI 14 & 20G Ortalama:** Binance günlük mumlarından matematiksel hesaplanan canlı RSI skoru ve hareketli ortalama trend analizi.
-- **Otomatik Strateji Motoru:** Tüm piyasa verilerini harmanlayan algoritmik durum ve risk puanı (1 - 10).
+- **Pazar Hakimiyeti (BTC Dominance):** BTC, ETH ve altcoin pazar payı dağılımı ile global piyasa değeri.
+- **Bitcoin MVRV Döngü Isıtıcısı:** Coin Metrics Community API'den günlük çekilen MVRV skoru ve renkli döngü cetveli.
+- **Türev Akışı:** Long/Short, fonlama, taker hacmi ve open interest verileriyle kaldıraç baskısını izler.
+- **Bitcoin Günlük RSI 14 & Hareketli Ortalamalar:** Binance günlük mumlarından hesaplanan RSI, SMA20, EMA50 ve SMA200 yapısı.
 
 ### 3. İnteraktif Grafik Terminali (TradingView Lightweight Charts)
 - **Lazy Loading:** Ağır grafik motoru ana paketten ayrılarak dinamik yüklenir; ilk açılış dosya boyutu 313 KB'a (93 KB gzip) düşürülmüştür.

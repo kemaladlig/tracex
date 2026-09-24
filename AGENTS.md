@@ -11,10 +11,13 @@ TraceX is a mobile-first, zero-backend Single Page Application (SPA) for real-ti
 - **State Management:** Zustand with LocalStorage Persistence (`tracex-storage-v3`)
 - **Chart Engine:** TradingView Lightweight Charts (Lazy-loaded)
 - **Data Pipeline:**
-  - Real-time ticker feeds: Binance Public WebSocket Combined Stream (`wss://stream.binance.com:9443`) with 120ms batching and Page Visibility API throttling.
+  - Real-time ticker feeds: Binance Public WebSocket Combined Stream (`wss://stream.binance.com:9443`) with batched updates and Page Visibility API throttling.
   - Search & Historical Klines: Binance Public REST API (`api.binance.com`).
   - Macro Sentiment: Alternative.me Fear & Greed Index API (`api.alternative.me`).
-  - Bitcoin MVRV: `bitcoin-data.com` REST API via Vite dev proxy (`/api/mvrv`) with 30-minute macro cache.
+  - Bitcoin MVRV: Coin Metrics Community API (`CapMVRVCur`) primary with `bitcoin-data.com` fallback, hourly cache, and source-date freshness.
+  - Market Breadth: Top 20 USDT markets by quote volume, classified above their 20-day and 50-day daily moving averages.
+  - Volatility: BTC daily ATR14 derived from Binance spot klines.
+  - Stablecoin Liquidity: DefiLlama global USD-pegged stablecoin supply with 7-day and 30-day changes.
   - Market Dominance: Coinlore Global API (`api.coinlore.net/api/global/`).
   - Futures Intelligence: Binance Futures REST API (`fapi.binance.com` for Long/Short, Funding Rate, Taker Volume, and Open Interest).
 
@@ -25,18 +28,30 @@ TraceX is a mobile-first, zero-backend Single Page Application (SPA) for real-ti
 ```
 src/
 ├── components/
-│   ├── analytics/        # Dedicated Macro & On-chain Terminal View
-│   │   └── AnalyticsView.tsx
+│   ├── analytics/        # Macro, on-chain, derivatives & technical terminal
+│   │   ├── AnalyticsView.tsx       # Loading, refresh and section controller
+│   │   ├── AnalyticsSkeleton.tsx   # Responsive loading state
+│   │   ├── AnalyticsPrimitives.tsx # Shared cards, source and stale indicators
+│   │   ├── MarketGateCard.tsx     # Compact four-signal market regime summary
+│   │   ├── MarketConditionsPanel.tsx # Breadth, volatility and liquidity detail
+│   │   ├── CyclePanel.tsx          # Sentiment, MVRV and dominance
+│   │   ├── DerivativesPanel.tsx    # Positioning, funding, taker and OI
+│   │   └── TechnicalPanel.tsx      # BTC price, RSI and moving averages
 │   ├── chart/            # TradingView Lightweight Charts & Technical Overlays
-│   │   └── DetailChartModal.tsx (Code-split with React.lazy)
+│   │   ├── DetailChartModal.tsx (Code-split with React.lazy)
+│   │   └── volumeCandleSeries.ts
 │   ├── common/           # Navigation, Header, Shell, Shared Modal, Banners
 │   │   ├── BottomNav.tsx   (mobile <1024px)
 │   │   ├── Sidebar.tsx     (desktop ≥1024px)
 │   │   ├── Modal.tsx       (ONLY overlay pattern — portal, Esc/backdrop close, scroll lock)
+│   │   ├── TerminalPrimitives.tsx # Shared terminal cards, headers, tabs, metrics & banners
+│   │   ├── terminalTokens.ts
 │   │   ├── Header.tsx
 │   │   ├── OfflineBanner.tsx
 │   │   ├── PullToRefresh.tsx
 │   │   └── navItems.ts     (single source of truth for tab nav items)
+│   ├── home/             # BTC cockpit, signal rail and wallet snapshot
+│   │   └── HomeDashboardView.tsx
 │   ├── markets/          # Watchlist, Search, Categories, Sort Chips, Sparklines
 │   │   ├── AddWatchlistModal.tsx
 │   │   ├── MarketItem.tsx
@@ -44,18 +59,22 @@ src/
 │   │   └── MarketTrendsBanner.tsx
 │   └── portfolio/        # Ledger, PnL, DCA Merging, Sell Modals, Allocation Bar
 │       ├── AddAssetModal.tsx
+│       ├── PortfolioGroupSwitcher.tsx
 │       ├── PortfolioItem.tsx
 │       ├── PortfolioList.tsx
 │       ├── PortfolioSummary.tsx
-│       └── SellAssetModal.tsx
+│       ├── SellAssetModal.tsx
+│       └── SmartImportModal.tsx
 ├── hooks/
 │   ├── useBinanceWebSocket.ts # Batched stream + visibility pause
 │   ├── useNetworkStatus.ts    # Online/offline connection monitor
 │   ├── useSwipeNavigation.ts  # Touch-only tab swipe (mobile)
 │   └── useTabHotkeys.ts       # Desktop keys 1-4 switch tabs
 ├── services/
-│   ├── binanceApi.ts     # Spot REST endpoints (Klines, Search)
-│   └── onChainApi.ts     # Multi-period FNG, MVRV, Dominance, Taker Vol, RSI
+│   ├── binanceApi.ts          # Spot REST endpoints (Klines, Search)
+│   ├── marketConditionsApi.ts # Breadth, ATR helpers and stablecoin liquidity
+│   ├── onChainApi.ts          # Multi-period FNG, MVRV, Dominance, Taker Vol, RSI
+│   └── storageCache.ts        # Namespaced localStorage cache with timestamp
 ├── store/
 │   └── useCryptoStore.ts # Central Zustand store with persistence
 ├── types/
@@ -85,6 +104,7 @@ All UI elements must strictly adhere to the brutalist Craft Paper aesthetic:
    - Monospaced technical typography: `font-mono uppercase font-black`
    - Technical notation: `[BRACKETS]`, `// SLASH DIVIDERS`, status dots (`w-2 h-2 rounded-full`)
    - **NO CHEAP EMOJIS:** Never use cartoon emojis (`🔥`, `⚡`, `🐸`, `🤖`, `🏆`). Always use clean Lucide SVG icons with `stroke-[2.5]`.
+4. **Shared Terminal UI:** page headers, card frames, metric tiles, segmented tabs and status banners use `components/common/TerminalPrimitives.tsx`; page-specific styling belongs in the owning feature.
 
 ---
 
@@ -93,7 +113,7 @@ All UI elements must strictly adhere to the brutalist Craft Paper aesthetic:
 - **Breakpoints (Tailwind):** `md: 768px` = tablet width/unclamp, `lg: 1024px` = desktop shell, `xl/2xl` = density steps. Mobile keeps `max-w-lg` centered column; from `md:` the shell unclamps (`App.tsx <main>`); `2xl` caps at `1600px`.
 - **Navigation:** shared `NAV_ITEMS` in `navItems.ts`. `BottomNav` renders `<lg` only; `Sidebar` renders `≥lg` only. Never duplicate the tab list.
 - **Shell width is controlled only in `App.tsx` + `Header.tsx` inner** (`max-w-lg md:max-w-none 2xl:max-w-[1600px] mx-auto`). Views must NOT set their own `max-w-* mx-auto` on their root (they add padding `px-4 md:px-6` only).
-- **Lists → grids:** Markets/Portfolio switch to `md:grid-cols-2 xl:grid-cols-3`; Home uses a `lg:grid-cols-3` cockpit (hero+wallet left 2/3, barometer right); Portfolio puts a sticky summary beside the grid at `lg:`.
+- **Lists → grids:** Markets/Portfolio switch to `md:grid-cols-2 xl:grid-cols-3`; Home uses its existing `lg:grid-cols-3` cockpit; Portfolio keeps its existing summary-plus-grid layout.
 - **Modals:** always `components/common/Modal.tsx` (`variant="sheet"` default → bottom sheet on mobile, centered from `sm:`; `variant="centered"` for forms). Sizes scale wider at `lg:`. No hand-rolled `fixed inset-0` overlays.
 - **Desktop affordances:** hover lift/feedback (`lg:hover:-translate-y-0.5`), `:focus-visible` ink ring (index.css), text selection enabled `≥lg`, keys `1–4` tab switch, `Esc` closes topmost dialog only.
 - **Motion:** transform/opacity only, 150–300ms, `prefers-reduced-motion` kills all keyframe animations (index.css).

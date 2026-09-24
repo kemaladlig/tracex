@@ -1,42 +1,129 @@
 import type { MarketAnalyticsData } from '../types/crypto';
+import {
+  calculateAtr,
+  classifyVolatility,
+  fetchMarketBreadth,
+  fetchStablecoinLiquidity,
+} from './marketConditionsApi';
+import { getStorageCacheWithTs, setStorageCache } from './storageCache';
 
 let cachedAnalytics: MarketAnalyticsData | null = null;
 let cacheTimestamp = 0;
 const DERIVATIVES_MEM_CACHE_MS = 3 * 60 * 1000; // 3 mins memory cache for live futures flow
 const MACRO_FNG_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours for Fear & Greed Index (updates only once daily at 00:00 UTC)
-const MACRO_MVRV_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours for On-Chain Bitcoin MVRV (daily calculation)
+const MACRO_MVRV_TTL_MS = 55 * 60 * 1000; // Slightly shorter than the UI refresh interval so each hourly check reaches the source
+const MACRO_MVRV_STALE_MS = 3 * 24 * 60 * 60 * 1000; // Allow normal provider lag, but expose genuinely old data
 const MACRO_DOMINANCE_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours for Global Market Dominance & Cap
 
-interface StorageCacheItem<T> {
-  data: T;
-  timestamp: number;
+type MvrvSource = 'Coin Metrics Community' | 'bitcoin-data.com';
+
+interface MvrvSnapshot {
+  value: number;
+  observedAt: number;
+  source: MvrvSource;
 }
 
-function getStorageCacheWithTs<T>(key: string, maxAgeMs: number): { data: T; timestamp: number } | null {
-  try {
-    const raw = localStorage.getItem(`tracex_macro_${key}`);
-    if (!raw) return null;
-    const item: StorageCacheItem<T> = JSON.parse(raw);
-    if (Date.now() - item.timestamp < maxAgeMs) {
-      return { data: item.data, timestamp: item.timestamp };
+interface CoinMetricsMvrvResponse {
+  data?: Array<{
+    time?: string;
+    CapMVRVCur?: string | number;
+  }>;
+}
+
+type BitcoinDataMvrvResponse = Array<{
+  d?: string;
+  unixTs?: number;
+  mvrv?: string | number;
+}>;
+
+const toFiniteNumber = (value: unknown): number | null => {
+  const parsed = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : Number.NaN;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+};
+
+const isMvrvSnapshot = (value: unknown): value is MvrvSnapshot => {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as Partial<MvrvSnapshot>;
+  return (
+    typeof candidate.value === 'number' &&
+    Number.isFinite(candidate.value) &&
+    typeof candidate.observedAt === 'number' &&
+    Number.isFinite(candidate.observedAt) &&
+    (candidate.source === 'Coin Metrics Community' || candidate.source === 'bitcoin-data.com')
+  );
+};
+
+const isMvrvStale = (snapshot: MvrvSnapshot, now: number): boolean =>
+  snapshot.observedAt <= 0 || now - snapshot.observedAt > MACRO_MVRV_STALE_MS;
+
+const parseCoinMetricsMvrv = (payload: CoinMetricsMvrvResponse): MvrvSnapshot | null => {
+  let latest: MvrvSnapshot | null = null;
+
+  for (const point of payload.data ?? []) {
+    const value = toFiniteNumber(point.CapMVRVCur);
+    const observedAt = Date.parse(point.time ?? '');
+    if (value === null || !Number.isFinite(observedAt)) continue;
+
+    if (!latest || observedAt > latest.observedAt) {
+      latest = { value, observedAt, source: 'Coin Metrics Community' };
     }
-  } catch {
-    // fallback if private browsing or corrupted
   }
-  return null;
-}
 
-function setStorageCache<T>(key: string, data: T): void {
-  try {
-    const item: StorageCacheItem<T> = {
-      data,
-      timestamp: Date.now(),
-    };
-    localStorage.setItem(`tracex_macro_${key}`, JSON.stringify(item));
-  } catch {
-    // quota exceeded or no-op
+  return latest;
+};
+
+const parseBitcoinDataMvrv = (payload: BitcoinDataMvrvResponse): MvrvSnapshot | null => {
+  let latest: MvrvSnapshot | null = null;
+
+  for (const point of payload) {
+    const value = toFiniteNumber(point.mvrv);
+    const unixObservedAt = typeof point.unixTs === 'number' ? point.unixTs * 1000 : Number.NaN;
+    const dateObservedAt = Date.parse(point.d ?? '');
+    const observedAt = Number.isFinite(unixObservedAt) ? unixObservedAt : dateObservedAt;
+    if (value === null || !Number.isFinite(observedAt)) continue;
+
+    if (!latest || observedAt > latest.observedAt) {
+      latest = { value, observedAt, source: 'bitcoin-data.com' };
+    }
   }
-}
+
+  return latest;
+};
+
+const MVRV_COIN_METRICS_URL =
+  'https://community-api.coinmetrics.io/v4/timeseries/asset-metrics?assets=btc&metrics=CapMVRVCur&frequency=1d&page_size=7';
+const MVRV_BITCOIN_DATA_URL = 'https://bitcoin-data.com/api/v1/mvrv';
+
+const fetchMvrvSnapshot = async (): Promise<MvrvSnapshot> => {
+  const candidates = [MVRV_COIN_METRICS_URL];
+
+  // The dev proxy remains a fallback for localhost, but it is not required for the CORS-enabled primary source.
+  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+    candidates.push('/api/mvrv');
+  }
+  candidates.push(MVRV_BITCOIN_DATA_URL);
+
+  for (const url of candidates) {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) continue;
+
+      if (url === MVRV_COIN_METRICS_URL) {
+        const payload = (await response.json()) as CoinMetricsMvrvResponse;
+        const snapshot = parseCoinMetricsMvrv(payload);
+        if (snapshot) return snapshot;
+      } else {
+        const payload = (await response.json()) as BitcoinDataMvrvResponse;
+        const snapshot = parseBitcoinDataMvrv(payload);
+        if (snapshot) return snapshot;
+      }
+    } catch {
+      // Try the next source.
+    }
+  }
+
+  throw new Error('No usable MVRV source');
+};
 
 /** FNG skorunu etikete çevirir — kartlardaki 4 kutunun her biri kendi değerinden sınıflanmalı. */
 export const classifyFng = (v: number): string => {
@@ -367,6 +454,12 @@ export const fetchComprehensiveAnalytics = async (forceFresh: boolean = false): 
     return cachedAnalytics;
   }
 
+  // Pazar genişliği ve stablecoin likiditesi diğer kaynaklarla paralel hazırlanır.
+  const marketConditionsPromise = Promise.all([
+    fetchMarketBreadth(forceFresh),
+    fetchStablecoinLiquidity(forceFresh),
+  ]);
+
   // 1. Fear & Greed (12h macro cache)
   let currentFng = 51;
   let fngYesterday = 69;
@@ -499,45 +592,29 @@ export const fetchComprehensiveAnalytics = async (forceFresh: boolean = false): 
     console.warn('Binance Funding Rate API fallback:', err);
   }
 
-  // 4. Bitcoin MVRV (12h macro cache; dev proxy + prod direkt denemesi)
-  let mvrvVal: number | null = !forceFresh
-    ? (getStorageCacheWithTs<number>('mvrv', MACRO_MVRV_TTL_MS)?.data ?? null)
-    : null;
-  const mvrvCacheTs = !forceFresh
-    ? (getStorageCacheWithTs<number>('mvrv', MACRO_MVRV_TTL_MS)?.timestamp ?? 0)
-    : 0;
-  let mvrvFresh = mvrvVal !== null;
-  let mvrvTs = mvrvCacheTs;
-  if (mvrvVal === null) {
-    mvrvVal = 1.48; // Baseline fallback — UI'da STALE rozetiyle gösterilir
+  // 4. Bitcoin MVRV (Coin Metrics primary; hourly cache and source-date freshness)
+  const storedMvrv = getStorageCacheWithTs<unknown>('mvrv-v2', MACRO_MVRV_TTL_MS);
+  const cachedMvrv = storedMvrv && isMvrvSnapshot(storedMvrv.data) ? storedMvrv.data : null;
+  let mvrvSnapshot = forceFresh ? null : cachedMvrv;
+
+  if (forceFresh || mvrvSnapshot === null || isMvrvStale(mvrvSnapshot, now)) {
     try {
-      const candidates =
-        typeof window !== 'undefined' && window.location.hostname === 'localhost'
-          ? ['/api/mvrv']
-          : ['https://bitcoin-data.com/api/v1/mvrv'];
-      for (const url of candidates) {
-        try {
-          const mvrvRes = await fetch(url);
-          if (!mvrvRes.ok) continue;
-          const mvrvData = await mvrvRes.json();
-          if (Array.isArray(mvrvData) && mvrvData.length > 0) {
-            const latestPoint = mvrvData[mvrvData.length - 1];
-            if (latestPoint && typeof latestPoint.mvrv === 'number') {
-              mvrvVal = parseFloat(latestPoint.mvrv.toFixed(2));
-              mvrvFresh = true;
-              mvrvTs = Date.now();
-              setStorageCache<number>('mvrv', mvrvVal);
-              break;
-            }
-          }
-        } catch {
-          continue;
-        }
-      }
+      const fetchedSnapshot = await fetchMvrvSnapshot();
+      mvrvSnapshot = {
+        ...fetchedSnapshot,
+        value: parseFloat(fetchedSnapshot.value.toFixed(2)),
+      };
+      setStorageCache<MvrvSnapshot>('mvrv-v2', mvrvSnapshot);
     } catch (err) {
+      mvrvSnapshot = cachedMvrv;
       console.warn('MVRV fetch fallback:', err);
     }
   }
+
+  const mvrvVal = mvrvSnapshot?.value ?? 1.48;
+  const mvrvFresh = mvrvSnapshot !== null && !isMvrvStale(mvrvSnapshot, now);
+  const mvrvTs = mvrvSnapshot?.observedAt ?? 0;
+  const mvrvSource = mvrvSnapshot?.source ?? 'MVRV kaynağı yok';
 
   // 5. Coinlore Global Dominance (birincil) + CoinGecko (yedek)
   let btcD = 59.04;
@@ -678,6 +755,8 @@ export const fetchComprehensiveAnalytics = async (forceFresh: boolean = false): 
   let crossSignal: string | undefined = undefined;
   let priceChange24hPct = 0;
   let rsi14 = 44.8;
+  let atr14 = btcCurrentPrice * 0.025;
+  let atrPercent = 2.5;
   let klinesFresh = false;
   let klinesTs = 0;
 
@@ -689,6 +768,11 @@ export const fetchComprehensiveAnalytics = async (forceFresh: boolean = false): 
         const closes: number[] = klineData.map((k: (string | number)[]) => parseFloat(k[4] as string));
         btcCurrentPrice = closes[closes.length - 1];
         rsi14 = computeRSI(closes, 14);
+        const calculatedAtr = calculateAtr(klineData, 14);
+        if (calculatedAtr !== null) {
+          atr14 = calculatedAtr;
+          atrPercent = Number(((calculatedAtr / btcCurrentPrice) * 100).toFixed(2));
+        }
 
         const last20 = closes.slice(-20);
         sma20Price = Math.round(last20.reduce((a, b) => a + b, 0) / last20.length);
@@ -719,6 +803,37 @@ export const fetchComprehensiveAnalytics = async (forceFresh: boolean = false): 
       ? `Fiyat 20G ortalamanın %${priceDiffPct} üzerinde (Pozitif eğilim)`
       : `Fiyat 20G ortalamanın %${Math.abs(priceDiffPct)} altında (Kısa vadeli baskı)`;
 
+  const [marketBreadth, stablecoinLiquidity] = await marketConditionsPromise;
+  const volatilityRegime = classifyVolatility(atrPercent);
+  const trendPositive = priceDiffPct > 0 && btcCurrentPrice > (ema50Price ?? sma20Price);
+  const trendRisk = priceDiffPct <= -3;
+  const breadthPositive = marketBreadth.aboveSma20Percent >= 55 && marketBreadth.aboveSma50Percent >= 45;
+  const breadthRisk = marketBreadth.aboveSma20Percent < 40 || marketBreadth.aboveSma50Percent < 35;
+  const volatilityPositive = volatilityRegime.status === 'calm' || volatilityRegime.status === 'normal';
+  const volatilityRisk = volatilityRegime.status === 'high';
+  const liquidityPositive = stablecoinLiquidity.change30dPercent >= 0;
+  const liquidityRisk = stablecoinLiquidity.status === 'contracting';
+  const positiveChecks = [trendPositive, breadthPositive, volatilityPositive, liquidityPositive].filter(Boolean).length;
+  const riskChecks = [trendRisk, breadthRisk, volatilityRisk, liquidityRisk].filter(Boolean).length;
+
+  let marketGateStatus: MarketAnalyticsData['marketGate']['status'] = 'caution';
+  if (volatilityRisk || riskChecks >= 2) marketGateStatus = 'risk';
+  else if (trendRisk && riskChecks >= 1) marketGateStatus = 'wait';
+  else if (positiveChecks >= 3) marketGateStatus = 'open';
+
+  const marketGateSummary = {
+    open: 'Trend, pazar katılımı ve risk sınırları birlikte olumlu. İşlemlerde kaldıracı kontrollü tut ve yön teyidini sürdür.',
+    caution: 'Sinyallerin bir kısmı olumlu, bir kısmı temkinli. Yeni pozisyonlarda kademe ve teyit daha önemli.',
+    risk: 'Volatilite veya pazar yapısı risk eşiğinde. Kaldıraç düşürmek ve ani ters yönlere hazırlık öne çıkar.',
+    wait: 'Trend baskısı risk göstergeleriyle birlikte ilerliyor. Yeni yön arayışında teyit beklenmeli.',
+  }[marketGateStatus];
+  const marketGateLabel = {
+    open: 'PİYASA AÇIK',
+    caution: 'TEMKİNLİ İŞLEM',
+    risk: 'YÜKSEK RİSK',
+    wait: 'TEYİT BEKLE',
+  }[marketGateStatus];
+
   // OI x fiyat birleşimi: OI artışı tek başına "fon girdi" demek değildir
   let oiBias: 'long-buildup' | 'short-buildup' | 'unwinding' | 'neutral' = 'neutral';
   if (oiChangeMillion > 0 && priceChange24hPct > 0.3) oiBias = 'long-buildup';
@@ -742,6 +857,8 @@ export const fetchComprehensiveAnalytics = async (forceFresh: boolean = false): 
   if (!takerFresh) staleSections.push('taker');
   if (!oiFresh) staleSections.push('open-interest');
   if (!klinesFresh) staleSections.push('teknik');
+  if (marketBreadth.freshness.isStale) staleSections.push('pazar genişliği');
+  if (stablecoinLiquidity.freshness.isStale) staleSections.push('likidite');
 
   // Run the dynamic intelligence engine
   const derived = deriveMarketIntelligence(
@@ -785,7 +902,7 @@ export const fetchComprehensiveAnalytics = async (forceFresh: boolean = false): 
     },
     longShortRatio: { ...derived.longShortRatio, trendDelta: lsTrendDelta, freshness: { isStale: !lsFresh, updatedAt: lsTs, source: 'Binance Futures (hesap bazlı)' } },
     fundingRate: { ...derived.fundingRate, freshness: { isStale: !fundingFresh, updatedAt: fundingTs, source: 'Binance Futures' } },
-    mvrvRatio: { ...derived.mvrvRatio, freshness: { isStale: !mvrvFresh, updatedAt: mvrvTs, source: 'bitcoin-data.com' } },
+    mvrvRatio: { ...derived.mvrvRatio, freshness: { isStale: !mvrvFresh, updatedAt: mvrvTs, source: mvrvSource } },
     takerVolume: {
       buyVolBtc: takerBuyVol,
       sellVolBtc: takerSellVol,
@@ -815,6 +932,22 @@ export const fetchComprehensiveAnalytics = async (forceFresh: boolean = false): 
       currentPrice: btcCurrentPrice,
       trendLabel,
       freshness: { isStale: !klinesFresh, updatedAt: klinesTs, source: 'Binance Spot (günlük kapanış)' },
+    },
+    marketBreadth,
+    volatilityRegime: {
+      atr14: Math.round(atr14),
+      atrPercent,
+      ...volatilityRegime,
+      freshness: { isStale: !klinesFresh, updatedAt: klinesTs, source: 'Binance Spot (günlük ATR14)' },
+    },
+    stablecoinLiquidity,
+    marketGate: {
+      status: marketGateStatus,
+      label: marketGateLabel,
+      score: positiveChecks - riskChecks,
+      summary: marketGateSummary,
+      positiveChecks,
+      riskChecks,
     },
   };
 

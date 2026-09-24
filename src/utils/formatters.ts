@@ -53,6 +53,29 @@ export const formatPercentage = (value: number): string => {
   return `${prefix}${value.toFixed(2)}%`;
 };
 
+export const formatDateTime = (timestamp: number): string => {
+  if (!timestamp) return 'bilinmiyor';
+  try {
+    return new Date(timestamp).toLocaleString('tr-TR', {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return 'bilinmiyor';
+  }
+};
+
+export const formatCompactCurrency = (value: number): string => {
+  if (!Number.isFinite(value)) return '$0';
+  const absolute = Math.abs(value);
+  if (absolute >= 1_000_000_000) return `$${(value / 1_000_000_000).toFixed(1)}B`;
+  if (absolute >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
+  if (absolute >= 1_000) return `$${(value / 1_000).toFixed(1)}K`;
+  return `$${value.toFixed(0)}`;
+};
+
 export const formatNumber = (value: number, maxDecimals: number = 4): string => {
   if (value === undefined || value === null || isNaN(value)) {
     return '0';

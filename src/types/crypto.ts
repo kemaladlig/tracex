@@ -163,4 +163,37 @@ export interface MarketAnalyticsData {
     trendLabel: string;
     freshness: DataFreshness;
   };
+  marketBreadth: {
+    sampleSize: number;
+    aboveSma20Percent: number;
+    aboveSma50Percent: number;
+    label: string;
+    interpretation: string;
+    freshness: DataFreshness;
+  };
+  volatilityRegime: {
+    atr14: number;
+    atrPercent: number;
+    status: 'calm' | 'normal' | 'active' | 'high';
+    label: string;
+    interpretation: string;
+    freshness: DataFreshness;
+  };
+  stablecoinLiquidity: {
+    totalSupplyUsd: number;
+    change7dPercent: number;
+    change30dPercent: number;
+    status: 'expanding' | 'stable' | 'contracting';
+    label: string;
+    interpretation: string;
+    freshness: DataFreshness;
+  };
+  marketGate: {
+    status: 'open' | 'caution' | 'risk' | 'wait';
+    label: string;
+    score: number;
+    summary: string;
+    positiveChecks: number;
+    riskChecks: number;
+  };
 }
