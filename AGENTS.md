@@ -20,6 +20,7 @@ TraceX is a mobile-first, zero-backend Single Page Application (SPA) for real-ti
   - Stablecoin Liquidity: DefiLlama global USD-pegged stablecoin supply with 7-day and 30-day changes.
   - Market Dominance: Coinlore Global API (`api.coinlore.net/api/global/`).
   - Futures Intelligence: Binance Futures REST API (`fapi.binance.com` for Long/Short, Funding Rate, Taker Volume, and Open Interest).
+  - Local Smart Assistant: Deterministic TypeScript recommendation engine using portfolio balances, risk settings, USD-normalized valuation, cached klines, technical indicators, and existing market analytics. It produces local explanations and amount-aware position sizing; it never executes trades.
 
 ---
 
@@ -28,6 +29,10 @@ TraceX is a mobile-first, zero-backend Single Page Application (SPA) for real-ti
 ```
 src/
 ├── components/
+│   ├── assistant/        # Local recommendation panel, profile and explainable detail
+│   │   ├── AssistantPanel.tsx
+│   │   ├── AssistantProfileModal.tsx
+│   │   └── RecommendationDetailModal.tsx
 │   ├── analytics/        # Macro, on-chain, derivatives & technical terminal
 │   │   ├── AnalyticsView.tsx       # Loading, refresh and section controller
 │   │   ├── AnalyticsSkeleton.tsx   # Responsive loading state
@@ -68,20 +73,29 @@ src/
 ├── hooks/
 │   ├── useBinanceWebSocket.ts # Batched stream + visibility pause
 │   ├── useNetworkStatus.ts    # Online/offline connection monitor
+│   ├── useSmartAssistant.ts   # Local analysis lifecycle + throttled refresh
+│   ├── useWalletDisplay.ts    # TRY balance values and USD price formatting
 │   ├── useSwipeNavigation.ts  # Touch-only tab swipe (mobile)
 │   └── useTabHotkeys.ts       # Desktop keys 1-4 switch tabs
 ├── services/
+│   ├── assistant/
+│   │   ├── marketData.ts          # Cached per-asset klines + technical features
+│   │   └── recommendationEngine.ts # Pure scoring, hard gates and amount sizing
 │   ├── binanceApi.ts          # Spot REST endpoints (Klines, Search)
 │   ├── marketConditionsApi.ts # Breadth, ATR helpers and stablecoin liquidity
 │   ├── onChainApi.ts          # Multi-period FNG, MVRV, Dominance, Taker Vol, RSI
 │   └── storageCache.ts        # Namespaced localStorage cache with timestamp
 ├── store/
-│   └── useCryptoStore.ts # Central Zustand store with persistence
+│   ├── useAssistantStore.ts # Per-portfolio assistant settings + local log
+│   └── useCryptoStore.ts    # Central portfolio/market Zustand store
 ├── types/
-│   └── crypto.ts         # TypeScript interfaces & domain types
+│   ├── assistant.ts        # Settings, evidence and recommendation contracts
+│   └── crypto.ts           # TypeScript interfaces & domain types
 └── utils/
-    ├── formatters.ts     # Currency, percentage, timestamp helpers
-    └── haptics.ts        # Web Vibration API tactile touch helper
+    ├── formatters.ts          # Currency, percentage, timestamp helpers
+    ├── haptics.ts             # Web Vibration API tactile touch helper
+    ├── portfolioValuation.ts  # Quote-aware USD valuation and PnL
+    └── technicalIndicators.ts # Shared EMA/SMA/RSI/ATR/MACD primitives
 ```
 
 ---
@@ -124,6 +138,7 @@ All UI elements must strictly adhere to the brutalist Craft Paper aesthetic:
 
 - **Strict TypeScript:** No `any`. Explicit interfaces for all data structures and component props.
 - **Functional Paradigm:** Pure functional components and React Hooks.
+- **Smart Assistant:** Rules run locally and deterministically. No LLM, cloud inference, trade execution, exchange credentials, or wallet signing. Recommendations must include amount-aware sizing, evidence, risk, invalidation, and data-quality metadata.
 - **Defensive API Calls:** Every external fetch (`bitcoin-data.com`, `alternative.me`, `binance.com`) must have a `try/catch` fallback to cached or mathematical default values so the UI never breaks.
 - **Performance Budget:**
   - Heavy libraries (like chart engines) must remain lazy-loaded with `React.lazy()` and `Suspense`.

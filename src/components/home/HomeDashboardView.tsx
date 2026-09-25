@@ -15,7 +15,8 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { useCryptoStore } from '../../store/useCryptoStore';
-import { usePortfolioPrices } from '../../hooks/usePortfolioPrices';
+import { usePortfolioValuation } from '../../hooks/usePortfolioPrices';
+import { useWalletDisplay } from '../../hooks/useWalletDisplay';
 import { formatCurrency, formatPercentage, cleanSymbol } from '../../utils/formatters';
 import { triggerHaptic } from '../../utils/haptics';
 
@@ -112,13 +113,10 @@ interface HomeDashboardViewProps {
 
 export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({ refreshNonce = 0 }) => {
   const portfolio = useCryptoStore((state) => state.portfolio);
+  const portfolioValuation = usePortfolioValuation();
   const btcTicker = useCryptoStore((state) => state.tickers['BTCUSDT']);
-  const currency = useCryptoStore((state) => state.currency);
   const tryRate = useCryptoStore((state) => state.tryRate);
-  const portfolioPrices = usePortfolioPrices();
-  const activeRate = currency === 'TRY' ? tryRate : 1;
-  const secondaryCurrency = currency === 'USD' ? 'TRY' : 'USD';
-  const secondaryRate = currency === 'USD' ? tryRate : 1;
+  const { formatBalance, formatUsd } = useWalletDisplay();
   const hideBalances = useCryptoStore((state) => state.hideBalances);
   const toggleHideBalances = useCryptoStore((state) => state.toggleHideBalances);
   const setActiveTab = useCryptoStore((state) => state.setActiveTab);
@@ -410,22 +408,16 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({ refreshNon
 
   // Calculate Net Portfolio Value in USD — single memo so totals never mutate during render
   const { enrichedHoldings, totalUSD } = useMemo(() => {
-    const enriched = portfolio.map((asset) => {
-      const livePriceUSD = portfolioPrices[asset.symbol] ?? asset.buyPrice;
-      const valUSD = asset.amount * livePriceUSD;
-      const costUSD = asset.amount * asset.buyPrice;
-      return {
-        ...asset,
-        livePriceUSD,
-        valUSD,
-        costUSD,
-        pnlUSD: valUSD - costUSD,
-        pnlPct: costUSD > 0 ? ((valUSD - costUSD) / costUSD) * 100 : 0,
-      };
-    });
-    const total = enriched.reduce((sum, holding) => sum + holding.valUSD, 0);
-    return { enrichedHoldings: enriched, totalUSD: total };
-  }, [portfolio, portfolioPrices]);
+    const enriched = portfolioValuation.positions.map((position) => ({
+      ...position.asset,
+      livePriceUSD: position.currentUnitPriceUsd,
+      valUSD: position.currentValueUsd,
+      costUSD: position.costValueUsd,
+      pnlUSD: position.pnlUsd,
+      pnlPct: position.pnlPercent,
+    }));
+    return { enrichedHoldings: enriched, totalUSD: portfolioValuation.totalValueUsd };
+  }, [portfolioValuation]);
 
   // Sort holdings by valuation descending
   const sortedHoldings = useMemo(() => {
@@ -478,7 +470,7 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({ refreshNon
                   <span aria-hidden="true" className="w-1.5 self-stretch rounded-full bg-amber-400 animate-pulse" />
                 )}
                 <span className="text-3xl sm:text-4xl font-black text-stone-900 tracking-tight">
-                  {formatCurrency(btcPriceUSD, currency, activeRate, 0)}
+                  {formatCurrency(btcPriceUSD, 'USD', 1, 0)}
                 </span>
                 <span
                   className={`inline-flex items-center gap-0.5 font-black px-1.5 py-0.5 rounded border border-stone-900 text-xs shadow-hard-xs ${
@@ -498,7 +490,7 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({ refreshNon
 
               {/* Row 2: Approximate secondary quote directly underneath */}
               <div className="text-xs sm:text-sm font-bold text-stone-500 mt-0.5">
-                ≈ {formatCurrency(btcPriceUSD, secondaryCurrency, secondaryRate, 0)}
+                ≈ {formatCurrency(btcPriceUSD, 'TRY', tryRate, 0)}
               </div>
             </div>
 
@@ -909,12 +901,12 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({ refreshNon
                   <div className="text-3xl sm:text-4xl font-black text-stone-900 tracking-tight">
                     {hideBalances
                       ? '••••••••'
-                      : formatCurrency(totalUSD, currency, activeRate, 0)}
+                      : formatBalance(totalUSD, 0)}
                   </div>
                   <p className="text-sm font-bold text-stone-500 mt-1">
                     {hideBalances
                       ? '••••••'
-                      : `≈ ${formatCurrency(totalUSD, secondaryCurrency, secondaryRate, 0)}`}
+                      : `≈ ${formatUsd(totalUSD, 0)}`}
                   </p>
                 </div>
               </div>
@@ -999,7 +991,7 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({ refreshNon
                                 {base}
                               </span>
                               <span className="text-[10px] font-bold text-stone-500">
-                                {formatCurrency(item.livePriceUSD, currency, activeRate)}
+                                {formatUsd(item.livePriceUSD)}
                               </span>
                             </div>
                             <div className="text-[11px] font-bold text-stone-600 truncate">
@@ -1013,13 +1005,13 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({ refreshNon
                           <div className="text-xs font-black text-stone-900">
                             {hideBalances
                               ? '••••••'
-                              : formatCurrency(item.valUSD, currency, activeRate)}
+                              : formatBalance(item.valUSD)}
                           </div>
                           <div className="flex items-center justify-end gap-1.5 mt-0.5">
                             <span className="text-[10px] font-bold text-stone-500">
                               {hideBalances
                                 ? '••'
-                                : `≈ ${formatCurrency(item.valUSD, secondaryCurrency, secondaryRate)}`}
+                                : `≈ ${formatUsd(item.valUSD)}`}
                             </span>
                             <div className="w-10 h-1.5 bg-stone-200 border border-stone-900 rounded-full overflow-hidden">
                               <div

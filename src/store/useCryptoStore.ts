@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import { priceToUsd } from '../utils/portfolioValuation';
 import type {
   ConnectionStatus,
-  Currency,
   MarketAnalyticsData,
   PortfolioAsset,
   PortfolioBackupData,
@@ -19,7 +19,6 @@ interface CryptoState {
   portfolio: PortfolioAsset[];
   hideBalances: boolean;
   realizedPnL: number;
-  currency: Currency;
 
   // Realtime Data (Memory only)
   tickers: Record<string, TickerData>;
@@ -44,7 +43,6 @@ interface CryptoState {
   importBackupData: (backup: PortfolioBackupData) => { success: boolean; message: string };
 
   // Asset Actions (Operate on Active Group)
-  setCurrency: (c: Currency) => void;
   setAnalyticsData: (data: MarketAnalyticsData) => void;
   addToWatchlist: (symbol: string) => void;
   removeFromWatchlist: (symbol: string) => void;
@@ -140,7 +138,6 @@ export const useCryptoStore = create<CryptoState>()(
       portfolio: DEFAULT_INITIAL_ASSETS,
       hideBalances: false,
       realizedPnL: 0,
-      currency: 'USD',
       tickers: initialCachedTickers,
       tryRate: initialCachedTickers['USDTTRY']?.price || 38.65,
       eurRate: 1.08,
@@ -151,7 +148,6 @@ export const useCryptoStore = create<CryptoState>()(
       activeMarketSymbols: [],
       setActiveMarketSymbols: (activeMarketSymbols) => set({ activeMarketSymbols }),
 
-      setCurrency: (currency) => set({ currency }),
       setAnalyticsData: (analyticsData) => set({ analyticsData }),
       toggleHideBalances: () => set((state) => ({ hideBalances: !state.hideBalances })),
 
@@ -310,6 +306,10 @@ export const useCryptoStore = create<CryptoState>()(
                   symbol: (a.symbol || '').toUpperCase(),
                   amount: Number(a.amount) || 0,
                   buyPrice: Number(a.buyPrice) || 0,
+                  costBasisUsd:
+                    Number.isFinite(a.costBasisUsd) && (a.costBasisUsd ?? 0) > 0
+                      ? a.costBasisUsd
+                      : undefined,
                   timestamp: Number(a.timestamp) || Date.now(),
                 }))
               : [],
@@ -349,6 +349,12 @@ export const useCryptoStore = create<CryptoState>()(
         const state = get();
         const currentPortfolio = state.portfolio;
         const currentWatchlist = state.watchlist;
+        const incomingUnitCostUsd =
+          assetData.costBasisUsd ??
+          priceToUsd(cleanSymbol, assetData.buyPrice, state.tickers, {
+            tryRate: state.tryRate,
+            eurRate: state.eurRate,
+          });
 
         const existingIndex = currentPortfolio.findIndex((p) => p.symbol === cleanSymbol);
 
@@ -358,11 +364,22 @@ export const useCryptoStore = create<CryptoState>()(
           const totalAmount = existing.amount + assetData.amount;
           const weightedBuyPrice =
             (existing.amount * existing.buyPrice + assetData.amount * assetData.buyPrice) / totalAmount;
+          const existingUnitCostUsd =
+            existing.costBasisUsd ??
+            priceToUsd(existing.symbol, existing.buyPrice, state.tickers, {
+              tryRate: state.tryRate,
+              eurRate: state.eurRate,
+            });
+          const weightedCostBasisUsd =
+            totalAmount > 0
+              ? (existing.amount * existingUnitCostUsd + assetData.amount * incomingUnitCostUsd) / totalAmount
+              : incomingUnitCostUsd;
 
           const updatedAsset: PortfolioAsset = {
             ...existing,
             amount: totalAmount,
             buyPrice: weightedBuyPrice,
+            costBasisUsd: weightedCostBasisUsd,
             timestamp: Date.now(),
           };
 
@@ -373,6 +390,7 @@ export const useCryptoStore = create<CryptoState>()(
             ...assetData,
             id: `asset-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
             symbol: cleanSymbol,
+            costBasisUsd: assetData.amount > 0 ? incomingUnitCostUsd / assetData.amount : incomingUnitCostUsd,
             timestamp: Date.now(),
           };
           updatedPortfolio = [newAsset, ...currentPortfolio];
@@ -405,7 +423,12 @@ export const useCryptoStore = create<CryptoState>()(
         incomingAssets.forEach((assetData) => {
           const cleanSymbol = assetData.symbol.trim().toUpperCase();
           if (!cleanSymbol || assetData.amount <= 0) return;
-
+          const incomingUnitCostUsd =
+            assetData.costBasisUsd ??
+            priceToUsd(cleanSymbol, assetData.buyPrice, state.tickers, {
+              tryRate: state.tryRate,
+              eurRate: state.eurRate,
+            });
           const existingIndex = updatedPortfolio.findIndex((p) => p.symbol === cleanSymbol);
 
           if (existingIndex > -1) {
@@ -413,11 +436,21 @@ export const useCryptoStore = create<CryptoState>()(
             const totalAmount = existing.amount + assetData.amount;
             const weightedBuyPrice =
               (existing.amount * existing.buyPrice + assetData.amount * assetData.buyPrice) / totalAmount;
+            const existingUnitCostUsd =
+              existing.costBasisUsd ??
+              priceToUsd(existing.symbol, existing.buyPrice, state.tickers, {
+                tryRate: state.tryRate,
+                eurRate: state.eurRate,
+              });
 
             updatedPortfolio[existingIndex] = {
               ...existing,
               amount: totalAmount,
               buyPrice: weightedBuyPrice,
+              costBasisUsd:
+                totalAmount > 0
+                  ? (existing.amount * existingUnitCostUsd + assetData.amount * incomingUnitCostUsd) / totalAmount
+                  : incomingUnitCostUsd,
               timestamp: Date.now(),
             };
           } else {
@@ -426,6 +459,7 @@ export const useCryptoStore = create<CryptoState>()(
               symbol: cleanSymbol,
               amount: assetData.amount,
               buyPrice: assetData.buyPrice,
+              costBasisUsd: incomingUnitCostUsd,
               timestamp: Date.now(),
             };
             updatedPortfolio.unshift(newAsset);
@@ -454,7 +488,17 @@ export const useCryptoStore = create<CryptoState>()(
         if (!asset || sellAmount <= 0) return { pnl: 0, success: false };
 
         const actualSellAmount = Math.min(sellAmount, asset.amount);
-        const pnl = actualSellAmount * (sellPrice - asset.buyPrice);
+        const sellUnitPriceUsd = priceToUsd(asset.symbol, sellPrice, state.tickers, {
+          tryRate: state.tryRate,
+          eurRate: state.eurRate,
+        });
+        const costBasisUsd =
+          asset.costBasisUsd ??
+          priceToUsd(asset.symbol, asset.buyPrice, state.tickers, {
+            tryRate: state.tryRate,
+            eurRate: state.eurRate,
+          });
+        const pnl = actualSellAmount * (sellUnitPriceUsd - costBasisUsd);
         const remainingAmount = asset.amount - actualSellAmount;
 
         let updatedPortfolio: PortfolioAsset[];
@@ -627,16 +671,11 @@ export const useCryptoStore = create<CryptoState>()(
         portfolio: state.portfolio,
         hideBalances: state.hideBalances,
         realizedPnL: state.realizedPnL,
-        currency: state.currency,
       }),
       onRehydrateStorage: () => (state) => {
         if (!state) return;
 
         try {
-          if ((state.currency as string) === 'EUR') {
-            state.currency = 'USD';
-          }
-
           // Auto-migration from flat portfolio to portfolioGroups
           if (!Array.isArray(state.portfolioGroups) || state.portfolioGroups.length === 0) {
             const assets = Array.isArray(state.portfolio) && state.portfolio.length > 0

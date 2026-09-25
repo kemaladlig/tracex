@@ -6,6 +6,10 @@ import {
   fetchStablecoinLiquidity,
 } from './marketConditionsApi';
 import { getStorageCacheWithTs, setStorageCache } from './storageCache';
+import {
+  exponentialMovingAverage,
+  relativeStrengthIndex,
+} from '../utils/technicalIndicators';
 
 let cachedAnalytics: MarketAnalyticsData | null = null;
 let cacheTimestamp = 0;
@@ -177,48 +181,6 @@ export const fetchFearGreed = async (): Promise<FearGreedSnapshot | null> => {
   } catch {
     return null;
   }
-};
-
-/**
- * Standard Wilder's RSI calculation from candle closes
- */
-const computeRSI = (closes: number[], period: number = 14): number => {
-  if (closes.length <= period) return 50;
-  let gains = 0;
-  let losses = 0;
-  for (let i = 1; i <= period; i++) {
-    const diff = closes[i] - closes[i - 1];
-    if (diff >= 0) gains += diff;
-    else losses += Math.abs(diff);
-  }
-  let avgGain = gains / period;
-  let avgLoss = losses / period;
-
-  for (let i = period + 1; i < closes.length; i++) {
-    const diff = closes[i] - closes[i - 1];
-    if (diff >= 0) {
-      avgGain = (avgGain * (period - 1) + diff) / period;
-      avgLoss = (avgLoss * (period - 1)) / period;
-    } else {
-      avgGain = (avgGain * (period - 1)) / period;
-      avgLoss = (avgLoss * (period - 1) + Math.abs(diff)) / period;
-    }
-  }
-
-  if (avgLoss === 0) return 100;
-  const rs = avgGain / avgLoss;
-  return parseFloat((100 - 100 / (1 + rs)).toFixed(1));
-};
-
-const computeEMA = (closes: number[], period: number): number => {
-  if (closes.length === 0) return 0;
-  const k = 2 / (period + 1);
-  const seedLen = Math.min(period, closes.length);
-  let ema = closes.slice(0, seedLen).reduce((a, b) => a + b, 0) / seedLen;
-  for (let i = seedLen; i < closes.length; i++) {
-    ema = closes[i] * k + ema * (1 - k);
-  }
-  return Math.round(ema);
 };
 
 /**
@@ -767,7 +729,7 @@ export const fetchComprehensiveAnalytics = async (forceFresh: boolean = false): 
       if (Array.isArray(klineData) && klineData.length >= 15) {
         const closes: number[] = klineData.map((k: (string | number)[]) => parseFloat(k[4] as string));
         btcCurrentPrice = closes[closes.length - 1];
-        rsi14 = computeRSI(closes, 14);
+        rsi14 = relativeStrengthIndex(closes, 14) ?? 50;
         const calculatedAtr = calculateAtr(klineData, 14);
         if (calculatedAtr !== null) {
           atr14 = calculatedAtr;
@@ -776,7 +738,7 @@ export const fetchComprehensiveAnalytics = async (forceFresh: boolean = false): 
 
         const last20 = closes.slice(-20);
         sma20Price = Math.round(last20.reduce((a, b) => a + b, 0) / last20.length);
-        ema50Price = computeEMA(closes, 50);
+        ema50Price = Math.round(exponentialMovingAverage(closes, 50) ?? 0);
         if (closes.length >= 200) {
           const last200 = closes.slice(-200);
           sma200Price = Math.round(last200.reduce((a, b) => a + b, 0) / last200.length);

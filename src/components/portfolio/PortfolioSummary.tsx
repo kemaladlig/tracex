@@ -1,8 +1,9 @@
 import React from 'react';
 import { ArrowDownRight, ArrowUpRight, ChevronDown, ChevronUp, Plus, ShieldCheck, WalletCards, Zap } from 'lucide-react';
 import { useCryptoStore } from '../../store/useCryptoStore';
-import { usePortfolioPrices } from '../../hooks/usePortfolioPrices';
-import { formatCurrency, formatPercentage } from '../../utils/formatters';
+import { usePortfolioValuation } from '../../hooks/usePortfolioPrices';
+import { formatPercentage } from '../../utils/formatters';
+import { useWalletDisplay } from '../../hooks/useWalletDisplay';
 import { InfoBadge } from '../common/InfoBadge';
 
 interface PortfolioSummaryProps {
@@ -28,46 +29,23 @@ export const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({
   onToggleDetails,
 }) => {
   const portfolio = useCryptoStore((state) => state.portfolio);
-  const currency = useCryptoStore((state) => state.currency);
-  const portfolioPrices = usePortfolioPrices();
+  const valuation = usePortfolioValuation();
   const hideBalances = useCryptoStore((state) => state.hideBalances);
   const realizedPnL = useCryptoStore((state) => state.realizedPnL);
-  const tryRate = useCryptoStore((state) => state.tryRate);
-  const activeRate = currency === 'TRY' ? tryRate : 1;
-  const secondaryCurrency = currency === 'USD' ? 'TRY' : 'USD';
-  const secondaryRate = currency === 'USD' ? tryRate : 1;
+  const { formatBalance, formatUsd } = useWalletDisplay();
 
-  let totalCurrentValue = 0;
-  let totalCost = 0;
-
-  const assetValues: { symbol: string; value: number; percent: number }[] = [];
-
-  portfolio.forEach((asset) => {
-    const livePrice = portfolioPrices[asset.symbol] ?? asset.buyPrice;
-    const currentAssetVal = asset.amount * livePrice;
-    const costAssetVal = asset.amount * asset.buyPrice;
-
-    totalCurrentValue += currentAssetVal;
-    totalCost += costAssetVal;
-
-    assetValues.push({
-      symbol: asset.symbol.replace('USDT', ''),
-      value: currentAssetVal,
-      percent: 0,
-    });
-  });
-
-  if (totalCurrentValue > 0) {
-    assetValues.forEach((a) => {
-      a.percent = (a.value / totalCurrentValue) * 100;
-    });
-  }
-
-  assetValues.sort((a, b) => b.value - a.value);
-
-  const totalPnL = totalCurrentValue - totalCost;
-  const totalPnLPercent = totalCost > 0 ? (totalPnL / totalCost) * 100 : 0;
+  const totalCurrentValue = valuation.totalValueUsd;
+  const totalCost = valuation.totalCostUsd;
+  const totalPnL = valuation.pnlUsd;
+  const totalPnLPercent = valuation.pnlPercent;
   const isProfit = totalPnL >= 0;
+  const assetValues = valuation.positions
+    .map((position) => ({
+      symbol: position.baseAsset,
+      value: position.currentValueUsd,
+      percent: totalCurrentValue > 0 ? (position.currentValueUsd / totalCurrentValue) * 100 : 0,
+    }))
+    .sort((a, b) => b.value - a.value);
   const isRealizedProfit = realizedPnL >= 0;
 
   return (
@@ -93,15 +71,15 @@ export const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({
         </div>
       </div>
 
-      {/* Main Balance Display with Privacy Mode Support (selected currency + secondary quote) */}
+      {/* Main Balance Display with Privacy Mode Support (TRY primary + USD reference) */}
       <div className="mb-3">
         <div className="flex items-center justify-between gap-2">
           <div>
             <div className="text-3xl font-black tracking-tight text-stone-900">
-              {hideBalances ? '••••••••' : formatCurrency(totalCurrentValue, currency, activeRate)}
+              {hideBalances ? '••••••••' : formatBalance(totalCurrentValue)}
             </div>
             <p className="text-xs font-bold text-stone-500 mt-0.5">
-              {hideBalances ? '••••••' : `≈ ${formatCurrency(totalCurrentValue, secondaryCurrency, secondaryRate)}`}
+              {hideBalances ? '••••••' : `≈ ${formatUsd(totalCurrentValue)}`}
             </p>
           </div>
 
@@ -140,7 +118,7 @@ export const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({
                   }`}
                 >
                   {isProfit ? <ArrowUpRight className="w-3 h-3 stroke-3" /> : <ArrowDownRight className="w-3 h-3 stroke-3" />}
-                  {formatCurrency(totalPnL, currency, activeRate)} ({formatPercentage(totalPnLPercent)})
+                  {formatBalance(totalPnL)} ({formatPercentage(totalPnLPercent)})
                 </span>
               )}
             </div>
@@ -153,7 +131,7 @@ export const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({
                     isRealizedProfit ? 'bg-emerald-100 text-emerald-900' : 'bg-rose-100 text-rose-900'
                   }`}
                 >
-                  {formatCurrency(realizedPnL, currency, activeRate)}
+                  {formatBalance(realizedPnL)}
                 </span>
                 <InfoBadge
                   title="Realize Kâr / Zarar"
@@ -165,16 +143,11 @@ export const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({
 
           {/* Best & Worst Performer Badges */}
           {portfolio.length >= 2 && !hideBalances && (() => {
-            const performers = portfolio.map((asset) => {
-              const livePrice = portfolioPrices[asset.symbol] ?? asset.buyPrice;
-              const pnlPercent = asset.buyPrice > 0 ? ((livePrice - asset.buyPrice) / asset.buyPrice) * 100 : 0;
-              const pnlAmount = (livePrice - asset.buyPrice) * asset.amount;
-              return {
-                symbol: asset.symbol.replace('USDT', ''),
-                pnlPercent,
-                pnlAmount,
-              };
-            });
+            const performers = valuation.positions.map((position) => ({
+              symbol: position.baseAsset,
+              pnlPercent: position.pnlPercent,
+              pnlAmount: position.pnlUsd,
+            }));
             const sorted = [...performers].sort((a, b) => b.pnlPercent - a.pnlPercent);
             const best = sorted[0];
             const worst = sorted[sorted.length - 1];
@@ -195,7 +168,7 @@ export const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({
                   </div>
                   <span className="text-[9px] text-stone-500 font-bold block">
                     {best.pnlAmount >= 0 ? '+' : ''}
-                    {formatCurrency(best.pnlAmount, currency, activeRate)}
+                    {formatBalance(best.pnlAmount)}
                   </span>
                 </div>
 
@@ -216,7 +189,7 @@ export const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({
                   </div>
                   <span className="text-[9px] text-stone-500 font-bold block">
                     {worst.pnlAmount >= 0 ? '+' : ''}
-                    {formatCurrency(worst.pnlAmount, currency, activeRate)}
+                    {formatBalance(worst.pnlAmount)}
                   </span>
                 </div>
               </div>
@@ -268,7 +241,7 @@ export const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({
           <div>
             <span className="text-stone-500 block text-[9px] uppercase font-bold">Toplam Maliyet</span>
             <span className="text-stone-900 font-bold">
-              {hideBalances ? '••••' : formatCurrency(totalCost, currency, activeRate)}
+              {hideBalances ? '••••' : formatBalance(totalCost)}
             </span>
           </div>
           <div>

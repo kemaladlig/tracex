@@ -1,4 +1,5 @@
 import type { Currency } from '../types/crypto';
+import { parseTradingPair } from './portfolioValuation';
 
 export const formatCurrency = (
   value: number,
@@ -86,15 +87,6 @@ export const formatNumber = (value: number, maxDecimals: number = 4): string => 
 };
 
 export const cleanSymbol = (symbol: string): { base: string; quote: string } => {
-  const upper = symbol.toUpperCase();
-  if (upper.endsWith('USDT')) {
-    return { base: upper.replace('USDT', ''), quote: 'USDT' };
-  }
-  if (upper.endsWith('BUSD')) {
-    return { base: upper.replace('BUSD', ''), quote: 'BUSD' };
-  }
-  if (upper.endsWith('TRY')) {
-    return { base: upper.replace('TRY', ''), quote: 'TRY' };
-  }
-  return { base: upper, quote: 'USDT' };
+  const { baseAsset, quoteAsset } = parseTradingPair(symbol);
+  return { base: baseAsset, quote: quoteAsset };
 };

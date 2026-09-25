@@ -38,9 +38,14 @@ import {
   Search,
 } from 'lucide-react';
 import { useCryptoStore } from '../../store/useCryptoStore';
+import { usePortfolioValuation } from '../../hooks/usePortfolioPrices';
 import { fetchHistoricalKlines } from '../../services/binanceApi';
 import { cleanSymbol, formatCurrency, formatPercentage } from '../../utils/formatters';
 import { triggerHaptic } from '../../utils/haptics';
+import {
+  exponentialMovingAverageSeries,
+  simpleMovingAverage,
+} from '../../utils/technicalIndicators';
 import { Modal } from '../common/Modal';
 import { VolumeCandleSeriesView, type VolumeCandleData } from './volumeCandleSeries';
 
@@ -72,26 +77,19 @@ const CHART_COST_LINE_KEY = 'tracex_chart_show_cost_line';
 const CHART_HIGH_LOW_KEY = 'tracex_chart_show_high_low';
 
 const calculateEMA = (data: { time: UTCTimestamp; close: number }[], period: number) => {
-  if (data.length < period) return [];
-  const k = 2 / (period + 1);
-  const result: { time: UTCTimestamp; value: number }[] = [];
-  let ema = data.slice(0, period).reduce((sum, d) => sum + d.close, 0) / period;
-  result.push({ time: data[period - 1].time, value: parseFloat(ema.toFixed(4)) });
-  for (let i = period; i < data.length; i++) {
-    ema = data[i].close * k + ema * (1 - k);
-    result.push({ time: data[i].time, value: parseFloat(ema.toFixed(4)) });
-  }
-  return result;
+  return exponentialMovingAverageSeries(data.map((item) => item.close), period).flatMap((value, index) => {
+    const point = data[index];
+    return value !== null && point
+      ? [{ time: point.time, value: Number(value.toFixed(4)) }]
+      : [];
+  });
 };
 
 const calculateSMA = (data: { time: UTCTimestamp; close: number }[], period: number) => {
-  if (data.length < period) return [];
-  const result: { time: UTCTimestamp; value: number }[] = [];
-  for (let i = period - 1; i < data.length; i++) {
-    const sum = data.slice(i - period + 1, i + 1).reduce((acc, d) => acc + d.close, 0);
-    result.push({ time: data[i].time, value: parseFloat((sum / period).toFixed(4)) });
-  }
-  return result;
+  return data.slice(period - 1).flatMap((point, index) => {
+    const value = simpleMovingAverage(data.slice(0, index + period).map((item) => item.close), period);
+    return value !== null ? [{ time: point.time, value: Number(value.toFixed(4)) }] : [];
+  });
 };
 
 const calculateHeikinAshi = (
@@ -208,6 +206,10 @@ export const DetailChartModal: React.FC = () => {
         a.symbol.replace('USDT', '').toUpperCase() === cleanTarget
     );
   }, [portfolio, selectedSymbol]);
+  const portfolioValuation = usePortfolioValuation();
+  const userCostUsd = portfolioValuation.positions.find(
+    (position) => position.asset.id === userAsset?.id
+  )?.costBasisUsd ?? 0;
 
   const [interval, setInterval] = useState<string>(() => {
     try {
@@ -716,10 +718,10 @@ export const DetailChartModal: React.FC = () => {
       costLineRef.current = null;
     }
 
-    if (showCostLine && userAsset && userAsset.buyPrice > 0) {
+    if (showCostLine && userAsset && userCostUsd > 0) {
       try {
         costLineRef.current = activeSeries.createPriceLine({
-          price: userAsset.buyPrice,
+          price: userCostUsd,
           color: '#d97706',
           lineWidth: 2,
           lineStyle: LineStyle.Dashed,
@@ -730,7 +732,7 @@ export const DetailChartModal: React.FC = () => {
         console.warn('Cost line update fallback:', e);
       }
     }
-  }, [showCostLine, userAsset]);
+  }, [showCostLine, userAsset, userCostUsd]);
 
   // 2. Dynamic Series Visibility & Options: Toggles without tearing down the chart
   useEffect(() => {
@@ -1635,7 +1637,7 @@ export const DetailChartModal: React.FC = () => {
                       <div>
                         <div className="text-xs font-black text-stone-900">CÜZDAN MALİYETİ (COST)</div>
                         <div className="text-[9px] text-stone-500">
-                          {formatCurrency(userAsset.buyPrice, 'USD', 1)} seviyesinde referans çizgisi
+                          {formatCurrency(userCostUsd, 'USD', 1)} seviyesinde referans çizgisi
                         </div>
                       </div>
                     </div>

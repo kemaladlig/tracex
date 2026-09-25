@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tracex-v5-fast-shell';
+const CACHE_NAME = 'tracex-v6-smart-assistant';
 const STATIC_ASSETS = ['/icon.png', '/manifest.json'];
 
 self.addEventListener('install', (event) => {
@@ -35,7 +35,9 @@ self.addEventListener('fetch', (event) => {
     url.hostname.includes('binance.com') ||
     url.hostname.includes('alternative.me') ||
     url.hostname.includes('bitcoin-data.com') ||
-    url.hostname.includes('coinlore.net')
+    url.hostname.includes('coinlore.net') ||
+    url.hostname.includes('coingecko.com') ||
+    url.hostname.includes('stablecoins.llama.fi')
   ) {
     return;
   }

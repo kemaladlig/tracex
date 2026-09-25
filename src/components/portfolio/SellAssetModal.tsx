@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { ArrowDownRight, ArrowUpRight, Check, MinusCircle } from 'lucide-react';
 import type { PortfolioAsset } from '../../types/crypto';
 import { useCryptoStore } from '../../store/useCryptoStore';
-import { cleanSymbol, formatCurrency, formatPercentage } from '../../utils/formatters';
+import { cleanSymbol, formatPercentage } from '../../utils/formatters';
+import { usePortfolioValuation } from '../../hooks/usePortfolioPrices';
+import { useWalletDisplay } from '../../hooks/useWalletDisplay';
 import { Modal } from '../common/Modal';
 
 interface SellAssetModalProps {
@@ -16,19 +18,21 @@ export const SellAssetModal: React.FC<SellAssetModalProps> = ({ asset, isOpen, o
   const [error, setError] = useState<string>('');
 
   const ticker = useCryptoStore((state) => (asset ? state.tickers[asset.symbol] : undefined));
-  const currency = useCryptoStore((state) => state.currency);
-  const tryRate = useCryptoStore((state) => state.tryRate);
+  const { formatBalance, formatUsd } = useWalletDisplay();
   const sellPortfolioAsset = useCryptoStore((state) => state.sellPortfolioAsset);
+  const valuation = usePortfolioValuation();
 
   if (!isOpen || !asset) return null;
 
   const { base } = cleanSymbol(asset.symbol);
   const livePrice = ticker?.price ?? asset.buyPrice;
-  const activeRate = currency === 'TRY' ? tryRate : 1;
+  const position = valuation.positions.find((item) => item.asset.id === asset.id);
+  const currentUnitPriceUsd = position?.currentUnitPriceUsd ?? 0;
+  const costBasisUsd = position?.costBasisUsd ?? 0;
 
   const numSellAmount = parseFloat(sellAmount) || 0;
-  const totalSellValue = numSellAmount * livePrice;
-  const costValue = numSellAmount * asset.buyPrice;
+  const totalSellValue = numSellAmount * currentUnitPriceUsd;
+  const costValue = numSellAmount * costBasisUsd;
   const pnlAmount = totalSellValue - costValue;
   const pnlPercent = costValue > 0 ? (pnlAmount / costValue) * 100 : 0;
   const isProfit = pnlAmount >= 0;
@@ -77,12 +81,12 @@ export const SellAssetModal: React.FC<SellAssetModalProps> = ({ asset, isOpen, o
             {/* Live Price and Cost Overview Box */}
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="p-2.5 bg-white border-2 border-stone-900 rounded-md shadow-hard-sm">
-                <span className="text-[10px] text-stone-500 font-bold uppercase block">Ort. Alış Fiyatı</span>
-                <span className="font-mono font-bold text-stone-900">{formatCurrency(asset.buyPrice, currency, activeRate)}</span>
+                <span className="text-[10px] text-stone-500 font-bold uppercase block">Ort. Alış Değeri (TRY)</span>
+                <span className="block font-mono font-bold text-stone-900">{formatBalance(costBasisUsd)}</span>
               </div>
               <div className="p-2.5 bg-amber-100 border-2 border-stone-900 rounded-md shadow-hard-sm">
-                <span className="text-[10px] text-stone-600 font-bold uppercase block">Canlı Satış Fiyatı</span>
-                <span className="font-mono font-bold text-stone-900">{formatCurrency(livePrice, currency, activeRate)}</span>
+                <span className="text-[10px] text-stone-600 font-bold uppercase block">Canlı Satış Fiyatı (USD)</span>
+                <span className="block font-mono font-bold text-stone-900">{formatUsd(currentUnitPriceUsd)}</span>
               </div>
             </div>
 
@@ -131,7 +135,7 @@ export const SellAssetModal: React.FC<SellAssetModalProps> = ({ asset, isOpen, o
               <div className="p-3 bg-white border-2 border-stone-900 rounded-md shadow-hard-sm">
                 <div className="flex items-center justify-between text-xs mb-1">
                   <span className="text-stone-600 font-bold">Toplam Tahsilat:</span>
-                  <span className="font-bold text-stone-900">{formatCurrency(totalSellValue, currency, activeRate)}</span>
+                  <span className="font-bold text-stone-900">{formatBalance(totalSellValue)}</span>
                 </div>
                 <div className="flex items-center justify-between text-xs pt-1 border-t border-stone-200">
                   <span className="text-stone-600 font-bold">Gerçekleşecek K/Z:</span>
@@ -141,7 +145,7 @@ export const SellAssetModal: React.FC<SellAssetModalProps> = ({ asset, isOpen, o
                     }`}
                   >
                     {isProfit ? <ArrowUpRight className="w-3.5 h-3.5 stroke-3" /> : <ArrowDownRight className="w-3.5 h-3.5 stroke-3" />}
-                    {formatCurrency(pnlAmount, currency, activeRate)} ({formatPercentage(pnlPercent)})
+                    {formatBalance(pnlAmount)} ({formatPercentage(pnlPercent)})
                   </span>
                 </div>
               </div>

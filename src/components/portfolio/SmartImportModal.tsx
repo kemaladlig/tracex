@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { ArrowRight, Check, Trash2, HelpCircle, FileText, Zap } from 'lucide-react';
 import { useCryptoStore } from '../../store/useCryptoStore';
+import { useWalletDisplay } from '../../hooks/useWalletDisplay';
 import { parsePortfolioText, type ParsedAssetDraft } from '../../utils/portfolioParser';
-import { formatCurrency } from '../../utils/formatters';
 import { Modal } from '../common/Modal';
 
 interface SmartImportModalProps {
@@ -26,9 +26,7 @@ export const SmartImportModal: React.FC<SmartImportModalProps> = ({ isOpen, onCl
 
   const tickers = useCryptoStore((state) => state.tickers);
   const bulkAddPortfolioAssets = useCryptoStore((state) => state.bulkAddPortfolioAssets);
-  const currency = useCryptoStore((state) => state.currency);
-  const tryRate = useCryptoStore((state) => state.tryRate);
-  const activeRate = currency === 'TRY' ? tryRate : 1;
+  const { formatBalance } = useWalletDisplay();
 
   // Parse + price resolution derived from raw text, edits, toggle, and live tickers
   const drafts: EditableDraftAsset[] = useMemo(() => {
@@ -160,7 +158,7 @@ export const SmartImportModal: React.FC<SmartImportModalProps> = ({ isOpen, onCl
               <div className="flex items-center justify-between text-[11px] font-black text-stone-900 uppercase">
                 <span>Algılanan Varlıklar ({drafts.length})</span>
                 <span className="text-stone-600">
-                  Tahmini Toplam: {formatCurrency(totalCalculatedValue, currency, activeRate)}
+                  Tahmini Toplam: {formatBalance(totalCalculatedValue)}
                 </span>
               </div>
 

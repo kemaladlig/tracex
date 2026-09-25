@@ -26,6 +26,8 @@ export interface PortfolioAsset {
   symbol: string;
   amount: number;
   buyPrice: number;
+  /** Purchase price normalized to USD when the position was added. Legacy rows may derive it from the quote currency. */
+  costBasisUsd?: number;
   timestamp: number;
 }
 

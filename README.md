@@ -41,9 +41,17 @@ Uygulama harici bir sunucuya ihtiyaç duymadan doğrudan **Binance Public WebSoc
 - **Lider & En Zayıf Varlık Rozetleri:** Portföyün en çok kazandıran ve en çok gerileyen varlıklarını tek bakışta özetler.
 - **Varlık Dağılım Cetveli:** Portföydeki varlıkların yüzdesel ağırlığını gösteren renkli segment barı.
 - **Gizlilik Modu:** Tek tıkla tüm bakiyeleri ve k/z tutarlarını `••••••` şeklinde maskeleme.
-- **Çoklu Para Birimi:** Canlı Binance kurlarıyla tek tıkla `$ USD` veya `₺ TRY` görünümüne geçiş.
+- **Cüzdan Değerleri:** Portföy bakiyeleri, maliyetler ve K/Z değerleri TRY gösterilir; kripto birim fiyatları ve teknik seviyeler USD olarak gösterilir.
 
-### 5. Mobil & UX Mimarisi
+### 5. Yerel Akıllı Portföy Asistanı
+- **LLM'siz, Deterministik Öneri Motoru:** Portföy bakiyeleri, risk profili, teknik göstergeler, piyasa kapısı, duygu, MVRV, likidite ve türev verilerini cihazda kurallarla birleştirir.
+- **Tutar Farkındalığı:** `$100` ile `$100.000` portföylerde minimum uygulanabilir işlem, risk bütçesi, likidite katılımı, pozisyon sınırı ve DCA dilimi ayrı hesaplanır.
+- **Açıklanabilir Sonuçlar:** Her öneri; gerekçe, risk, veri kalitesi, önerilen USD/token miktarı, giriş aralığı ve geçersizleşme seviyesiyle gösterilir.
+- **Yalnızca Öneri:** Uygulama emir göndermez, borsa kimlik bilgisi saklamaz, cüzdan imzalamaz veya otomatik işlem yapmaz.
+- **USD Normalizasyonu:** USDT, TRY, EUR ve kripto pariteleri ortak USD değerine çevrilerek toplam varlık, K/Z ve gerçekleşen kâr hesapları tutarlı tutulur.
+- **Cüzdan Para Birimi:** Cüzdan bakiye/değerleri TRY, kripto birim fiyatları USD olarak gösterilir. BTC global fiyatı da her zaman USD olarak kalır.
+
+### 6. Mobil & UX Mimarisi
 - **Craft Paper & Thick Ink Tasarım Sistemi:** 2px kalın mürekkep sınırları, sert gölgeler (`shadow-hard`) ve sıcak kağıt zemin (`#f4f0e6`).
 - **Pull-to-Refresh:** Mobilde ekranı yukarıdan aşağıya çekerek anında taze veri çekme.
 - **İskelet Ekranlar (Skeleton Loaders):** Veri yüklenirken dönen spinner yerine gerçek kart boyutlarında yumuşak yanıp sönen taslak bloklar.
@@ -56,7 +64,7 @@ Uygulama harici bir sunucuya ihtiyaç duymadan doğrudan **Binance Public WebSoc
 
 - **Çatı:** React 19, TypeScript, Vite 8
 - **Stil & Tokenlar:** Tailwind CSS v4, Custom Craft Paper Tokens (`index.css`)
-- **Durum & Depolama:** Zustand + LocalStorage Persistence (`tracex-storage-v3`)
+- **Durum & Depolama:** Zustand + LocalStorage Persistence (`tracex-storage-v3`, `tracex-assistant-v1`)
 - **Grafik Motoru:** Lightweight Charts (TradingView)
 - **İkon Seti:** Lucide React
 
@@ -65,7 +73,7 @@ Uygulama harici bir sunucuya ihtiyaç duymadan doğrudan **Binance Public WebSoc
 ## Kurulum ve Çalıştırma
 
 ### Gereksinimler
-- Node.js (v18+)
+- Node.js (v20.19+ or v22.12+)
 - npm, pnpm veya bun
 
 ### Geliştirme Sunucusu
@@ -83,7 +91,14 @@ Tarayıcınızda `http://localhost:5173/` adresini açın.
 ### Üretim Derlemesi (Production Build)
 
 ```bash
+# Üretim Derlemesi + TypeScript kontrolü
 npm run build
+
+# Deterministik asistan ve valuation testleri
+npm test
+
+# Lint kontrolü
+npm run lint
 ```
 
 ---

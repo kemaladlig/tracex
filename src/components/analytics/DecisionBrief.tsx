@@ -126,7 +126,7 @@ const buildPlans = (data: MarketData): HorizonPlan[] => {
         ? 'Yeni tepe peşinde koşma; kârı kademeli realize et.'
         : longOpportunity
           ? 'Düşen korku veya MVRV bölgesinde planlı DCA fırsatı olarak değerlendir.'
-          : 'Döngü ortasındaysan; düzenli katkı ve yeniden dengeleme disiplini sürdür.',
+          : 'Döngü ortasındaysan; düzenli katkı ve pozisyon sınırına uyum sürdür.',
       reason: `MVRV ${mvrvRatio.value.toFixed(2)}, FNG ${fearAndGreed.current}, genel risk ${macroPhase.riskScore}/10.`,
       trigger: 'Döngü verisi dip bölgesinden çıkış + likidite teyidi',
       tone: longRisk ? 'negative' : longOpportunity ? 'positive' : 'neutral',
