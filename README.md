@@ -43,11 +43,9 @@ Uygulama harici bir sunucuya ihtiyaç duymadan doğrudan **Binance Public WebSoc
 - **Gizlilik Modu:** Tek tıkla tüm bakiyeleri ve k/z tutarlarını `••••••` şeklinde maskeleme.
 - **Cüzdan Değerleri:** Portföy bakiyeleri, maliyetler ve K/Z değerleri TRY gösterilir; kripto birim fiyatları ve teknik seviyeler USD olarak gösterilir.
 
-### 5. Yerel Akıllı Portföy Asistanı
-- **LLM'siz, Deterministik Öneri Motoru:** Portföy bakiyeleri, risk profili, teknik göstergeler, piyasa kapısı, duygu, MVRV, likidite ve türev verilerini cihazda kurallarla birleştirir.
-- **Tutar Farkındalığı:** `$100` ile `$100.000` portföylerde minimum uygulanabilir işlem, risk bütçesi, likidite katılımı, pozisyon sınırı ve DCA dilimi ayrı hesaplanır.
-- **Açıklanabilir Sonuçlar:** Her öneri; gerekçe, risk, veri kalitesi, önerilen USD/token miktarı, giriş aralığı ve geçersizleşme seviyesiyle gösterilir.
-- **Yalnızca Öneri:** Uygulama emir göndermez, borsa kimlik bilgisi saklamaz, cüzdan imzalamaz veya otomatik işlem yapmaz.
+### 5. Analiz Terminali
+- **Özet Öncelikli:** Analiz ekranı varsayılan olarak kısa pazar özeti, hızlı sinyaller ve piyasa kapısını gösterir.
+- **İsteğe Bağlı Detay:** Döngü, türev, teknik ve karar açıklamaları yalnızca `Detayları göster` düğmesine basıldığında açılır.
 - **USD Normalizasyonu:** USDT, TRY, EUR ve kripto pariteleri ortak USD değerine çevrilerek toplam varlık, K/Z ve gerçekleşen kâr hesapları tutarlı tutulur.
 - **Cüzdan Para Birimi:** Cüzdan bakiye/değerleri TRY, kripto birim fiyatları USD olarak gösterilir. BTC global fiyatı da her zaman USD olarak kalır.
 
@@ -64,7 +62,7 @@ Uygulama harici bir sunucuya ihtiyaç duymadan doğrudan **Binance Public WebSoc
 
 - **Çatı:** React 19, TypeScript, Vite 8
 - **Stil & Tokenlar:** Tailwind CSS v4, Custom Craft Paper Tokens (`index.css`)
-- **Durum & Depolama:** Zustand + LocalStorage Persistence (`tracex-storage-v3`, `tracex-assistant-v1`)
+- **Durum & Depolama:** Zustand + LocalStorage Persistence (`tracex-storage-v3`)
 - **Grafik Motoru:** Lightweight Charts (TradingView)
 - **İkon Seti:** Lucide React
 

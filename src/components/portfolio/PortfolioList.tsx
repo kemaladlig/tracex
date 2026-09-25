@@ -1,17 +1,11 @@
 import React, { useState, useMemo, useCallback, Suspense, lazy } from 'react';
 import { ArrowUpDown, Coins, Plus, Zap } from 'lucide-react';
 import type { PortfolioAsset } from '../../types/crypto';
-import type { AssistantRecommendation } from '../../types/assistant';
 import { useCryptoStore } from '../../store/useCryptoStore';
-import { useAssistantStore } from '../../store/useAssistantStore';
-import { useSmartAssistant } from '../../hooks/useSmartAssistant';
 import { usePortfolioValuation } from '../../hooks/usePortfolioPrices';
 import { PortfolioSummary } from './PortfolioSummary';
 import { PortfolioGroupSwitcher } from './PortfolioGroupSwitcher';
 import { PortfolioItem } from './PortfolioItem';
-import { AssistantPanel } from '../assistant/AssistantPanel';
-import { AssistantProfileModal } from '../assistant/AssistantProfileModal';
-import { RecommendationDetailModal } from '../assistant/RecommendationDetailModal';
 
 // Portfolio dialogs are heavy — load their chunks only when the user actually opens them
 const AddAssetModal = lazy(() =>
@@ -28,25 +22,16 @@ type SortOption = 'value' | 'pnl' | 'name';
 
 export const PortfolioList: React.FC = () => {
   const portfolio = useCryptoStore((state) => state.portfolio);
-  const activeGroupId = useCryptoStore((state) => state.activeGroupId);
-  const setAssistantSettings = useAssistantStore((state) => state.setSettings);
-  const assistant = useSmartAssistant(activeGroupId);
   const valuation = usePortfolioValuation();
   const valuationById = useMemo(
     () => new Map(valuation.positions.map((position) => [position.asset.id, position])),
     [valuation.positions]
-  );
-  const recommendationBySymbol = useMemo(
-    () => new Map(assistant.result?.recommendations.map((recommendation) => [recommendation.symbol, recommendation]) ?? []),
-    [assistant.result]
   );
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSmartImportOpen, setIsSmartImportOpen] = useState(false);
   const [selectedSymbolForBuy, setSelectedSymbolForBuy] = useState<string>('');
   const [assetToSell, setAssetToSell] = useState<PortfolioAsset | null>(null);
-  const [isAssistantProfileOpen, setIsAssistantProfileOpen] = useState(false);
-  const [selectedRecommendation, setSelectedRecommendation] = useState<AssistantRecommendation | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>('value');
 
   const [showDetails, setShowDetails] = useState<boolean>(() => {
@@ -103,24 +88,6 @@ export const PortfolioList: React.FC = () => {
 
   const handleSmartImportClose = useCallback(() => setIsSmartImportOpen(false), []);
   const handleSellClose = useCallback(() => setAssetToSell(null), []);
-  const handleRecommendationSave = useCallback(
-    (settings: typeof assistant.settings) => setAssistantSettings(activeGroupId, settings),
-    [activeGroupId, setAssistantSettings]
-  );
-  const handleAssistantToggle = useCallback(
-    () => setAssistantSettings(activeGroupId, { enabled: !assistant.settings.enabled }),
-    [activeGroupId, assistant.settings.enabled, setAssistantSettings]
-  );
-  const handleRecommendationOpen = useCallback((recommendation: AssistantRecommendation) => {
-    setSelectedRecommendation(recommendation);
-  }, []);
-  const handleRecommendationOpenById = useCallback(
-    (recommendationId: string) => {
-      const recommendation = assistant.result?.recommendations.find((item) => item.id === recommendationId);
-      if (recommendation) setSelectedRecommendation(recommendation);
-    },
-    [assistant.result]
-  );
 
   return (
     <div className="flex flex-col pb-36 lg:pb-10 px-4 md:px-6 w-full font-mono">
@@ -129,26 +96,12 @@ export const PortfolioList: React.FC = () => {
         <PortfolioGroupSwitcher />
       </div>
 
-      <div className="mt-3 stagger-item" style={{ '--stagger-idx': 1 } as React.CSSProperties}>
-        <AssistantPanel
-          result={assistant.result}
-          settings={assistant.settings}
-          isLoading={assistant.isLoading}
-          isRefreshing={assistant.isRefreshing}
-          error={assistant.error}
-          onRefresh={() => void assistant.refresh()}
-           onToggleEnabled={handleAssistantToggle}
-          onOpenProfile={() => setIsAssistantProfileOpen(true)}
-          onOpenRecommendation={handleRecommendationOpenById}
-        />
-      </div>
-
       {/* Desktop: sticky summary beside the asset grid */}
       <div className="lg:flex lg:items-start lg:gap-4">
         {/* Portfolio Top PnL Summary */}
         <div
           className="stagger-item lg:w-80 lg:shrink-0 lg:sticky lg:top-17.5"
-          style={{ '--stagger-idx': 2 } as React.CSSProperties}
+          style={{ '--stagger-idx': 1 } as React.CSSProperties}
         >
           <PortfolioSummary
             onAddClick={handleOpenAdd}
@@ -163,7 +116,7 @@ export const PortfolioList: React.FC = () => {
           {/* Assets List Section Header & Sorter */}
           <div
             className="flex items-center justify-between px-1 mb-2.5 mt-4 lg:mt-0 stagger-item"
-            style={{ '--stagger-idx': 3 } as React.CSSProperties}
+            style={{ '--stagger-idx': 2 } as React.CSSProperties}
           >
             <div className="flex items-center gap-1.5 text-xs font-black text-stone-900 uppercase tracking-wider">
               <Coins className="w-3.5 h-3.5" />
@@ -193,12 +146,10 @@ export const PortfolioList: React.FC = () => {
                 <PortfolioItem
                   key={asset.id}
                   asset={asset}
-                  recommendation={recommendationBySymbol.get(asset.symbol)}
-                  index={4 + idx}
+                  index={3 + idx}
                   showPnL={showDetails}
                   onBuyMoreClick={handleBuyMore}
                   onSellClick={handleSell}
-                  onRecommendationClick={handleRecommendationOpen}
                 />
               ))}
             </div>
@@ -253,23 +204,6 @@ export const PortfolioList: React.FC = () => {
         <Suspense fallback={null}>
           <SellAssetModal asset={assetToSell} isOpen onClose={handleSellClose} />
         </Suspense>
-      )}
-
-      {isAssistantProfileOpen && (
-        <AssistantProfileModal
-          isOpen
-          settings={assistant.settings}
-          onClose={() => setIsAssistantProfileOpen(false)}
-          onSave={handleRecommendationSave}
-        />
-      )}
-
-      {selectedRecommendation && (
-        <RecommendationDetailModal
-          isOpen
-          recommendation={selectedRecommendation}
-          onClose={() => setSelectedRecommendation(null)}
-        />
       )}
     </div>
   );

@@ -6,28 +6,22 @@ import { useCryptoStore } from '../../store/useCryptoStore';
 import { cleanSymbol, formatNumber, formatPercentage } from '../../utils/formatters';
 import { useWalletDisplay } from '../../hooks/useWalletDisplay';
 import { valuePortfolioPosition, type PriceLookup } from '../../utils/portfolioValuation';
-import type { AssistantRecommendation } from '../../types/assistant';
-import { RecommendationBadge } from '../assistant/RecommendationBadge';
-import { CashReserveBadge } from '../assistant/CashReserveBadge';
+import { CashReserveBadge } from './CashReserveBadge';
 
 interface PortfolioItemProps {
   asset: PortfolioAsset;
-  recommendation?: AssistantRecommendation;
   index?: number;
   showPnL?: boolean;
   onSellClick: (asset: PortfolioAsset) => void;
   onBuyMoreClick: (symbol: string) => void;
-  onRecommendationClick?: (recommendation: AssistantRecommendation) => void;
 }
 
 const PortfolioItemInner: React.FC<PortfolioItemProps> = ({
   asset,
-  recommendation,
   index = 0,
   showPnL = false,
   onSellClick,
   onBuyMoreClick,
-  onRecommendationClick,
 }) => {
   const { base, quote } = cleanSymbol(asset.symbol);
   const ticker = useCryptoStore((state) => state.tickers[asset.symbol]);
@@ -149,14 +143,6 @@ const PortfolioItemInner: React.FC<PortfolioItemProps> = ({
         <CashReserveBadge
           valueUsd={valuation.currentValueUsd}
           hideBalances={hideBalances}
-        />
-      )}
-
-      {recommendation && onRecommendationClick && (
-        <RecommendationBadge
-          recommendation={recommendation}
-          hideBalances={hideBalances}
-          onClick={() => onRecommendationClick(recommendation)}
         />
       )}
 

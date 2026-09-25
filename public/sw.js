@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tracex-v6-smart-assistant';
+const CACHE_NAME = 'tracex-v7-analytics-summary';
 const STATIC_ASSETS = ['/icon.png', '/manifest.json'];
 
 self.addEventListener('install', (event) => {
