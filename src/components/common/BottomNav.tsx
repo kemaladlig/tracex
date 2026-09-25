@@ -17,11 +17,13 @@ export const BottomNav: React.FC = () => {
           return (
             <button
               key={item.id}
+              aria-current={isActive ? 'page' : undefined}
+              type="button"
               onClick={() => {
                 triggerHaptic('light');
                 setActiveTab(item.id);
               }}
-              className={`flex items-center justify-center gap-1.5 flex-1 py-2 mx-1 rounded-md border-2 text-xs font-black transition-all cursor-pointer ${
+              className={`flex min-h-11 items-center justify-center gap-1.5 flex-1 py-2 mx-1 rounded-md border-2 text-xs font-black transition-all cursor-pointer ${
                 isActive
                   ? 'bg-amber-300 text-stone-900 border-stone-900 shadow-hard-sm'
                   : 'bg-white/80 text-stone-600 border-transparent hover:border-stone-900/30'

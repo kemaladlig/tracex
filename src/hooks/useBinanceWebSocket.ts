@@ -45,6 +45,8 @@ export const useBinanceWebSocket = () => {
     }
 
     let isDestroyed = false;
+    let isPaused = document.hidden;
+    let reconnectAttempt = 0;
     // Last raw WS packet arrival; used by the stall watchdog below.
     const lastMessageAtRef = { current: Date.now() };
 
@@ -71,7 +73,7 @@ export const useBinanceWebSocket = () => {
     }, 1000);
 
     const connect = () => {
-      if (isDestroyed) return;
+      if (isDestroyed || isPaused || !navigator.onLine) return;
 
       // Close previous socket if open
       if (socketRef.current) {
@@ -92,6 +94,7 @@ export const useBinanceWebSocket = () => {
 
       ws.onopen = () => {
         if (!isDestroyed) {
+          reconnectAttempt = 0;
           setConnectionStatus('connected');
         }
       };
@@ -135,13 +138,15 @@ export const useBinanceWebSocket = () => {
       };
 
       ws.onclose = () => {
-        if (!isDestroyed) {
-          setConnectionStatus('disconnected');
-          if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
-          reconnectTimeoutRef.current = window.setTimeout(() => {
-            connect();
-          }, 3000);
-        }
+        if (isDestroyed || isPaused) return;
+        setConnectionStatus('disconnected');
+        if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+        const delay = Math.min(30000, 1000 * 2 ** reconnectAttempt);
+        reconnectAttempt += 1;
+        reconnectTimeoutRef.current = window.setTimeout(() => {
+          reconnectTimeoutRef.current = null;
+          connect();
+        }, delay);
       };
     };
 
@@ -149,24 +154,38 @@ export const useBinanceWebSocket = () => {
 
     // Page Visibility API: Pause/resume WebSocket to save battery when screen is locked or tab is hidden
     const handleVisibilityChange = () => {
-      if (document.hidden) {
+      isPaused = document.hidden;
+      if (isPaused) {
+        if (reconnectTimeoutRef.current) {
+          clearTimeout(reconnectTimeoutRef.current);
+          reconnectTimeoutRef.current = null;
+        }
         if (socketRef.current) {
           socketRef.current.close();
           socketRef.current = null;
         }
-      } else {
-        if (!socketRef.current) {
-          connect();
-        }
+      } else if (!socketRef.current) {
+        reconnectAttempt = 0;
+        connect();
+      }
+    };
+
+    const handleOnline = () => {
+      if (!isPaused && !socketRef.current) {
+        reconnectAttempt = 0;
+        setConnectionStatus('connecting');
+        connect();
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('online', handleOnline);
 
     // Proper cleanup on unmount or when symbol list changes
     return () => {
       isDestroyed = true;
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('online', handleOnline);
       if (flushIntervalRef.current) {
         clearInterval(flushIntervalRef.current);
         flushIntervalRef.current = null;

@@ -15,6 +15,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { useCryptoStore } from '../../store/useCryptoStore';
+import { usePortfolioPrices } from '../../hooks/usePortfolioPrices';
 import { formatCurrency, formatPercentage, cleanSymbol } from '../../utils/formatters';
 import { triggerHaptic } from '../../utils/haptics';
 
@@ -41,10 +42,16 @@ export type ChartMode = 'candle' | 'heikin' | 'volume';
 
 export type HomeInterval = '15m' | '1h' | '4h' | '1d';
 
+const handleKeyboardActivation = (event: React.KeyboardEvent, action: () => void) => {
+  if (event.key !== 'Enter' && event.key !== ' ') return;
+  event.preventDefault();
+  action();
+};
+
 const HOME_INTERVALS: { label: string; value: HomeInterval }[] = [
-  { label: '15D', value: '15m' },
-  { label: '1S', value: '1h' },
-  { label: '4S', value: '4h' },
+  { label: '15DK', value: '15m' },
+  { label: '1SA', value: '1h' },
+  { label: '4SA', value: '4h' },
   { label: '1G', value: '1d' },
 ];
 
@@ -99,10 +106,19 @@ const DEFAULT_4H_CANDLES: Candle[] = [
   { time: 48, open: 99250, high: 99800, low: 99000, close: 99600, volume: 6800 },
 ];
 
-export const HomeDashboardView: React.FC = () => {
+interface HomeDashboardViewProps {
+  refreshNonce?: number;
+}
+
+export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({ refreshNonce = 0 }) => {
   const portfolio = useCryptoStore((state) => state.portfolio);
-  const tickers = useCryptoStore((state) => state.tickers);
+  const btcTicker = useCryptoStore((state) => state.tickers['BTCUSDT']);
+  const currency = useCryptoStore((state) => state.currency);
   const tryRate = useCryptoStore((state) => state.tryRate);
+  const portfolioPrices = usePortfolioPrices();
+  const activeRate = currency === 'TRY' ? tryRate : 1;
+  const secondaryCurrency = currency === 'USD' ? 'TRY' : 'USD';
+  const secondaryRate = currency === 'USD' ? tryRate : 1;
   const hideBalances = useCryptoStore((state) => state.hideBalances);
   const toggleHideBalances = useCryptoStore((state) => state.toggleHideBalances);
   const setActiveTab = useCryptoStore((state) => state.setActiveTab);
@@ -183,8 +199,14 @@ export const HomeDashboardView: React.FC = () => {
   // so this effect only does the async network fill — no sync setState.
   useEffect(() => {
     let cancelled = false;
-    fetch(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${homeInterval}&limit=48`)
-      .then((res) => res.json())
+    const controller = new AbortController();
+    fetch(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${homeInterval}&limit=48`, {
+      signal: controller.signal,
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error(`Binance klines error: ${res.status}`);
+        return res.json();
+      })
       .then((data: [number, string, string, string, string, string][]) => {
         if (cancelled) return;
         if (Array.isArray(data) && data.length > 0) {
@@ -202,16 +224,23 @@ export const HomeDashboardView: React.FC = () => {
           } catch {}
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        // Cached candles remain visible when the network is unavailable.
+      });
     return () => {
       cancelled = true;
+      controller.abort();
     };
-  }, [homeInterval]);
+  }, [homeInterval, refreshNonce]);
 
   useEffect(() => {
+    const controller = new AbortController();
     // Background macro sentiment refresh
-    fetch('https://api.alternative.me/fng/?limit=1')
-      .then((res) => res.json())
+    fetch('https://api.alternative.me/fng/?limit=1', { signal: controller.signal })
+      .then((res) => {
+        if (!res.ok) throw new Error(`Fear & Greed error: ${res.status}`);
+        return res.json();
+      })
       .then((data) => {
         if (data?.data?.[0]) {
           const val = parseInt(data.data[0].value, 10);
@@ -222,18 +251,22 @@ export const HomeDashboardView: React.FC = () => {
       .catch(() => {});
 
     // Background dominance refresh
-    fetch('https://api.coinlore.net/api/global/')
-      .then((res) => res.json())
+    fetch('https://api.coinlore.net/api/global/', { signal: controller.signal })
+      .then((res) => {
+        if (!res.ok) throw new Error(`Coinlore error: ${res.status}`);
+        return res.json();
+      })
       .then((res) => {
         if (res && res[0]?.btc_d) {
           setBtcDomi(parseFloat(res[0].btc_d));
         }
       })
       .catch(() => {});
-  }, []);
+
+    return () => controller.abort();
+  }, [refreshNonce]);
 
   // BTC Live Focus Data
-  const btcTicker = tickers['BTCUSDT'];
   const btcPriceUSD = btcTicker?.price ?? 96500;
   const btcChange = btcTicker?.changePercent24h ?? 0;
   const btcIsPositive = btcChange >= 0;
@@ -378,7 +411,7 @@ export const HomeDashboardView: React.FC = () => {
   // Calculate Net Portfolio Value in USD — single memo so totals never mutate during render
   const { enrichedHoldings, totalUSD } = useMemo(() => {
     const enriched = portfolio.map((asset) => {
-      const livePriceUSD = tickers[asset.symbol]?.price ?? asset.buyPrice;
+      const livePriceUSD = portfolioPrices[asset.symbol] ?? asset.buyPrice;
       const valUSD = asset.amount * livePriceUSD;
       const costUSD = asset.amount * asset.buyPrice;
       return {
@@ -392,7 +425,7 @@ export const HomeDashboardView: React.FC = () => {
     });
     const total = enriched.reduce((sum, holding) => sum + holding.valUSD, 0);
     return { enrichedHoldings: enriched, totalUSD: total };
-  }, [portfolio, tickers]);
+  }, [portfolio, portfolioPrices]);
 
   // Sort holdings by valuation descending
   const sortedHoldings = useMemo(() => {
@@ -403,10 +436,19 @@ export const HomeDashboardView: React.FC = () => {
     <div className="flex-1 w-full px-4 md:px-6 py-3 space-y-3 pb-36 lg:pb-10 font-mono lg:grid lg:grid-cols-3 lg:gap-3 lg:items-start lg:space-y-0">
       {/* 1. HERO COCKPIT: BITCOIN PRICE, 4H CANDLESTICK CHART & MARKET MODE */}
       <div
+        role="button"
+        tabIndex={0}
+        aria-label="Bitcoin grafiğini aç"
         onClick={() => {
           triggerHaptic('medium');
           setSelectedCoinForChart('BTCUSDT');
         }}
+        onKeyDown={(event) =>
+          handleKeyboardActivation(event, () => {
+            triggerHaptic('medium');
+            setSelectedCoinForChart('BTCUSDT');
+          })
+        }
         className="lg:col-span-2 border-2 border-stone-900 rounded-lg p-3.5 shadow-hard btn-hard cursor-pointer relative bg-white animate-sheetUp flex flex-col justify-between"
       >
         <div>
@@ -436,7 +478,7 @@ export const HomeDashboardView: React.FC = () => {
                   <span aria-hidden="true" className="w-1.5 self-stretch rounded-full bg-amber-400 animate-pulse" />
                 )}
                 <span className="text-3xl sm:text-4xl font-black text-stone-900 tracking-tight">
-                  {formatCurrency(btcPriceUSD, 'USD', 1, 0)}
+                  {formatCurrency(btcPriceUSD, currency, activeRate, 0)}
                 </span>
                 <span
                   className={`inline-flex items-center gap-0.5 font-black px-1.5 py-0.5 rounded border border-stone-900 text-xs shadow-hard-xs ${
@@ -454,9 +496,9 @@ export const HomeDashboardView: React.FC = () => {
                 </span>
               </div>
 
-              {/* Row 2: Approximate TRY Price directly underneath */}
+              {/* Row 2: Approximate secondary quote directly underneath */}
               <div className="text-xs sm:text-sm font-bold text-stone-500 mt-0.5">
-                ≈ {formatCurrency(btcPriceUSD, 'TRY', tryRate, 0)}
+                ≈ {formatCurrency(btcPriceUSD, secondaryCurrency, secondaryRate, 0)}
               </div>
             </div>
 
@@ -716,10 +758,19 @@ export const HomeDashboardView: React.FC = () => {
       {/* 2. PİYASA BAROMETRESİ: 3 SÜTUNLU TEMİZ VE KISA METRİK                     */}
       {/* ========================================================================= */}
       <div
+        role="button"
+        tabIndex={0}
+        aria-label="Piyasa analizlerini aç"
         onClick={() => {
           triggerHaptic('light');
           setActiveTab('analytics');
         }}
+        onKeyDown={(event) =>
+          handleKeyboardActivation(event, () => {
+            triggerHaptic('light');
+            setActiveTab('analytics');
+          })
+        }
         className="grid grid-cols-3 gap-2 text-stone-900 cursor-pointer animate-sheetUp [animation-delay:60ms] lg:grid-cols-1 lg:self-start"
         title="Tüm Analizleri Aç"
       >
@@ -803,10 +854,19 @@ export const HomeDashboardView: React.FC = () => {
           <div className="space-y-3 animate-sheetUp">
             {/* CÜZDANIM KARTI */}
             <div
+              role="button"
+              tabIndex={0}
+              aria-label="Cüzdan detaylarını aç"
               onClick={() => {
                 triggerHaptic('medium');
                 setActiveTab('portfolio');
               }}
+              onKeyDown={(event) =>
+                handleKeyboardActivation(event, () => {
+                  triggerHaptic('medium');
+                  setActiveTab('portfolio');
+                })
+              }
               className="bg-white border-2 border-stone-900 rounded-lg p-3.5 shadow-hard btn-hard cursor-pointer relative transition-all flex flex-col justify-between"
             >
               <div>
@@ -822,6 +882,7 @@ export const HomeDashboardView: React.FC = () => {
                   <div className="flex items-center gap-1.5">
                     <button
                       type="button"
+                      onKeyDown={(e) => e.stopPropagation()}
                       onClick={(e) => {
                         e.stopPropagation();
                         triggerHaptic('light');
@@ -848,12 +909,12 @@ export const HomeDashboardView: React.FC = () => {
                   <div className="text-3xl sm:text-4xl font-black text-stone-900 tracking-tight">
                     {hideBalances
                       ? '••••••••'
-                      : formatCurrency(totalUSD, 'TRY', tryRate, 0)}
+                      : formatCurrency(totalUSD, currency, activeRate, 0)}
                   </div>
                   <p className="text-sm font-bold text-stone-500 mt-1">
                     {hideBalances
                       ? '••••••'
-                      : `≈ ${formatCurrency(totalUSD, 'USD', 1, 0)}`}
+                      : `≈ ${formatCurrency(totalUSD, secondaryCurrency, secondaryRate, 0)}`}
                   </p>
                 </div>
               </div>
@@ -938,7 +999,7 @@ export const HomeDashboardView: React.FC = () => {
                                 {base}
                               </span>
                               <span className="text-[10px] font-bold text-stone-500">
-                                {formatCurrency(item.livePriceUSD, 'USD', 1)}
+                                {formatCurrency(item.livePriceUSD, currency, activeRate)}
                               </span>
                             </div>
                             <div className="text-[11px] font-bold text-stone-600 truncate">
@@ -952,13 +1013,13 @@ export const HomeDashboardView: React.FC = () => {
                           <div className="text-xs font-black text-stone-900">
                             {hideBalances
                               ? '••••••'
-                              : formatCurrency(item.valUSD, 'TRY', tryRate)}
+                              : formatCurrency(item.valUSD, currency, activeRate)}
                           </div>
                           <div className="flex items-center justify-end gap-1.5 mt-0.5">
                             <span className="text-[10px] font-bold text-stone-500">
                               {hideBalances
                                 ? '••'
-                                : `≈ ${formatCurrency(item.valUSD, 'USD', 1)}`}
+                                : `≈ ${formatCurrency(item.valUSD, secondaryCurrency, secondaryRate)}`}
                             </span>
                             <div className="w-10 h-1.5 bg-stone-200 border border-stone-900 rounded-full overflow-hidden">
                               <div

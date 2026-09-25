@@ -5,7 +5,11 @@ import type { CoinSearchResult } from '../../services/binanceApi';
 import { useCryptoStore } from '../../store/useCryptoStore';
 import { formatCurrency, formatPercentage } from '../../utils/formatters';
 
-export const MarketTrendsBanner: React.FC = () => {
+interface MarketTrendsBannerProps {
+  refreshNonce?: number;
+}
+
+export const MarketTrendsBanner: React.FC<MarketTrendsBannerProps> = ({ refreshNonce = 0 }) => {
   const [gainers, setGainers] = useState<CoinSearchResult[]>([]);
   const [losers, setLosers] = useState<CoinSearchResult[]>([]);
   const [activeTrend, setActiveTrend] = useState<'gainers' | 'losers'>('gainers');
@@ -17,7 +21,7 @@ export const MarketTrendsBanner: React.FC = () => {
   useEffect(() => {
     let isMounted = true;
 
-    fetchAllUsdtPairs().then((coins) => {
+    fetchAllUsdtPairs(refreshNonce > 0).then((coins) => {
       if (!isMounted) return;
 
       // Filter coins with decent volume to avoid scam/dormant coins
@@ -41,7 +45,7 @@ export const MarketTrendsBanner: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [refreshNonce]);
 
   const items = activeTrend === 'gainers' ? gainers : losers;
 

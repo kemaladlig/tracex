@@ -64,6 +64,7 @@ export const App: React.FC = () => {
   const activeTab = useCryptoStore((state) => state.activeTab);
   const prevTabRef = useRef<TabType>(activeTab);
   const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('left');
+  const [refreshNonce, setRefreshNonce] = useState(0);
 
   useEffect(() => {
     const prevIdx = TABS.indexOf(prevTabRef.current);
@@ -85,6 +86,8 @@ export const App: React.FC = () => {
       } catch (err) {
         console.warn('Refresh error:', err);
       }
+    } else if (activeTab === 'home' || activeTab === 'markets') {
+      setRefreshNonce((nonce) => nonce + 1);
     }
     await new Promise((resolve) => setTimeout(resolve, 500));
   };
@@ -114,8 +117,8 @@ export const App: React.FC = () => {
                 slideDirection === 'left' ? 'animate-slide-left' : 'animate-slide-right'
               }`}
             >
-              {activeTab === 'home' && <HomeDashboardView />}
-              {activeTab === 'markets' && <MarketList />}
+              {activeTab === 'home' && <HomeDashboardView refreshNonce={refreshNonce} />}
+              {activeTab === 'markets' && <MarketList refreshNonce={refreshNonce} />}
               {activeTab === 'analytics' && <AnalyticsView />}
               {activeTab === 'portfolio' && <PortfolioList />}
             </div>

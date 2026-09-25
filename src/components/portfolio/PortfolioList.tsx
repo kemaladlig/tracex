@@ -2,6 +2,7 @@ import React, { useState, useMemo, useCallback, Suspense, lazy } from 'react';
 import { ArrowUpDown, Coins, Plus, Zap } from 'lucide-react';
 import type { PortfolioAsset } from '../../types/crypto';
 import { useCryptoStore } from '../../store/useCryptoStore';
+import { usePortfolioPrices } from '../../hooks/usePortfolioPrices';
 import { PortfolioSummary } from './PortfolioSummary';
 import { PortfolioGroupSwitcher } from './PortfolioGroupSwitcher';
 import { PortfolioItem } from './PortfolioItem';
@@ -21,7 +22,7 @@ type SortOption = 'value' | 'pnl' | 'name';
 
 export const PortfolioList: React.FC = () => {
   const portfolio = useCryptoStore((state) => state.portfolio);
-  const tickers = useCryptoStore((state) => state.tickers);
+  const portfolioPrices = usePortfolioPrices();
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSmartImportOpen, setIsSmartImportOpen] = useState(false);
@@ -54,20 +55,20 @@ export const PortfolioList: React.FC = () => {
     }
     if (sortBy === 'value') {
       return list.sort((a, b) => {
-        const valA = a.amount * (tickers[a.symbol]?.price ?? a.buyPrice);
-        const valB = b.amount * (tickers[b.symbol]?.price ?? b.buyPrice);
+        const valA = a.amount * (portfolioPrices[a.symbol] ?? a.buyPrice);
+        const valB = b.amount * (portfolioPrices[b.symbol] ?? b.buyPrice);
         return valB - valA;
       });
     }
     if (sortBy === 'pnl') {
       return list.sort((a, b) => {
-        const pnlA = a.amount * ((tickers[a.symbol]?.price ?? a.buyPrice) - a.buyPrice);
-        const pnlB = b.amount * ((tickers[b.symbol]?.price ?? b.buyPrice) - b.buyPrice);
+        const pnlA = a.amount * ((portfolioPrices[a.symbol] ?? a.buyPrice) - a.buyPrice);
+        const pnlB = b.amount * ((portfolioPrices[b.symbol] ?? b.buyPrice) - b.buyPrice);
         return pnlB - pnlA;
       });
     }
     return list;
-  }, [portfolio, tickers, sortBy]);
+  }, [portfolio, portfolioPrices, sortBy]);
 
   // Stable identities so React.memo on PortfolioItem survives every WS flush re-render
   const handleBuyMore = useCallback((symbol: string) => {

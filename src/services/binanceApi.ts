@@ -182,6 +182,8 @@ export const filterMarketCategory = (
 
 export const getCategoryCoins = async (
   category: MarketCategory,
-  limit?: number
-): Promise<CoinSearchResult[]> => filterMarketCategory(await fetchAllUsdtPairs(), category, limit);
+  limit?: number,
+  forceFresh = false
+): Promise<CoinSearchResult[]> =>
+  filterMarketCategory(await fetchAllUsdtPairs(forceFresh), category, limit);
 

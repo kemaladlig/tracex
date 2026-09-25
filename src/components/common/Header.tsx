@@ -16,6 +16,9 @@ export const Header: React.FC = () => {
   const hideBalances = useCryptoStore((state) => state.hideBalances);
   const toggleHideBalances = useCryptoStore((state) => state.toggleHideBalances);
   const activeTab = useCryptoStore((state) => state.activeTab);
+  const currency = useCryptoStore((state) => state.currency);
+  const setCurrency = useCryptoStore((state) => state.setCurrency);
+  const nextCurrency = currency === 'USD' ? 'TRY' : 'USD';
 
   const { isInstallable, isStandalone, installApp } = usePWAInstall();
   const [showInstallGuide, setShowInstallGuide] = useState(false);
@@ -67,12 +70,22 @@ export const Header: React.FC = () => {
 
           {/* Action Stamps */}
           <div className="flex items-center gap-2 ml-auto">
+            <button
+              type="button"
+              onClick={() => setCurrency(nextCurrency)}
+              title={`Para birimi: ${currency}`}
+              aria-label={`Para birimini ${nextCurrency} olarak değiştir`}
+              className="flex min-h-11 min-w-11 items-center justify-center px-2 rounded-md border-2 border-stone-900 bg-white text-stone-900 text-[11px] font-black shadow-hard-xs btn-hard cursor-pointer"
+            >
+              {currency === 'USD' ? '$ USD' : '₺ TRY'}
+            </button>
+
             {/* PWA Install / Home Screen Shortcut Button (Hidden when running as standalone app) */}
             {!isStandalone && (
               <button
                 onClick={handleInstallClick}
                 title="TraceX'i Ana Ekrana Ekle / İndir"
-                className="flex items-center justify-center p-2 rounded-md border-2 border-stone-900 bg-amber-300 hover:bg-amber-400 text-stone-900 shadow-hard-xs btn-hard cursor-pointer"
+                className="flex min-h-11 min-w-11 items-center justify-center p-2 rounded-md border-2 border-stone-900 bg-amber-300 hover:bg-amber-400 text-stone-900 shadow-hard-xs btn-hard cursor-pointer"
               >
                 <Download className="w-4 h-4 stroke-3" />
               </button>
@@ -83,7 +96,7 @@ export const Header: React.FC = () => {
               <button
                 onClick={toggleHideBalances}
                 title={hideBalances ? 'Bakiyeleri Göster' : 'Bakiyeleri Gizle'}
-                className={`flex items-center justify-center p-2 rounded-md border-2 border-stone-900 shadow-hard-xs btn-hard cursor-pointer ${
+                className={`flex min-h-11 min-w-11 items-center justify-center p-2 rounded-md border-2 border-stone-900 shadow-hard-xs btn-hard cursor-pointer ${
                   hideBalances
                     ? 'bg-amber-300 text-stone-900'
                     : 'bg-white text-stone-800'

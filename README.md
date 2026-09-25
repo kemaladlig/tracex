@@ -41,7 +41,7 @@ Uygulama harici bir sunucuya ihtiyaç duymadan doğrudan **Binance Public WebSoc
 - **Lider & En Zayıf Varlık Rozetleri:** Portföyün en çok kazandıran ve en çok gerileyen varlıklarını tek bakışta özetler.
 - **Varlık Dağılım Cetveli:** Portföydeki varlıkların yüzdesel ağırlığını gösteren renkli segment barı.
 - **Gizlilik Modu:** Tek tıkla tüm bakiyeleri ve k/z tutarlarını `••••••` şeklinde maskeleme.
-- **Çoklu Para Birimi:** Canlı Binance kurlarıyla tek tıkla `$ USD`, `₺ TRY` veya `€ EUR` görünümüne geçiş.
+- **Çoklu Para Birimi:** Canlı Binance kurlarıyla tek tıkla `$ USD` veya `₺ TRY` görünümüne geçiş.
 
 ### 5. Mobil & UX Mimarisi
 - **Craft Paper & Thick Ink Tasarım Sistemi:** 2px kalın mürekkep sınırları, sert gölgeler (`shadow-hard`) ve sıcak kağıt zemin (`#f4f0e6`).

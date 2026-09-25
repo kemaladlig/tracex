@@ -58,6 +58,8 @@ export const Sidebar: React.FC = () => {
           return (
             <button
               key={item.id}
+              aria-current={isActive ? 'page' : undefined}
+              type="button"
               onClick={() => {
                 triggerHaptic('light');
                 setActiveTab(item.id);

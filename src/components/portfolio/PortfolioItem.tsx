@@ -23,7 +23,9 @@ const PortfolioItemInner: React.FC<PortfolioItemProps> = ({
   const removePortfolioAsset = useCryptoStore((state) => state.removePortfolioAsset);
   const setSelectedCoinForChart = useCryptoStore((state) => state.setSelectedCoinForChart);
   const hideBalances = useCryptoStore((state) => state.hideBalances);
+  const currency = useCryptoStore((state) => state.currency);
   const tryRate = useCryptoStore((state) => state.tryRate);
+  const activeRate = currency === 'TRY' ? tryRate : 1;
   // PnL de fiyattan türediği için aynı yazısız stale dili: soluk + amber bar, ekstra yazı yok.
   // Solukluk SADECE açılışta cache'ten gelen veri içindir; fiyat akışı soldurmaz.
   const isStale = !ticker || ticker.source === 'cache';
@@ -59,7 +61,7 @@ const PortfolioItemInner: React.FC<PortfolioItemProps> = ({
           className="absolute left-1.5 top-2.5 bottom-2.5 w-1 rounded-full bg-amber-400 animate-pulse"
         />
       )}
-      {/* Top Row: Symbol, Quantity & Current Total Value (TRY) */}
+      {/* Top Row: Symbol, Quantity & Current Total Value (selected currency) */}
       <div className="flex items-center justify-between pb-2.5 border-b-2 border-stone-900/40">
         <div className="flex items-center gap-2.5">
           <div className="w-10 h-10 rounded-md bg-stone-900 text-amber-300 border-2 border-stone-900 flex items-center justify-center font-black text-sm shadow-hard-sm">
@@ -78,13 +80,13 @@ const PortfolioItemInner: React.FC<PortfolioItemProps> = ({
           </div>
         </div>
 
-        {/* Current Total Value in TRY with USD Unit Price */}
+        {/* Current Total Value in the selected currency with unit price */}
         <div className={`text-right transition-opacity duration-500 ${isStale ? 'opacity-60 saturate-[.65]' : 'opacity-100'}`}>
           <div className="text-base font-black text-stone-900 tracking-tight">
-            {hideBalances ? '••••••' : formatCurrency(currentValue, 'TRY', tryRate)}
+            {hideBalances ? '••••••' : formatCurrency(currentValue, currency, activeRate)}
           </div>
           <div className="text-[11px] text-stone-500 font-bold">
-            Birim: {ticker ? formatCurrency(currentPrice, 'USD', 1) : '...'}
+            Birim: {ticker ? formatCurrency(currentPrice, currency, activeRate) : '...'}
           </div>
         </div>
       </div>
@@ -95,7 +97,7 @@ const PortfolioItemInner: React.FC<PortfolioItemProps> = ({
           <div className="text-xs">
             <span className="text-[10px] text-stone-500 block uppercase font-bold">Ort. Alış Maliyeti</span>
             <span className="text-stone-900 font-bold">
-              {hideBalances ? '••••' : formatCurrency(asset.buyPrice, 'USD', 1)}
+              {hideBalances ? '••••' : formatCurrency(asset.buyPrice, currency, activeRate)}
             </span>
           </div>
 
@@ -110,7 +112,7 @@ const PortfolioItemInner: React.FC<PortfolioItemProps> = ({
                 }`}
               >
                 {isProfit ? <ArrowUpRight className="w-3.5 h-3.5 stroke-3" /> : <ArrowDownRight className="w-3.5 h-3.5 stroke-3" />}
-                {formatCurrency(pnlAmount, 'TRY', tryRate)} ({formatPercentage(pnlPercent)})
+                {formatCurrency(pnlAmount, currency, activeRate)} ({formatPercentage(pnlPercent)})
               </span>
             )}
           </div>

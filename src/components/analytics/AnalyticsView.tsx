@@ -13,6 +13,7 @@ import { DerivativesPanel } from './DerivativesPanel';
 import { MarketConditionsPanel } from './MarketConditionsPanel';
 import { MarketGateCard } from './MarketGateCard';
 import { TechnicalPanel } from './TechnicalPanel';
+import { DecisionBrief } from './DecisionBrief';
 
 const ANALYTICS_AUTO_REFRESH_MS = 60 * 60 * 1000;
 
@@ -230,6 +231,8 @@ export const AnalyticsView: FC = () => {
         volatilityRegime={volatilityRegime}
         stablecoinLiquidity={stablecoinLiquidity}
       />
+
+      <DecisionBrief data={analyticsData} />
 
       <section className="mt-4" aria-labelledby="quick-scan-title">
         <div className="mb-2 flex items-center justify-between gap-2">

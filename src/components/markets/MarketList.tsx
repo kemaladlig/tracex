@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { Plus, Search, BookmarkCheck, ArrowUpDown, Star, Compass, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { useCryptoStore } from '../../store/useCryptoStore';
 import { MarketItem } from './MarketItem';
@@ -33,16 +34,30 @@ const SORT_OPTIONS: { id: SortOption; label: string }[] = [
 ];
 
 const TRENDS_COLLAPSE_KEY = 'tracex-trends-collapsed';
+const EMPTY_TICKER_SORT_VALUES: Readonly<Record<string, string>> = {};
 
-export const MarketList: React.FC = () => {
+interface MarketListProps {
+  refreshNonce?: number;
+}
+
+export const MarketList: React.FC<MarketListProps> = ({ refreshNonce = 0 }) => {
   const watchlist = useCryptoStore((state) => state.watchlist);
-  const tickers = useCryptoStore((state) => state.tickers);
   const reorderWatchlist = useCryptoStore((state) => state.reorderWatchlist);
   const updateTickersBatch = useCryptoStore((state) => state.updateTickersBatch);
   const setActiveMarketSymbols = useCryptoStore((state) => state.setActiveMarketSymbols);
 
   const [category, setCategory] = useState<MarketCategory>('favorites');
   const [sortBy, setSortBy] = useState<SortOption>('default');
+  const tickerSortValues = useCryptoStore(
+    useShallow((state) => {
+      if (sortBy === 'default') return EMPTY_TICKER_SORT_VALUES;
+      const values: Record<string, string> = {};
+      for (const [symbol, ticker] of Object.entries(state.tickers)) {
+        values[symbol] = `${ticker.changePercent24h}|${ticker.quoteVolume}`;
+      }
+      return values;
+    })
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
@@ -91,10 +106,10 @@ export const MarketList: React.FC = () => {
 
   // Preload all Binance USDT pairs for instant searching and categorization
   useEffect(() => {
-    fetchAllUsdtPairs().then((coins) => {
+    fetchAllUsdtPairs(refreshNonce > 0).then((coins) => {
       setAllMarketCoins(coins);
     });
-  }, []);
+  }, [refreshNonce]);
 
   // Fetch top coins when category changes (async setState only inside .then)
   useEffect(() => {
@@ -104,7 +119,7 @@ export const MarketList: React.FC = () => {
     }
 
     let cancelled = false;
-    getCategoryCoins(category).then((coins) => {
+    getCategoryCoins(category, undefined, refreshNonce > 0).then((coins) => {
       if (cancelled) return;
       setCategoryCoins(coins);
       setLoadedCategory(category);
@@ -131,10 +146,14 @@ export const MarketList: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [category, setActiveMarketSymbols, updateTickersBatch]);
+  }, [category, refreshNonce, setActiveMarketSymbols, updateTickersBatch]);
 
   // Compute final filtered and sorted symbols
   const displaySymbols = useMemo(() => {
+    const getChange = (symbol: string) =>
+      Number.parseFloat(tickerSortValues[symbol]?.split('|')[0] ?? '0') || 0;
+    const getVolume = (symbol: string) =>
+      Number.parseFloat(tickerSortValues[symbol]?.split('|')[1] ?? '0') || 0;
     const query = searchQuery.toLowerCase().trim();
 
     // 1. Determine base symbol candidates (Search is ALWAYS global across all pairs)
@@ -157,19 +176,13 @@ export const MarketList: React.FC = () => {
 
     // 2. Sorting
     if (sortBy === 'gainers') {
-      return [...baseSymbols].sort(
-        (a, b) => (tickers[b]?.changePercent24h ?? 0) - (tickers[a]?.changePercent24h ?? 0)
-      );
+      return [...baseSymbols].sort((a, b) => getChange(b) - getChange(a));
     }
     if (sortBy === 'losers') {
-      return [...baseSymbols].sort(
-        (a, b) => (tickers[a]?.changePercent24h ?? 0) - (tickers[b]?.changePercent24h ?? 0)
-      );
+      return [...baseSymbols].sort((a, b) => getChange(a) - getChange(b));
     }
     if (sortBy === 'volume') {
-      return [...baseSymbols].sort(
-        (a, b) => (tickers[b]?.quoteVolume ?? 0) - (tickers[a]?.quoteVolume ?? 0)
-      );
+      return [...baseSymbols].sort((a, b) => getVolume(b) - getVolume(a));
     }
     if (sortBy === 'name') {
       return [...baseSymbols].sort((a, b) => a.localeCompare(b));
@@ -177,7 +190,7 @@ export const MarketList: React.FC = () => {
 
     // Default sorting
     return baseSymbols;
-  }, [category, watchlist, categoryCoins, allMarketCoins, searchQuery, sortBy, tickers]);
+  }, [category, watchlist, categoryCoins, allMarketCoins, searchQuery, sortBy, tickerSortValues]);
 
   const isCustomOrder = category === 'favorites' && sortBy === 'default' && !searchQuery.trim();
 
@@ -281,7 +294,7 @@ export const MarketList: React.FC = () => {
           )}
           <span>24S Piyasa Bülteni</span>
         </button>
-        {!isTrendsCollapsed && <MarketTrendsBanner />}
+        {!isTrendsCollapsed && <MarketTrendsBanner refreshNonce={refreshNonce} />}
       </div>
 
       {/* Sticky slim toolbar: search + sort menu + add */}
