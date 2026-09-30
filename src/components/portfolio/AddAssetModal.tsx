@@ -4,6 +4,7 @@ import { useCryptoStore } from '../../store/useCryptoStore';
 import { fetchAllUsdtPairs } from '../../services/binanceApi';
 import type { CoinSearchResult } from '../../services/binanceApi';
 import { formatCurrency } from '../../utils/formatters';
+import { useWalletDisplay } from '../../hooks/useWalletDisplay';
 import { Modal } from '../common/Modal';
 
 interface AddAssetModalProps {
@@ -29,6 +30,7 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({
 
   const tickers = useCryptoStore((state) => state.tickers);
   const addPortfolioAsset = useCryptoStore((state) => state.addPortfolioAsset);
+  const { formatBalance } = useWalletDisplay();
 
   // Coin universe loads async after mount; loading state is derived from allCoins, never set synchronously here
   useEffect(() => {
@@ -58,6 +60,12 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({
   }, [allCoins, symbol]);
 
   const liveTicker = tickers[currentFormattedSymbol];
+
+  // The field is USD-only; this derived value feeds the read-only ₺ reference line
+  const enteredPriceUsd = useMemo(() => {
+    const parsed = parseFloat(buyPrice);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  }, [buyPrice]);
 
   const handleSelectCoin = (coin: CoinSearchResult) => {
     setSymbol(coin.baseAsset);
@@ -190,7 +198,7 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-xs font-bold text-stone-700 uppercase">
-                  Birim Alış Fiyatı ($)
+                  Birim Alış Fiyatı (USD)
                 </label>
                 {(liveTicker || allCoins.some((c) => c.symbol === currentFormattedSymbol)) && (
                   <button
@@ -210,6 +218,10 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({
                 onChange={(e) => setBuyPrice(e.target.value)}
                 className="w-full px-3 py-2.5 bg-white border-2 border-stone-900 rounded-md text-stone-900 text-sm font-bold shadow-hard-sm focus:outline-none"
               />
+              {/* Read-only ₺ counterpart: makes the USD-only input unambiguous when the user thinks in TL */}
+              <p className="mt-1 text-[10px] font-bold text-stone-500 text-right">
+                {enteredPriceUsd > 0 ? `≈ ${formatBalance(enteredPriceUsd)} karşılığı` : 'USD cinsinden girin'}
+              </p>
             </div>
 
             {error && <p className="text-xs text-rose-700 font-bold">{error}</p>}
