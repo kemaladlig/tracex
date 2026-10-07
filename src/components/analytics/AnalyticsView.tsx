@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { FC } from 'react';
-import { AlertTriangle, BarChart3, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
+import { AlertTriangle, BarChart3, RefreshCw } from 'lucide-react';
 import { fetchComprehensiveAnalytics } from '../../services/onChainApi';
 import { useCryptoStore } from '../../store/useCryptoStore';
 import { triggerHaptic } from '../../utils/haptics';
@@ -17,26 +17,24 @@ import { DecisionBrief } from './DecisionBrief';
 
 const ANALYTICS_AUTO_REFRESH_MS = 60 * 60 * 1000;
 
-type AnalyticsSection = 'cycle' | 'derivatives' | 'technical';
+export type AnalyticsTab = 'overview' | 'cycle' | 'derivatives' | 'technical';
 
 interface QuickSignal {
-  section: AnalyticsSection;
+  tab: AnalyticsTab;
   label: string;
   value: string;
   detail: string;
   tone: TerminalTone;
 }
 
-const SECTION_TABS: Array<{ id: AnalyticsSection; label: string }> = [
-  { id: 'cycle', label: 'Döngü & duygu' },
-  { id: 'derivatives', label: 'Vadeli akış' },
-  { id: 'technical', label: 'Pazar & teknik' },
+const ANALYTICS_TABS: Array<{ id: AnalyticsTab; label: string }> = [
+  { id: 'overview', label: 'Özet' },
+  { id: 'cycle', label: 'Döngü' },
+  { id: 'derivatives', label: 'Vadeli' },
+  { id: 'technical', label: 'Teknik' },
 ];
 
-const selectSection = (section: AnalyticsSection) => {
-  triggerHaptic('light');
-  return section;
-};
+const VALID_TABS = new Set<AnalyticsTab>(['overview', 'cycle', 'derivatives', 'technical']);
 
 export const AnalyticsView: FC = () => {
   const analyticsData = useCryptoStore((state) => state.analyticsData);
@@ -47,17 +45,29 @@ export const AnalyticsView: FC = () => {
     analyticsData.volatilityRegime &&
     analyticsData.stablecoinLiquidity
   );
-  const [activeSection, setActiveSection] = useState<AnalyticsSection>('cycle');
-  const [showDetails, setShowDetails] = useState<boolean>(() => {
+
+  const [activeTab, setActiveTab] = useState<AnalyticsTab>(() => {
     try {
-      return localStorage.getItem('tracex-analytics-details') === 'true';
+      const saved = localStorage.getItem('tracex-analytics-tab') as AnalyticsTab;
+      return VALID_TABS.has(saved) ? saved : 'overview';
     } catch {
-      return false;
+      return 'overview';
     }
   });
+
   const [isLoading, setIsLoading] = useState(!hasCurrentAnalyticsShape);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [loadError, setLoadError] = useState(false);
+
+  const handleTabChange = (tab: AnalyticsTab) => {
+    triggerHaptic('light');
+    setActiveTab(tab);
+    try {
+      localStorage.setItem('tracex-analytics-tab', tab);
+    } catch {
+      // Keep in-memory if storage is unavailable.
+    }
+  };
 
   const loadData = async (forceFresh = false) => {
     if (forceFresh) setIsRefreshing(true);
@@ -71,27 +81,6 @@ export const AnalyticsView: FC = () => {
       setLoadError(true);
     } finally {
       setIsRefreshing(false);
-    }
-  };
-
-  const toggleDetails = () => {
-    setShowDetails((current) => {
-      const next = !current;
-      try {
-        localStorage.setItem('tracex-analytics-details', String(next));
-      } catch {
-        // Keep the in-memory preference when storage is unavailable.
-      }
-      return next;
-    });
-  };
-
-  const openDetails = () => {
-    setShowDetails(true);
-    try {
-      localStorage.setItem('tracex-analytics-details', 'true');
-    } catch {
-      // Keep the in-memory preference when storage is unavailable.
     }
   };
 
@@ -178,28 +167,28 @@ export const AnalyticsView: FC = () => {
 
   const quickSignals: QuickSignal[] = [
     {
-      section: 'cycle',
+      tab: 'cycle',
       label: 'Duygu',
       value: String(fearAndGreed.current),
       detail: fearAndGreed.classification,
       tone: fearAndGreed.current >= 55 ? 'positive' : fearAndGreed.current <= 45 ? 'negative' : 'neutral',
     },
     {
-      section: 'cycle',
+      tab: 'cycle',
       label: 'MVRV',
       value: mvrvRatio.value.toFixed(2),
       detail: mvrvRatio.status === 'dip' ? 'Tarihî dip' : mvrvRatio.status === 'heated' ? 'Aşırı ısınma' : 'Döngü ortası',
       tone: mvrvRatio.status === 'dip' ? 'positive' : mvrvRatio.status === 'heated' ? 'negative' : 'warning',
     },
     {
-      section: 'derivatives',
+      tab: 'derivatives',
       label: 'Fonlama',
       value: `%${fundingRate.ratePercent}`,
       detail: fundingRate.status === 'overheated' ? 'Aşırı ısınma' : '8 saatlik',
       tone: fundingRate.status === 'overheated' ? 'negative' : 'neutral',
     },
     {
-      section: 'technical',
+      tab: 'technical',
       label: 'RSI 14',
       value: String(technicalIndicator.rsi14),
       detail: technicalIndicator.rsiStatus === 'oversold' ? 'Aşırı satım' : technicalIndicator.rsiStatus === 'overbought' ? 'Aşırı alım' : 'Nötr',
@@ -212,7 +201,7 @@ export const AnalyticsView: FC = () => {
       <TerminalPageHeader
         kicker="[TX // Market intelligence]"
         title="Analiz terminali"
-        subtitle="Kısa pazar özeti. Detayları istediğinde aç."
+        subtitle="Piyasa rejimi, vadeli likidite ve zincir üstü döngü"
         icon={<BarChart3 className="h-5 w-5" />}
         status={
           <div className="hidden text-right sm:block">
@@ -221,28 +210,16 @@ export const AnalyticsView: FC = () => {
           </div>
         }
         action={
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={toggleDetails}
-              aria-pressed={showDetails}
-              aria-label={showDetails ? 'Detaylı analizi gizle' : 'Detaylı analizi göster'}
-              title={showDetails ? 'Detayları gizle' : 'Detayları göster'}
-              className={`flex h-11 w-11 cursor-pointer items-center justify-center rounded border-2 border-stone-900 shadow-hard-sm btn-hard ${showDetails ? 'bg-stone-900 text-amber-300' : 'bg-white text-stone-800'}`}
-            >
-              {showDetails ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            </button>
-            <button
-              type="button"
-              onClick={() => void loadData(true)}
-              disabled={isRefreshing}
-              aria-label="Analiz verilerini yenile"
-              title="Verileri yenile"
-              className="flex h-11 w-11 cursor-pointer items-center justify-center rounded border-2 border-stone-900 bg-amber-300 shadow-hard-sm btn-hard disabled:cursor-wait disabled:opacity-60"
-            >
-              <RefreshCw className={`h-4 w-4 text-stone-950 ${isRefreshing ? 'animate-spin' : ''}`} />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => void loadData(true)}
+            disabled={isRefreshing}
+            aria-label="Analiz verilerini yenile"
+            title="Verileri yenile"
+            className="flex h-11 w-11 cursor-pointer items-center justify-center rounded border-2 border-stone-900 bg-amber-300 shadow-hard-sm btn-hard disabled:cursor-wait disabled:opacity-60"
+          >
+            <RefreshCw className={`h-4 w-4 text-stone-950 ${isRefreshing ? 'animate-spin' : ''}`} />
+          </button>
         }
       />
 
@@ -263,78 +240,64 @@ export const AnalyticsView: FC = () => {
         />
       )}
 
-      <MarketGateCard
-        marketGate={marketGate}
-        macroPhase={macroPhase}
-        technicalIndicator={technicalIndicator}
-        marketBreadth={marketBreadth}
-        volatilityRegime={volatilityRegime}
-        stablecoinLiquidity={stablecoinLiquidity}
-      />
-
-      {showDetails && <DecisionBrief data={analyticsData} />}
-
-      <section className="mt-4" aria-labelledby="quick-scan-title">
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <h2 id="quick-scan-title" className="text-[9px] font-black uppercase tracking-[0.18em] text-stone-500">Hızlı tarama</h2>
-          <span className="text-[8px] font-bold uppercase text-stone-400">Detaya git</span>
-        </div>
-        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-          {quickSignals.map((signal) => (
-            <MetricTile
-              key={signal.label}
-              label={signal.label}
-              value={signal.value}
-              detail={signal.detail}
-              tone={signal.tone}
-              onClick={() => {
-                 setActiveSection(selectSection(signal.section));
-                 openDetails();
-               }}
-              ariaLabel={`${signal.label} detayını aç`}
-            />
-          ))}
-        </div>
-      </section>
-
-      {!showDetails && (
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-2 border-stone-900 bg-white px-3 py-2.5 shadow-hard-xs">
-          <div>
-            <p className="text-[9px] font-black uppercase text-stone-800">İstersen detaylara bak</p>
-            <p className="mt-0.5 font-sans text-[10px] text-stone-500">Döngü, türev ve teknik açıklamaları açmak için üstteki ok düğmesine bas.</p>
-          </div>
-          <button
-            type="button"
-            onClick={toggleDetails}
-            className="min-h-11 cursor-pointer border-2 border-stone-900 bg-stone-900 px-3 text-[10px] font-black uppercase text-amber-300 shadow-hard-xs btn-hard"
-          >
-            Detayları göster
-          </button>
-        </div>
-      )}
-
-      {showDetails && (
-        <>
-          <SegmentedControl
-        ariaLabel="Analiz bölümleri"
-        idPrefix="analytics-section"
-        options={SECTION_TABS}
-        activeId={activeSection}
-        onChange={(section) => setActiveSection(selectSection(section))}
-        className="mt-4"
+      <SegmentedControl
+        ariaLabel="Analiz sekmeleri"
+        idPrefix="analytics-tab"
+        options={ANALYTICS_TABS}
+        activeId={activeTab}
+        onChange={handleTabChange}
+        className="mb-4"
       />
 
       <div
-        key={activeSection}
-        id={`analytics-section-${activeSection}-panel`}
+        key={activeTab}
+        id={`analytics-tab-${activeTab}-panel`}
         role="tabpanel"
-        aria-labelledby={`analytics-section-${activeSection}`}
-        className="mt-4 animate-tabEnter"
+        aria-labelledby={`analytics-tab-${activeTab}`}
+        className="animate-tabEnter"
       >
-        {activeSection === 'cycle' && (
+        {activeTab === 'overview' && (
+          <div className="space-y-4">
+            <MarketGateCard
+              marketGate={marketGate}
+              macroPhase={macroPhase}
+              technicalIndicator={technicalIndicator}
+              marketBreadth={marketBreadth}
+              volatilityRegime={volatilityRegime}
+              stablecoinLiquidity={stablecoinLiquidity}
+            />
+
+            <section aria-labelledby="quick-scan-title">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <h2 id="quick-scan-title" className="text-[9px] font-black uppercase tracking-[0.18em] text-stone-500">
+                  Hızlı tarama
+                </h2>
+                <span className="text-[8px] font-bold uppercase text-stone-400">Detay için dokun</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+                {quickSignals.map((signal) => (
+                  <MetricTile
+                    key={signal.label}
+                    label={signal.label}
+                    value={signal.value}
+                    detail={signal.detail}
+                    tone={signal.tone}
+                    onClick={() => handleTabChange(signal.tab)}
+                    ariaLabel={`${signal.label} detay sekmesine git`}
+                  />
+                ))}
+              </div>
+            </section>
+
+            <DecisionBrief data={analyticsData} />
+          </div>
+        )}
+
+        {activeTab === 'cycle' && (
           <CyclePanel fearAndGreed={fearAndGreed} marketDominance={marketDominance} mvrvRatio={mvrvRatio} />
         )}
-        {activeSection === 'derivatives' && (
+
+        {activeTab === 'derivatives' && (
           <DerivativesPanel
             longShortRatio={longShortRatio}
             fundingRate={fundingRate}
@@ -342,7 +305,8 @@ export const AnalyticsView: FC = () => {
             openInterest={openInterest}
           />
         )}
-        {activeSection === 'technical' && (
+
+        {activeTab === 'technical' && (
           <div className="grid gap-4">
             <TechnicalPanel technicalIndicator={technicalIndicator} />
             <MarketConditionsPanel
@@ -353,8 +317,6 @@ export const AnalyticsView: FC = () => {
           </div>
         )}
       </div>
-        </>
-      )}
 
       <footer className="mt-4 border-2 border-stone-900 bg-white px-3 py-2.5 font-sans text-[10px] leading-relaxed text-stone-600 shadow-hard-xs">
         Bu ekran bilgilendirme amaçlıdır; yatırım tavsiyesi değildir. On-chain ve vadeli göstergeler gecikmeli ya da önbellekten gelebilir.
